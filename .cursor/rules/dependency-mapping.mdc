@@ -1,0 +1,8 @@
+---
+description: Useful to remove unused code
+globs: 
+alwaysApply: false
+---
+Map dependencies for each component (e.g., APIs, libraries). Flag code with no dependencies or unused imports for potential removal.
+
+Flag code never called (e.g., unused functions, orphaned components) and suggest safe deletion unless documented as experimental.
