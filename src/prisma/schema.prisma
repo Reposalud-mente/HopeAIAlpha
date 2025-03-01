@@ -1,0 +1,260 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  email           String         @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            Role
+  licenseNumber   String?
+  specialty       String?
+  clinicId        String?        @db.Uuid
+  profileImageUrl String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  lastLoginAt     DateTime?
+  isActive        Boolean        @default(true)
+  
+  // Relations
+  clinic          Clinic?        @relation(fields: [clinicId], references: [id])
+  assessments     Assessment[]
+  reports         Report[]
+  clinicalNotes   ClinicalNote[]
+  patients        Patient[]      @relation("CreatedByUser")
+  auditLogs       AuditLog[]
+  attachments     Attachment[]
+  treatmentPlans  TreatmentPlan[]
+}
+
+enum Role {
+  PSYCHOLOGIST
+  SUPERVISOR
+  ADMIN
+}
+
+model Clinic {
+  id            String       @id @default(uuid()) @db.Uuid
+  name          String
+  address       String
+  contactPhone  String
+  contactEmail  String?
+  logoUrl       String?
+  website       String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  isActive      Boolean      @default(true)
+  
+  // Relations
+  users         User[]
+  assessments   Assessment[]
+}
+
+model Patient {
+  id                    String       @id @default(uuid()) @db.Uuid
+  firstName             String
+  lastName              String
+  dateOfBirth           DateTime
+  gender                String?
+  contactEmail          String?
+  contactPhone          String?
+  address               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  occupation            String?
+  maritalStatus         String?
+  insuranceProvider     String?
+  insuranceNumber       String?
+  educationLevel        String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+  createdById           String       @db.Uuid
+  isActive              Boolean      @default(true)
+  
+  // Relations
+  createdBy             User         @relation("CreatedByUser", fields: [createdById], references: [id])
+  assessments           Assessment[]
+  attachments           Attachment[]
+}
+
+model Assessment {
+  id                String                @id @default(uuid()) @db.Uuid
+  patientId         String                @db.Uuid
+  clinicianId       String                @db.Uuid
+  clinicId          String                @db.Uuid
+  assessmentDate    DateTime              @default(now())
+  status            AssessmentStatus      @default(DRAFT)
+  currentStep       String                @default("motivos_consulta")
+  lastUpdated       DateTime              @default(now()) @updatedAt
+  completionDate    DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  // Relations
+  patient           Patient               @relation(fields: [patientId], references: [id])
+  clinician         User                  @relation(fields: [clinicianId], references: [id])
+  clinic            Clinic                @relation(fields: [clinicId], references: [id])
+  consultationReasons ConsultationReason[]
+  evaluationAreas   AssessmentEvaluationArea[]
+  icdCriteria       AssessmentICDCriteria[]
+  reports           Report[]
+  clinicalNotes     ClinicalNote[]
+  treatmentPlans    TreatmentPlan[]
+}
+
+enum AssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+model ConsultationReason {
+  id            String     @id @default(uuid()) @db.Uuid
+  assessmentId  String     @db.Uuid
+  reason        String
+  createdAt     DateTime   @default(now())
+  
+  // Relations
+  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+}
+
+model EvaluationArea {
+  id          String                    @id
+  name        String
+  description String?
+  isActive    Boolean                   @default(true)
+  
+  // Relations
+  assessments AssessmentEvaluationArea[]
+}
+
+model AssessmentEvaluationArea {
+  assessmentId String         @db.Uuid
+  areaId       String
+  notes        String?
+  createdAt    DateTime       @default(now())
+  
+  // Relations
+  assessment   Assessment     @relation(fields: [assessmentId], references: [id])
+  area         EvaluationArea @relation(fields: [areaId], references: [id])
+  
+  @@id([assessmentId, areaId])
+}
+
+model ICDCriteria {
+  code        String                  @id
+  name        String
+  description String?
+  category    String
+  isActive    Boolean                 @default(true)
+  
+  // Relations
+  assessments AssessmentICDCriteria[]
+}
+
+model AssessmentICDCriteria {
+  assessmentId   String       @db.Uuid
+  icdCode        String
+  isPrimary      Boolean      @default(false)
+  certaintyLevel String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  
+  // Relations
+  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
+  criteria       ICDCriteria  @relation(fields: [icdCode], references: [code])
+  
+  @@id([assessmentId, icdCode])
+}
+
+model Report {
+  id           String     @id @default(uuid()) @db.Uuid
+  assessmentId String     @db.Uuid
+  reportText   String
+  version      Int        @default(1)
+  createdById  String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  isFinal      Boolean    @default(false)
+  filename     String?
+  
+  // Relations
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  createdBy    User       @relation(fields: [createdById], references: [id])
+}
+
+model ClinicalNote {
+  id           String     @id @default(uuid()) @db.Uuid
+  assessmentId String     @db.Uuid
+  noteType     String
+  content      String
+  createdById  String     @db.Uuid
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  createdBy    User       @relation(fields: [createdById], references: [id])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String?   @db.Uuid
+  action      String
+  entityType  String
+  entityId    String    @db.Uuid
+  details     Json?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id])
+}
+
+model Attachment {
+  id                String    @id @default(uuid()) @db.Uuid
+  relatedEntityType String
+  relatedEntityId   String    @db.Uuid
+  fileName          String
+  filePath          String
+  fileType          String
+  fileSize          BigInt
+  uploadedById      String    @db.Uuid
+  uploadedAt        DateTime  @default(now())
+  description       String?
+  
+  // Relations
+  uploadedBy        User      @relation(fields: [uploadedById], references: [id])
+  patient           Patient?  @relation(fields: [patientId], references: [id])
+  patientId         String?   @db.Uuid
+}
+
+model TreatmentPlan {
+  id             String       @id @default(uuid()) @db.Uuid
+  assessmentId   String       @db.Uuid
+  planText       String
+  startDate      DateTime?
+  expectedDuration String?
+  createdById    String       @db.Uuid
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  status         String       @default("active")
+  
+  // Relations
+  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
+  createdBy      User         @relation(fields: [createdById], references: [id])
+}
