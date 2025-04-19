@@ -8,6 +8,12 @@ module.exports = {
   ],
   theme: {
   	extend: {
+      height: {
+        '5.5': '1.375rem',
+      },
+      width: {
+        '5.5': '1.375rem',
+      },
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',

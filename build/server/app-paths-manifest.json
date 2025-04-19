@@ -1,5 +1,9 @@
 {
-  "/patients/[id]/page": "app/patients/[id]/page.js",
+  "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
+  "/api/dashboard/summary/route": "app/api/dashboard/summary/route.js",
+  "/api/patients/route": "app/api/patients/route.js",
+  "/api/appointments/route": "app/api/appointments/route.js",
+  "/api/messages/route": "app/api/messages/route.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/patients/page": "app/patients/page.js"
+  "/reports/page": "app/reports/page.js"
 }

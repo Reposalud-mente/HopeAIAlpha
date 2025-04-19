@@ -42,10 +42,10 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
       {/* Mobile Sidebar */}
       {!hideNavbar && <div className="md:hidden"><MobileSidebar /></div>}
 
-      <div className="flex flex-1 overflow-hidden pt-[57px]">
-        {/* Desktop Sidebar */}
+      <div className="relative flex flex-1 overflow-hidden pt-[57px]">
+        {/* Desktop Sidebar - Positioned as overlay */}
         {!hideNavbar && (
-          <div className="fixed left-0 top-[57px] h-[calc(100vh-57px)] z-30 hidden md:block">
+          <div className="absolute left-0 top-0 h-full z-30 hidden md:block transition-all duration-300">
             <NewSidebar />
           </div>
         )}
@@ -53,8 +53,8 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
         {/* Main content area with appropriate margin based on sidebar width */}
         <main
           className={cn(
-            "flex-1 overflow-auto transition-all duration-300",
-            !hideNavbar && (isExpanded ? "ml-64" : "ml-20")
+            "flex-1 w-full overflow-auto transition-all duration-300 ease-in-out",
+            !hideNavbar && (isExpanded ? "md:pl-64" : "md:pl-12")
           )}
         >
           {children}
