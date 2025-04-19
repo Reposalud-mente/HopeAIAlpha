@@ -2,35 +2,50 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { 
-  Search, 
-  Bell, 
-  FileText, 
-  Calendar, 
-  PlusCircle, 
-  Video 
+import {
+  Search,
+  Bell,
+  FileText,
+  Video,
+  Menu
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
+import { useDrawer } from '@/contexts/DrawerContext';
 
 const TopBar = () => {
   const { user, signOut } = useAuth();
-  const pathname = usePathname();
+  const { openDrawer } = useDrawer();
 
   return (
-    <header className="bg-white shadow-sm py-2 border-b fixed top-0 right-0 left-0 z-40 h-[57px]">
-      <div className="container mx-auto px-4 flex items-center justify-between h-full">
-        <div className="flex items-center space-x-4 ml-16">
+    <header
+      className="bg-white shadow-sm py-2 border-b fixed top-0 right-0 left-0 z-40 h-[57px]"
+      role="banner"
+      aria-label="Top navigation bar"
+    >
+      <div className="container mx-auto px-2 flex items-center justify-between h-full flex-wrap gap-y-2 md:px-4">
+        {/* Hamburger menu for mobile */}
+        <button
+          type="button"
+          className="md:hidden mr-2 p-3 rounded-md hover:bg-gray-100 text-gray-600"
+          aria-label="Abrir menú"
+          tabIndex={0}
+          onClick={openDrawer}
+        >
+          <Menu size={24} />
+        </button>
+        <div className="flex items-center space-x-4 ml-12 md:ml-16">
+
           <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
             HA
           </div>
           <h1 className="text-xl font-semibold">HopeAI</h1>
         </div>
-        
-        {/* Search Bar */}
-        <div className="flex-1 max-w-xl mx-4">
+
+        {/* Search Bar (hidden on mobile) */}
+        <div className="hidden md:block flex-1 max-w-xl mx-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -40,9 +55,9 @@ const TopBar = () => {
             />
           </div>
         </div>
-        
-        {/* Quick Action Buttons */}
-        <div className="flex items-center space-x-3 mr-4">
+
+        {/* Quick Action Buttons (hidden on mobile) */}
+        <div className="hidden md:flex items-center space-x-3 mr-4">
           {/* Generate Report Button */}
           <Link href="/reports/new">
             <Button variant="outline" size="sm" className="flex items-center">
@@ -50,25 +65,25 @@ const TopBar = () => {
               <span>Generar Informe</span>
             </Button>
           </Link>
-          
+
           {/* Create Meeting Button */}
-          <Link href="/demo">
+          <Link href="/dashboard">
             <Button variant="default" size="sm" className="flex items-center bg-blue-600 text-white hover:bg-blue-700">
               <Video className="h-4 w-4 mr-1" />
               <span>Nueva Consulta</span>
             </Button>
           </Link>
         </div>
-        
+
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <button className="p-2 hover:bg-gray-100 rounded-full relative">
+          <button type="button" className="p-2 hover:bg-gray-100 rounded-full relative">
             <Bell className="h-5 w-5" />
             <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
               2
             </span>
           </button>
-          
+
           {/* User Profile */}
           <div className="flex items-center space-x-2">
             <div className="text-right mr-2">
@@ -85,4 +100,4 @@ const TopBar = () => {
   );
 };
 
-export default TopBar; 
+export default TopBar;
