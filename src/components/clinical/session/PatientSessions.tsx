@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Calendar, Clock, Plus } from "lucide-react";
-import SessionCreation, { SessionFormData } from "./SessionCreation";
+import SessionCreation from "./SessionCreation";
 import {
   Tabs,
   TabsContent,
@@ -11,7 +11,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -40,6 +39,7 @@ interface SessionData {
 interface PatientSessionsProps {
   patientId: string;
   patientName: string;
+  onSelectSession?: (session: SessionData) => void;
 }
 
 const sessionData: SessionData[] = [
@@ -94,7 +94,8 @@ const sessionData: SessionData[] = [
   },
 ];
 
-const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientName }) => {
+const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientName, onSelectSession }) => {
+  // patientId will be used for API calls in the future
   const [showCreate, setShowCreate] = useState(false);
   return (
     <div className="space-y-6">
@@ -121,7 +122,7 @@ const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientNam
                     <TableHead>Fecha</TableHead>
                     <TableHead>Hora</TableHead>
                     <TableHead>Tipo</TableHead>
-                    
+
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -144,7 +145,7 @@ const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientNam
                       <TableCell className="flex items-center gap-2">
                         {session.type}
                       </TableCell>
-                      
+
                       <TableCell>
                         <Badge variant={
                           session.status === "completed"
@@ -159,11 +160,17 @@ const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientNam
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="outline" size="sm">Ver notas</Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onSelectSession && onSelectSession(session)}
+                        >
+                          Ver detalles
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
-                  
+
                 </TableBody>
               </Table>
               {showCreate && (
@@ -181,16 +188,5 @@ const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientNam
   );
 };
 
-// Usage example
-const PatientSessionsPage = () => {
-  return (
-    <div className="container mx-auto py-6">
-      <PatientSessions 
-        patientId="P-12345"
-        patientName="John Doe"
-      />
-    </div>
-  );
-};
 
 export default PatientSessions;
