@@ -1,0 +1,41 @@
+.fab {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 9999;
+}
+
+.fabButton {
+  border-radius: 50%;
+  background: var(--primary-dark, #1e293b);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.16);
+  border: 2px solid #fff;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.fabButton:hover {
+  background: #111827;
+  box-shadow: 0 10px 32px rgba(30,41,59,0.22);
+  transform: scale(1.08);
+  transition: transform 0.18s cubic-bezier(0.4,0.2,0.2,1), background 0.2s, box-shadow 0.2s;
+}
+
+.fabModal {
+  position: fixed;
+  bottom: 6rem;
+  right: 2rem;
+  z-index: 10000;
+  width: 380px;
+  max-width: 90vw;
+  background: var(--background);
+  border-radius: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  border: 1px solid var(--border, #e5e7eb);
+  animation: fadeIn 0.25s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}

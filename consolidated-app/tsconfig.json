@@ -35,7 +35,7 @@
     ".next/types/**/*.ts",
     "next-env.d.ts",
     "build/types/**/*.ts"
-  ],
+, "src/scripts/test-audit-log.js"  ],
   "exclude": [
     "node_modules"
   ]

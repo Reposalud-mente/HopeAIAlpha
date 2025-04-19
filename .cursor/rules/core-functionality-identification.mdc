@@ -1,6 +1,0 @@
----
-description: Is helpful to identify critical platform primary purposes.
-globs: 
-alwaysApply: false
----
-Identify features critical to the platform’s primary purpose (e.g., user authentication, telehealth scheduling, CRM workflows). Ignore code unrelated to these core workflows unless explicitly requested.

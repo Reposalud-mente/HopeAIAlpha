@@ -15,6 +15,7 @@ interface ICDCriteriaProps {
   areasEvaluacion: string[]; // Areas selected in previous step
   onCriteriosChange: (criterios: string[]) => void;
   onComplete: () => void;
+  realCodes?: any[];
 }
 
 // Mock data for ICD-11 Mental and Behavioral Disorders (Chapter 06)
@@ -90,12 +91,13 @@ export default function ICDCriteria({
   criteriosCIE,
   areasEvaluacion,
   onCriteriosChange,
-  onComplete
+  onComplete,
+  realCodes
 }: ICDCriteriaProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('recommended');
   const [recommendedCodes, setRecommendedCodes] = useState<typeof allCodes>([]);
-  
+
   // Map evaluation areas to recommended ICD categories
   const areaToICDCategoryMapping: Record<string, string[]> = {
     'cognitiva': ['neurodevelopmental'],
@@ -108,30 +110,30 @@ export default function ICDCriteria({
     'estres': ['trauma', 'anxiety'],
     'familiar': ['mood', 'anxiety']
   };
-  
+
   // Generate recommended codes based on selected areas
   useEffect(() => {
     const categoryIds = areasEvaluacion
       .flatMap(area => areaToICDCategoryMapping[area] || [])
       // Remove duplicates
       .filter((id, index, self) => self.indexOf(id) === index);
-    
+
     const recommended = icdCategories
       .filter(category => categoryIds.includes(category.id))
       .flatMap(category => category.codes);
-    
+
     setRecommendedCodes(recommended);
   }, [areasEvaluacion]);
-  
+
   // Filter codes by search term
-  const filteredCodes = searchTerm.trim() 
-    ? allCodes.filter(code => 
+  const filteredCodes = searchTerm.trim()
+    ? allCodes.filter(code =>
         code.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         code.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         code.description.toLowerCase().includes(searchTerm.toLowerCase())
       )
     : recommendedCodes;
-  
+
   // Handle criteria toggle selection
   const handleCriteriaToggle = (codeId: string) => {
     if (criteriosCIE.includes(codeId)) {
@@ -140,23 +142,23 @@ export default function ICDCriteria({
       onCriteriosChange([...criteriosCIE, codeId]);
     }
   };
-  
+
   // Get code details by ID
   const getCodeById = (id: string) => {
     return allCodes.find(code => code.id === id);
   };
-  
+
   // Display codes to show based on active tab
   const codesToShow = activeTab === 'all' ? allCodes : filteredCodes;
-  
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold mb-2">Criterios CIE-11</h2>
+
         <p className="text-sm text-gray-500 mb-4">
           Seleccione los criterios diagnósticos de la CIE-11 aplicables a esta evaluación.
         </p>
-        
+
         {/* Search */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -167,7 +169,7 @@ export default function ICDCriteria({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        
+
         {/* Selected areas info */}
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md flex items-start gap-3">
           <Info className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -175,13 +177,13 @@ export default function ICDCriteria({
             <p className="text-sm text-blue-800 font-medium">Áreas seleccionadas para evaluación:</p>
             <p className="text-sm text-blue-700 mt-1">
               {areasEvaluacion.map(areaId => {
-                const area = availableAreas.find(a => a.id === areaId);
+                const area = defaultAreas.find(a => a.id === areaId);
                 return area?.name;
               }).filter(Boolean).join(', ')}
             </p>
           </div>
         </div>
-        
+
         {/* Tabs: Recommended vs All */}
         <Tabs defaultValue="recommended" className="mb-4" onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
@@ -189,7 +191,7 @@ export default function ICDCriteria({
             <TabsTrigger value="all">Todos los códigos</TabsTrigger>
           </TabsList>
         </Tabs>
-        
+
         {/* API disclaimer */}
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" />
@@ -200,7 +202,7 @@ export default function ICDCriteria({
             </p>
           </div>
         </div>
-        
+
         {/* ICD code list */}
         <ScrollArea className="h-[350px] pr-4">
           <div className="space-y-3">
@@ -248,9 +250,9 @@ export default function ICDCriteria({
               <div className="py-6 text-center">
                 <p className="text-gray-500">No se encontraron criterios diagnósticos para esta búsqueda.</p>
                 {searchTerm && (
-                  <Button 
-                    variant="link" 
-                    onClick={() => setSearchTerm('')} 
+                  <Button
+                    variant="link"
+                    onClick={() => setSearchTerm('')}
                     className="mt-2"
                   >
                     Mostrar criterios recomendados
@@ -261,7 +263,7 @@ export default function ICDCriteria({
           </div>
         </ScrollArea>
       </div>
-      
+
       {/* Selected codes display */}
       {criteriosCIE.length > 0 && (
         <div className="p-3 bg-gray-50 border rounded-md">
@@ -270,12 +272,12 @@ export default function ICDCriteria({
             {criteriosCIE.map(codeId => {
               const code = getCodeById(codeId);
               return code ? (
-                <div 
+                <div
                   key={codeId}
                   className="text-xs bg-white px-2 py-1 rounded border flex items-center gap-1"
                 >
                   <span>{code.id}: {code.name}</span>
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCriteriaToggle(codeId);
@@ -290,9 +292,9 @@ export default function ICDCriteria({
           </div>
         </div>
       )}
-      
+
       <div className="flex justify-end">
-        <Button 
+        <Button
           onClick={onComplete}
           disabled={criteriosCIE.length === 0}
         >
@@ -304,7 +306,7 @@ export default function ICDCriteria({
 }
 
 // Available evaluation areas - duplicate from EvaluationAreas for reference
-const availableAreas = [
+const defaultAreas = [
   { id: 'cognitiva', name: 'Función Cognitiva' },
   { id: 'emocional', name: 'Regulación Emocional' },
   { id: 'conductual', name: 'Comportamiento' },
@@ -314,4 +316,4 @@ const availableAreas = [
   { id: 'trauma', name: 'Trauma' },
   { id: 'estres', name: 'Estrés y Afrontamiento' },
   { id: 'familiar', name: 'Dinámica Familiar' },
-]; 
+];

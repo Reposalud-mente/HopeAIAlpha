@@ -22,10 +22,10 @@ const samplePatients = [
   { id: "PS004", name: "José Luis Martínez", status: "Nueva Cita" },
 ];
 
-export default function PatientSelection({ 
-  currentClinic, 
+export default function PatientSelection({
+  currentClinic,
   onClinicChange,
-  onComplete 
+  onComplete
 }: PatientSelectionProps) {
   const { searchPatients, setCurrentPatient, currentPatient } = usePatient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +69,7 @@ export default function PatientSelection({
         } else {
           // Filter sample patients based on search term
           const filteredResults = samplePatients.filter(
-            patient => 
+            patient =>
               patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
               patient.id.toLowerCase().includes(searchTerm.toLowerCase())
           );
@@ -95,17 +95,15 @@ export default function PatientSelection({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold mb-4">Seleccionar Clínica y Paciente</h2>
-        
         {/* Clinic selection */}
         <div className="mb-6">
           <label className="block text-sm font-medium mb-2">Clínica</label>
-          <SelectClinica 
-            value={currentClinic} 
+          <SelectClinica
+            value={currentClinic}
             onChange={handleClinicChange}
           />
         </div>
-        
+
         {/* Patient search - only show after clinic is selected */}
         {clinicSelected && (
           <div className="mt-6">
@@ -126,14 +124,14 @@ export default function PatientSelection({
                 }}
               />
             </div>
-            
+
             {/* Search results */}
             {isSearching ? (
               <div className="mt-2 text-sm text-gray-500">Buscando...</div>
             ) : searchResults.length > 0 ? (
               <div className="mt-2 border rounded-md overflow-hidden max-h-64 overflow-y-auto">
                 {searchResults.map((patient) => (
-                  <div 
+                  <div
                     key={patient.id}
                     className="p-3 border-b last:border-b-0 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
                     onClick={() => handlePatientSelect(patient)}
@@ -161,8 +159,8 @@ export default function PatientSelection({
           Busque y seleccione un paciente para continuar automáticamente al siguiente paso.
           {!searchResults.length && showAllPatients && (
             <p className="mt-2">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   setSearchResults(samplePatients);
@@ -176,4 +174,4 @@ export default function PatientSelection({
       )}
     </div>
   );
-} 
+}

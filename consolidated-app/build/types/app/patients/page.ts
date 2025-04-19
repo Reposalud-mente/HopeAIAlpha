@@ -1,4 +1,4 @@
-// File: C:\Users\MTapi\telemedicine\clinical-dashboard-app\consolidated-app\src\app\patients\page.tsx
+// File: C:\Users\david\clinical-dashboard-app\consolidated-app\src\app\patients\page.tsx
 import * as entry from '../../../../src/app/patients/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

@@ -1,6 +1,0 @@
----
-description: Useful to identify critical technologyes to the platform MVP
-globs: 
-alwaysApply: false
----
-List technologies critical to the MVP (e.g., React for frontend, Node.js for APIs). Flag outdated/redundant tools (e.g., duplicate state managers).

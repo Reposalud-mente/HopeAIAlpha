@@ -2,6 +2,9 @@ import { Providers } from '@/contexts/providers';
 import { Inter } from 'next/font/google';
 import '@/app/globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { DebugErrorBoundary } from '@/components/monitoring/ErrorBoundary';
+import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
+import { FloatingAIAssistant } from '@/components/ai/ai-assistance-card';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,9 +21,17 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <Providers>
+          <DebugErrorBoundary>
+            {children}
+          </DebugErrorBoundary>
+          {/* Feedback widget will only show when the feature flag is enabled */}
+          <FeedbackWidget />
+          {/* Global floating AI assistant for repetitive/bureaucratic tasks */}
+          <FloatingAIAssistant />
+        </Providers>
         <Toaster />
       </body>
     </html>
   );
-} 
+}

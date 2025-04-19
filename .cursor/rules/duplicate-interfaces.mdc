@@ -1,6 +1,0 @@
----
-description: Useful to detect duplicate interfaces or elements
-globs: 
-alwaysApply: false
----
-Highlight code conflicts (e.g., duplicated interfaces, incompatible styling patterns) and prioritize resolving those impacting core functionality.
