@@ -1,9 +1,11 @@
 'use client';
 
 import React, { ReactNode } from 'react';
-import Navbar from '@/components/layout/navbar';
 import TopBar from '@/components/layout/topbar';
+import NewSidebar from '@/components/layout/new-sidebar';
+import MobileSidebar from '@/components/layout/mobile-sidebar';
 import { useNavbar } from '@/contexts/NavbarContext';
+import { useDrawer } from '@/contexts/DrawerContext';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -13,17 +15,38 @@ interface AppLayoutProps {
 
 const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
   const { isExpanded } = useNavbar();
+  const { isDrawerOpen } = useDrawer();
+
+  // Prevent body scroll when drawer is open on mobile
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (isDrawerOpen) {
+        document.body.classList.add('overflow-hidden');
+      } else {
+        document.body.classList.remove('overflow-hidden');
+      }
+    }
+    // Clean up on unmount
+    return () => {
+      if (typeof window !== 'undefined') {
+        document.body.classList.remove('overflow-hidden');
+      }
+    };
+  }, [isDrawerOpen]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className={cn("h-screen flex flex-col bg-gray-50", isDrawerOpen ? "overflow-hidden" : "")}>
       {/* TopBar - horizontal navigation */}
       {!hideNavbar && <TopBar />}
-      
+
+      {/* Mobile Sidebar */}
+      {!hideNavbar && <div className="md:hidden"><MobileSidebar /></div>}
+
       <div className="flex flex-1 overflow-hidden pt-[57px]">
-        {/* Fixed position sidebar - vertical navbar */}
+        {/* Desktop Sidebar */}
         {!hideNavbar && (
-          <div className="fixed left-0 top-[57px] h-[calc(100vh-57px)] z-30">
-            <Navbar />
+          <div className="fixed left-0 top-[57px] h-[calc(100vh-57px)] z-30 hidden md:block">
+            <NewSidebar />
           </div>
         )}
 
@@ -41,4 +64,4 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
   );
 };
 
-export default AppLayout; 
+export default AppLayout;
