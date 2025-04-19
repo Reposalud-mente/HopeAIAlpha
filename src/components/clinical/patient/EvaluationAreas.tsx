@@ -12,10 +12,11 @@ interface EvaluationAreasProps {
   areasEvaluacion: string[];
   onAreasChange: (areas: string[]) => void;
   onComplete: () => void;
+  availableAreas?: any[];
 }
 
-// Available evaluation areas with descriptions
-const availableAreas = [
+// Default available evaluation areas with descriptions
+const defaultAreas = [
   {
     id: 'cognitiva',
     name: 'Función Cognitiva',
@@ -66,10 +67,13 @@ const availableAreas = [
 export default function EvaluationAreas({
   areasEvaluacion,
   onAreasChange,
-  onComplete
+  onComplete,
+  availableAreas: customAreas
 }: EvaluationAreasProps) {
+  // Use custom areas if provided, otherwise use default areas
+  const availableAreas = customAreas && customAreas.length > 0 ? customAreas : defaultAreas;
   const MAX_SELECTIONS = 4; // Maximum number of areas that can be selected
-  
+
   const handleAreaToggle = (areaId: string) => {
     if (areasEvaluacion.includes(areaId)) {
       // Remove area if already selected
@@ -79,15 +83,15 @@ export default function EvaluationAreas({
       onAreasChange([...areasEvaluacion, areaId]);
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold mb-2">Áreas de Evaluación</h2>
+
         <p className="text-sm text-gray-500 mb-6">
           Seleccione hasta {MAX_SELECTIONS} áreas a evaluar según el motivo de consulta.
         </p>
-        
+
         <ScrollArea className="h-[400px] pr-4">
           <div className="space-y-3">
             {availableAreas.map((area) => (
@@ -126,19 +130,19 @@ export default function EvaluationAreas({
             ))}
           </div>
         </ScrollArea>
-        
+
         {areasEvaluacion.length === MAX_SELECTIONS && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-sm text-amber-800">
             Has seleccionado el máximo de {MAX_SELECTIONS} áreas. Deselecciona alguna para cambiar tu selección.
           </div>
         )}
       </div>
-      
+
       <div className="flex justify-between">
         <div className="text-sm text-gray-500">
           {areasEvaluacion.length} de {MAX_SELECTIONS} áreas seleccionadas
         </div>
-        <Button 
+        <Button
           onClick={onComplete}
           disabled={areasEvaluacion.length === 0}
         >
@@ -147,4 +151,4 @@ export default function EvaluationAreas({
       </div>
     </div>
   );
-} 
+}

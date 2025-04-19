@@ -1,248 +1,188 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  UserCircle, 
-  ClipboardList, 
-  Calendar, 
-  BarChart4, 
-  Users,
-  FileText
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Video,
+  Calendar,
+  Clock,
+  CheckCircle
 } from 'lucide-react';
-
-// Import dashboard components and layout
-import ClinicalDashboard from '@/components/clinical/dashboard/clinical-dashboard';
-import DailyPulse from '@/components/clinical/dashboard/daily-pulse';
+import { AiAssistComboBox } from "@/components/clinical/patient/AiAssistComboBox";
 import AppLayout from '@/components/layout/app-layout';
+import { useDashboardStore } from '@/store/dashboard';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('overview');
-  
-  // Demo data for the dashboard
-  const demoStats = {
-    patientsTotal: 24,
-    patientsNew: 3,
-    upcomingSessions: 7,
-    evaluationsInProgress: 5,
-    reportsCompleted: 12,
-  };
-  
-  const demoAppointments = [
-    { id: '1', patientName: 'Carlos Rodríguez', time: '09:00', date: new Date().toISOString(), status: 'confirmed' },
-    { id: '2', patientName: 'María González', time: '11:30', date: new Date().toISOString(), status: 'pending' },
-    { id: '3', patientName: 'Juan Pérez', time: '14:00', date: new Date().toISOString(), status: 'confirmed' },
-  ];
-  
-  const demoEvaluations = [
-    { id: '1', patientName: 'Laura Torres', status: 'En progreso', progress: 65, lastUpdated: '2 horas atrás' },
-    { id: '2', patientName: 'Miguel Sánchez', status: 'Pendiente revisión', progress: 100, lastUpdated: '1 día atrás' },
-    { id: '3', patientName: 'Ana Silva', status: 'Recién iniciada', progress: 15, lastUpdated: '3 horas atrás' },
-  ];
-  
+  const {
+    userId,
+    dashboardSummary,
+    patients,
+    appointments,
+    messages,
+    fetchDashboardSummary,
+    fetchPatients,
+    fetchAppointments,
+    fetchMessages,
+    setUserId,
+  } = useDashboardStore();
+
+  // Replace with actual user ID from session/auth in production!
+  useEffect(() => {
+    // Use the demo psychologist's real UUID from the seed script
+    setUserId('24312c0a-6317-4741-9330-ff581e2a24f3'); // admin@hopeai.com UUID
+    fetchDashboardSummary();
+    fetchPatients();
+    fetchAppointments();
+    fetchMessages();
+  }, [setUserId, fetchDashboardSummary, fetchPatients, fetchAppointments, fetchMessages]);
+
+  // Filter for upcoming appointments (future dates)
+  const now = new Date();
+  // Only show one upcoming appointment per patient
+const seenPatientIds = new Set();
+const upcomingAppointments = appointments
+  .filter((a: any) => new Date(a.date) > now)
+  .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  .filter((a: any) => {
+    if (seenPatientIds.has(a.patientId)) return false;
+    seenPatientIds.add(a.patientId);
+    return true;
+  })
+  .slice(0, 3);
+
+  // Placeholder for completed appointments and average duration
+  const completedCount = dashboardSummary?.totalAppointments ?? 0;
+  const avgDuration = 45; // Placeholder, replace with real calculation if available
+
   return (
     <AppLayout>
-      {/* Main content */}
-      <div className="container mx-auto px-4 py-6">
-        <div className="mb-6">
-          <DailyPulse />
+      {/* Telemedicine Dashboard */}
+      <div className="container mx-auto px-6 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Plataforma de Telemedicina</h1>
+          <p className="text-gray-600">Gestione sus consultas virtuales de manera eficiente</p>
         </div>
-        
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Pacientes Activos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">{demoStats.patientsTotal}</span>
-                <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                  +{demoStats.patientsNew} nuevos
-                </span>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="bg-blue-100 p-3 rounded-full">
+                  <Video className="h-6 w-6 text-blue-600" />
+                </div>
+                <span className="text-sm font-medium text-blue-600">Hoy</span>
               </div>
+              <h3 className="text-2xl font-bold mb-1">3</h3>
+              <p className="text-gray-600">Consultas programadas</p>
             </CardContent>
           </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Consultas Pendientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">{demoStats.upcomingSessions}</span>
-                <span className="ml-2 text-sm text-gray-500">esta semana</span>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="bg-green-100 p-3 rounded-full">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <span className="text-sm font-medium text-green-600">Esta semana</span>
               </div>
+              <h3 className="text-2xl font-bold mb-1">12</h3>
+              <p className="text-gray-600">Consultas completadas</p>
             </CardContent>
           </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Casos Críticos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <ClipboardList className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">3</span>
-                <span className="ml-2 text-sm text-gray-500">-1 desde ayer</span>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="bg-purple-100 p-3 rounded-full">
+                  <Clock className="h-6 w-6 text-purple-600" />
+                </div>
+                <span className="text-sm font-medium text-purple-600">Promedio</span>
               </div>
+              <h3 className="text-2xl font-bold mb-1">45 min</h3>
+              <p className="text-gray-600">Duración de consulta</p>
             </CardContent>
           </Card>
         </div>
-        
-        {/* Content Panels */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Progreso Clínico</CardTitle>
-              <p className="text-sm text-gray-500">Seguimiento de evaluaciones y consultas</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Evaluaciones Completadas</span>
-                  <span className="font-medium">8/12</span>
-                </div>
-                <div className="w-full bg-gray-100 h-2 rounded-full">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '66.7%' }}></div>
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <span className="text-sm">Seguimientos Realizados</span>
-                  <span className="font-medium">15/20</span>
-                </div>
-                <div className="w-full bg-gray-100 h-2 rounded-full">
-                  <div className="bg-blue-500 h-2 rounded-full" style={{ width: '75%' }}></div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Agenda de Hoy</CardTitle>
-              <p className="text-sm text-gray-500">Próximas consultas programadas</p>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {demoAppointments.map(appointment => (
-                  <li key={appointment.id} className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-xs mr-3">
-                      {appointment.patientName.split(' ').map(n => n[0]).join('')}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Próximas Consultas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {upcomingAppointments.map(appointment => {
+                  const patient = Array.isArray(patients) ? patients.find((p: any) => p.id === appointment.patientId) : null;
+                  return (
+                    <div key={appointment.id} className="mb-4 p-4 border rounded-lg flex flex-col sm:flex-row sm:justify-between sm:items-center">
+                      <div>
+                        <p className="font-medium">{patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente'}</p>
+                        <div className="flex items-center text-sm text-gray-600 mt-1">
+                          <Calendar className="w-4 h-4 mr-1 text-blue-500" />
+                          <span>
+                            {new Date(appointment.date).toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' })}, {new Date(appointment.date).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex flex-row items-center mt-3 sm:mt-0 space-x-2">
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 text-white hover:bg-blue-700 font-semibold px-6 py-2 rounded-lg shadow"
+                        >
+                          Iniciar
+                        </Button>
+                        <AiAssistComboBox />
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium">{appointment.patientName}</p>
-                      <p className="text-xs text-gray-500">{appointment.time} AM - {appointment.status === 'confirmed' ? 'Seguimiento' : 'Primera Consulta'}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+                  );
+                })}
+                <Button variant="outline" className="w-full mt-2">Ver Todas las Consultas</Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Mensajes Recientes</CardTitle>
+                <p className="text-sm text-gray-500 mt-1">Promueve la comunicación y el vínculo con tus pacientes</p>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+  // Only show one message per patient
+  const seenMsgPatientIds = new Set();
+  const uniqueMessages = messages.filter((msg: any) => {
+    if (seenMsgPatientIds.has(msg.patientId)) return false;
+    seenMsgPatientIds.add(msg.patientId);
+    return true;
+  }).slice(0, 2);
+  return uniqueMessages.map((msg: any) => {
+    const patient = patients.find((p: any) => p.id === msg.patientId);
+    return (
+      <div key={msg.id} className="mb-3 p-3 border rounded-lg">
+        <div className="flex justify-between mb-1">
+          <p className="font-medium">{patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente'}</p>
+          <span className="text-xs text-gray-500">{new Date(msg.sentAt).toLocaleTimeString('es-CL')}</span>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Pacientes Totales</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">24</span>
-                <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                  +3 nuevos
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Sesiones Próximas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">7</span>
-                <span className="ml-2 text-sm text-gray-500">esta semana</span>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Evaluaciones en Curso</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center">
-                <ClipboardList className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="text-2xl font-bold">5</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Sesiones Próximas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {demoAppointments.map(appointment => (
-                  <li key={appointment.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                    <div>
-                      <p className="font-medium">{appointment.patientName}</p>
-                      <p className="text-sm text-gray-500">Hoy, {appointment.time}</p>
-                    </div>
-                    <div>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {appointment.status === 'confirmed' ? 'Confirmado' : 'Pendiente'}
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-          
-          <Card className="shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Evaluaciones Recientes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                {demoEvaluations.map(evaluation => (
-                  <li key={evaluation.id} className="p-3 bg-gray-50 rounded-md">
-                    <div className="flex justify-between items-center mb-2">
-                      <p className="font-medium">{evaluation.patientName}</p>
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
-                        {evaluation.status}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full" 
-                        style={{ width: `${evaluation.progress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">Actualizado: {evaluation.lastUpdated}</p>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+        <p className="text-sm text-gray-700 italic truncate">
+          {msg.content?.trim()
+            ? msg.content
+            : 'Mensaje de vínculo terapéutico'}
+        </p>
+      </div>
+    );
+  });
+})()}
+                <Button variant="outline" className="w-full mt-2">Ver Todos los Mensajes</Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </AppLayout>
   );
-} 
+}

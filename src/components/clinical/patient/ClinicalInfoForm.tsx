@@ -55,7 +55,7 @@ export default function ClinicalInfoForm({
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
     setDateInputValue(inputValue);
-    
+
     // Convert from YYYY-MM-DD to DD/MM/YYYY
     if (inputValue) {
       const [year, month, day] = inputValue.split('-');
@@ -65,11 +65,11 @@ export default function ClinicalInfoForm({
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!clinica) newErrors.clinica = "La clínica es requerida";
     if (!psicologo) newErrors.psicologo = "El psicólogo es requerido";
     if (!fecha) newErrors.fecha = "La fecha es requerida";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -94,8 +94,8 @@ export default function ClinicalInfoForm({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold mb-4">Información Clínica</h2>
-        
+
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Patient info (display only) */}
           <div>
@@ -104,7 +104,7 @@ export default function ClinicalInfoForm({
               <div className="space-y-2">
                 <div>
                   <span className="text-sm text-gray-500">Nombre:</span>
-                  <p className="font-medium">{currentPatient.name}</p>
+                  <p className="font-medium">{`${currentPatient.firstName} ${currentPatient.lastName}`}</p>
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">ID:</span>
@@ -112,12 +112,12 @@ export default function ClinicalInfoForm({
                 </div>
                 <div>
                   <span className="text-sm text-gray-500">Estado:</span>
-                  <p>{currentPatient.status}</p>
+                  <p>{currentPatient.isActive ? 'Activo' : 'Inactivo'}</p>
                 </div>
               </div>
             </Card>
           </div>
-          
+
           {/* Clinical info (editable) */}
           <div>
             <h3 className="text-md font-medium mb-3">Información de la Consulta</h3>
@@ -125,13 +125,13 @@ export default function ClinicalInfoForm({
               {/* Clinic selection */}
               <div>
                 <label className="block text-sm font-medium mb-1">Clínica</label>
-                <SelectClinica 
-                  value={clinica} 
+                <SelectClinica
+                  value={clinica}
                   onChange={onClinicaChange}
                 />
                 {errors.clinica && <p className="text-red-500 text-sm mt-1">{errors.clinica}</p>}
               </div>
-              
+
               {/* Psicólogo */}
               <div>
                 <label className="block text-sm font-medium mb-1">Psicólogo</label>
@@ -143,7 +143,7 @@ export default function ClinicalInfoForm({
                 />
                 {errors.psicologo && <p className="text-red-500 text-sm mt-1">{errors.psicologo}</p>}
               </div>
-              
+
               {/* Fecha */}
               <div>
                 <label className="block text-sm font-medium mb-1">Fecha</label>
@@ -161,4 +161,4 @@ export default function ClinicalInfoForm({
       </div>
     </div>
   );
-} 
+}

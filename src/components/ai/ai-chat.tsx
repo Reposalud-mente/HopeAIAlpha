@@ -1,125 +1,128 @@
 "use client"
-import { Bot, X, Loader } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useChat } from "ai/react"
-import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import React from "react"
+
+import { useState, useRef, useEffect } from "react";
+import { Bot, X, Loader, Send } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 interface AIAssistantProps {
-  initialQuestion: string
-  isOpen: boolean
-  onClose: () => void
-  patientName: string
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export function AIAssistant({ initialQuestion, isOpen, onClose, patientName }: AIAssistantProps) {
-  const { messages, input, handleInputChange, handleSubmit: submitMessage } = useChat({
-    initialMessages: [
-      {
-        id: "1",
-        role: "assistant",
-        content: initialQuestion,
-      },
-    ],
-  })
+export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
+  const [messages, setMessages] = useState([
+    { id: "1", role: "assistant", content: "¡Hola! Soy HopeAI, tu asistente clínico. ¿En qué puedo ayudarte hoy?" },
+  ]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const onSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      await submitMessage(e);
-    } catch {
-      setError('Error al enviar el mensaje. Por favor, intenta nuevamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Add keyboard support
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  // Focus input on open
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  React.useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus();
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
     }
   }, [isOpen]);
 
-  if (!isOpen) return null
+  useEffect(() => {
+    if (bottomRef.current) {
+      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
+
+  const handleSend = async (text: string = input) => {
+    if (!text.trim()) return;
+    
+    // Add user message
+    setMessages(prev => [...prev, { id: String(Date.now()), role: 'user', content: text }]);
+    setInput("");
+    setIsLoading(true);
+    
+    // Simulate AI response
+    setTimeout(() => {
+      let response = "Estoy aquí para ayudarte con tus tareas clínicas. ¿Necesitas ayuda con informes, evaluaciones o gestión de pacientes?";
+      
+      if (text.toLowerCase().includes("informe")) {
+        response = "Puedo ayudarte a estructurar informes clínicos. ¿Qué tipo de informe necesitas crear?";
+      } else if (text.toLowerCase().includes("paciente")) {
+        response = "Para gestionar información de pacientes, puedes usar la sección de Pacientes en el menú principal. ¿Necesitas ayuda con algo específico?";
+      } else if (text.toLowerCase().includes("evaluación") || text.toLowerCase().includes("evaluacion")) {
+        response = "Contamos con herramientas para evaluaciones psicológicas estandarizadas. ¿Qué área específica necesitas evaluar?";
+      }
+      
+      setMessages(prev => [...prev, { id: String(Date.now()), role: 'assistant', content: response }]);
+      setIsLoading(false);
+    }, 1000);
+  };
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSend();
+  };
+
+  if (!isOpen) return null;
 
   return (
-    <Card className="fixed left-4 bottom-4 z-50 w-[400px] shadow-lg h-[600px] flex flex-col bg-white rounded-xl">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 border-b bg-white/50 backdrop-blur-sm">
-        <CardTitle className="flex items-center gap-2 text-base text-neutral-text">
-          <Bot className="h-5 w-5 text-calm-primary" />
-          Asistente IA - {patientName}
-        </CardTitle>
-        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 text-neutral-text hover:bg-calm-secondary/50">
+    <div className="fixed right-6 bottom-6 w-96 h-3/4 bg-white rounded-lg shadow-xl border overflow-hidden flex flex-col z-50">
+      <div className="p-4 border-b flex justify-between items-center">
+        <h3 className="font-medium flex items-center gap-2">
+          <Bot className="h-5 w-5 text-primary" /> 
+          Asistente AI
+        </h3>
+        <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
           <X className="h-4 w-4" />
         </Button>
-      </CardHeader>
-      <CardContent className="flex flex-col flex-1 p-0">
-        <ScrollArea className="flex-1 p-4">
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn("flex gap-3 text-sm", {
-                  "justify-end": message.role === "user",
-                })}
-              >
-                {message.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-calm-primary text-white">
-                    <Bot className="h-5 w-5" />
-                  </div>
-                )}
-                <div
-                  className={cn("rounded-xl px-4 py-2 max-w-[80%]", {
-                    "bg-calm-secondary/50": message.role === "assistant",
-                    "bg-calm-primary text-white": message.role === "user",
-                  })}
-                >
-                  {message.content}
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-        
-        <div className="border-t p-4 bg-white/50 backdrop-blur-sm rounded-b-xl">
-          <form onSubmit={onSubmit} className="flex gap-2">
-            <input
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Escribe tu mensaje..."
-              className="flex-1 rounded-full border-calm-primary/20 bg-white px-4 py-2 text-sm focus:ring-calm-primary"
-              ref={inputRef}
-            />
-            <Button type="submit" className="rounded-full bg-calm-primary hover:bg-calm-deep" disabled={isLoading}>
-              {isLoading ? <Loader className="h-4 w-4 animate-spin" /> : 'Enviar'}
-            </Button>
-          </form>
-          {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+      </div>
+      
+      <ScrollArea className="flex-1 p-4">
+        <div className="flex flex-col gap-3">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm max-w-[85%]",
+                msg.role === 'assistant'
+                  ? "bg-muted self-start"
+                  : "bg-primary text-primary-foreground self-end"
+              )}
+            >
+              {msg.content}
+            </div>
+          ))}
+          {isLoading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-xs self-start">
+              <Loader className="animate-spin h-3 w-3" /> 
+              Escribiendo...
+            </div>
+          )}
+          <div ref={bottomRef} />
         </div>
-      </CardContent>
-    </Card>
-  )
+      </ScrollArea>
+      
+      <form onSubmit={onSubmit} className="p-3 border-t">
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            className="flex-1 px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
+            placeholder="Escribe tu mensaje..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            disabled={isLoading}
+          />
+          <Button 
+            type="submit" 
+            size="sm" 
+            disabled={isLoading || !input.trim()}
+            className="h-9 w-9 p-0"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
 }
-
