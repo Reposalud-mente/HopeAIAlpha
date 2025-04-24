@@ -81,6 +81,13 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
     const currentIndex = WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab);
     if (currentIndex > 0) {
       const prevStep = WORKFLOW_STEPS[currentIndex - 1];
+
+      // Si estamos en el paso de Información Clínica (paso 2) y vamos hacia atrás,
+      // limpiamos el paciente actual para permitir seleccionar uno nuevo
+      if (formState.activeTab === 'clinical-info' && prevStep.id === 'patient-selection') {
+        setCurrentPatient(null);
+      }
+
       updateFormState(prev => ({ ...prev, activeTab: prevStep.id }));
     }
   };
@@ -115,7 +122,7 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
       };
       loadPatient();
     }
-  }, [selectedPatientId, currentPatient, getPatient, setCurrentPatient, formState]);
+  }, [selectedPatientId, currentPatient, getPatient, setCurrentPatient]); // Eliminamos formState de las dependencias
 
   // Analysis state
   const [analysisPhase, setAnalysisPhase] = useState<'pending' | 'analyzing' | 'complete'>('pending');

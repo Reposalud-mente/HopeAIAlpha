@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Search, Bell, Mic, FileText, ChevronDown, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import Image from 'next/image';
-import Navbar from '@/components/layout/navbar';
+import SimplifiedSidebar from '@/components/layout/simplified-sidebar';
 import DailyPulse from './daily-pulse';
 import { AIAssistanceSection } from '@/components/ai/ai-assistance-section';
 import { AIAssistant } from '@/components/ai/ai-chat';
@@ -15,7 +15,7 @@ const ClinicalDashboard = () => {
   const { isExpanded } = useNavbar();
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [currentPatient] = useState("Juan Pérez");
-  
+
   const insights = [
     { id: 1, type: 'pattern', text: 'Aumento de sintomatología depresiva en 3 pacientes' },
     { id: 2, type: 'recommendation', text: 'Protocolo CBT sugerido para 2 casos' }
@@ -23,9 +23,9 @@ const ClinicalDashboard = () => {
 
   return (
     <div className="h-screen flex">
-      {/* Fixed position navbar - vertical sidebar */}
+      {/* Fixed position sidebar - vertical navigation */}
       <div className="fixed left-0 top-0 h-full z-50">
-        <Navbar />
+        <SimplifiedSidebar />
       </div>
 
       {/* Main content area with appropriate margin based on sidebar width */}
@@ -52,8 +52,8 @@ const ClinicalDashboard = () => {
                 className="pl-10 pr-4 py-2 border rounded-lg bg-gray-50 w-64"
               />
             </div>
-            
-            <button className="p-2 hover:bg-gray-100 rounded-full relative">
+
+            <button type="button" className="p-2 hover:bg-gray-100 rounded-full relative">
               <Bell className="h-5 w-5" />
               <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
                 3
@@ -121,6 +121,7 @@ const ClinicalDashboard = () => {
                 <div className="space-y-1">
                   {['Genogramas', 'Tipos de Informes', 'Aprende sobre CBT'].map((tool) => (
                     <button
+                      type="button"
                       key={tool}
                       className={cn(
                         "w-full text-left px-4 py-3 text-sm rounded-xl transition-all",
@@ -143,7 +144,7 @@ const ClinicalDashboard = () => {
         <div className="fixed right-6 bottom-6 w-96 h-3/4 bg-white rounded-lg shadow-xl border overflow-hidden flex flex-col">
           <div className="p-4 border-b flex justify-between items-center">
             <h3 className="font-medium">Asistente AI</h3>
-            <button onClick={() => setIsChatOpen(false)} className="text-gray-500 hover:text-gray-700">
+            <button type="button" onClick={() => setIsChatOpen(false)} className="text-gray-500 hover:text-gray-700">
               ✕
             </button>
           </div>

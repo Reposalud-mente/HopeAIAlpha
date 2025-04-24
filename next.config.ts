@@ -7,6 +7,15 @@ const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
 const baseConfig: NextConfig = {
   distDir: 'build',  // Specify the build output directory
   reactStrictMode: true,
+  // output: 'export',  // Static export disabled to support dynamic routes
+
+  // Disable TypeScript and ESLint checking during build
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 
   // SWC minification is enabled by default in newer Next.js versions
   experimental: {

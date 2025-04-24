@@ -14,20 +14,19 @@ interface PatientSelectionProps {
   onComplete: () => void;
 }
 
-// Sample patients for testing
-const samplePatients = [
-  { id: "PS001", name: "María González", status: "Nueva Paciente" },
-  { id: "PS002", name: "Roberto Pérez", status: "En Espera" },
-  { id: "PS003", name: "Carmen Rodríguez", status: "Evaluación Pendiente" },
-  { id: "PS004", name: "José Luis Martínez", status: "Nueva Cita" },
-];
+// Convertir pacientes reales al formato esperado por la interfaz
+const formatPatientForDisplay = (patient: any) => ({
+  id: patient.id,
+  name: `${patient.firstName} ${patient.lastName}`,
+  status: patient.isActive ? "Activo" : "Inactivo",
+});
 
 export default function PatientSelection({
   currentClinic,
   onClinicChange,
   onComplete
 }: PatientSelectionProps) {
-  const { searchPatients, setCurrentPatient, currentPatient } = usePatient();
+  const { searchPatients, setCurrentPatient, currentPatient, getPatient } = usePatient();
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -55,41 +54,66 @@ export default function PatientSelection({
 
   // Handle search
   useEffect(() => {
+    // No realizar búsquedas si no hay término de búsqueda y no se ha solicitado mostrar todos
     if (searchTerm.length < 2 && !showAllPatients) {
       setSearchResults([]);
       return;
     }
 
+    // Evitar búsquedas innecesarias
+    let isMounted = true;
     const delaySearch = setTimeout(async () => {
+      if (!isMounted) return;
+
       setIsSearching(true);
       try {
-        if (searchTerm.length < 2 && showAllPatients) {
-          // Show all sample patients if search field is empty
-          setSearchResults(samplePatients);
+        // Buscar pacientes reales usando la API solo cuando sea necesario
+        const patients = await searchPatients(showAllPatients ? '' : searchTerm);
+
+        if (!isMounted) return;
+
+        if (patients && patients.length > 0) {
+          // Convertir los pacientes al formato esperado por la interfaz
+          const formattedPatients = patients.map(formatPatientForDisplay);
+          setSearchResults(formattedPatients);
         } else {
-          // Filter sample patients based on search term
-          const filteredResults = samplePatients.filter(
-            patient =>
-              patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              patient.id.toLowerCase().includes(searchTerm.toLowerCase())
-          );
-          setSearchResults(filteredResults);
+          setSearchResults([]);
         }
       } catch (error) {
-        console.error('Error searching patients:', error);
+        if (isMounted) {
+          console.error('Error searching patients:', error);
+          setSearchResults([]);
+        }
       } finally {
-        setIsSearching(false);
+        if (isMounted) {
+          setIsSearching(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(delaySearch);
-  }, [searchTerm, searchPatients, showAllPatients]);
+    return () => {
+      isMounted = false;
+      clearTimeout(delaySearch);
+    };
+  }, [searchTerm, showAllPatients]); // Eliminamos searchPatients de las dependencias
 
   // Handle patient selection
-  const handlePatientSelect = (patient: any) => {
-    setCurrentPatient(patient);
-    // Automatically proceed to next step after selecting a patient
-    onComplete();
+  const handlePatientSelect = async (patient: any) => {
+    try {
+      // Obtener los detalles completos del paciente usando el ID
+      const fullPatient = await getPatient(patient.id);
+
+      if (fullPatient) {
+        // Establecer el paciente completo como paciente actual
+        setCurrentPatient(fullPatient);
+        // Avanzar automáticamente al siguiente paso
+        onComplete();
+      } else {
+        console.error('No se pudo cargar la información completa del paciente');
+      }
+    } catch (error) {
+      console.error('Error al seleccionar el paciente:', error);
+    }
   };
 
   return (
@@ -163,8 +187,11 @@ export default function PatientSelection({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setSearchResults(samplePatients);
+                  // Simplemente activamos la bandera para mostrar todos los pacientes
+                  // El efecto se encargará de hacer la búsqueda
+                  setShowAllPatients(true);
                 }}
+                disabled={isSearching}
               >
                 Mostrar todos los pacientes
               </Button>

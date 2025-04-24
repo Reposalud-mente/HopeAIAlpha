@@ -113,8 +113,22 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // Cache para almacenar resultados de búsqueda recientes
+  const searchCache = React.useRef<{[key: string]: {timestamp: number, results: PatientListItem[]}}>({});
+  const CACHE_EXPIRY = 30000; // 30 segundos de validez para la caché
+
   // Search patients using the API
   const searchPatients = async (query: string): Promise<PatientListItem[]> => {
+    // Construir la clave de caché basada en la consulta
+    const cacheKey = query || 'all_patients';
+    const now = Date.now();
+
+    // Verificar si tenemos resultados en caché y si son válidos
+    if (searchCache.current[cacheKey] &&
+        now - searchCache.current[cacheKey].timestamp < CACHE_EXPIRY) {
+      return searchCache.current[cacheKey].results;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -125,19 +139,14 @@ export function PatientProvider({ children }: { children: ReactNode }) {
         ? `/api/patients?search=${encodeURIComponent(query)}&limit=100`
         : '/api/patients?limit=100';
 
-      console.log('Fetching patients from URL:', url);
       const response = await fetch(url, { credentials: 'same-origin' });
-      console.log('API response status:', response.status, response.statusText);
 
       if (!response.ok) throw new Error(`Failed to search patients: ${response.status} ${response.statusText}`);
 
       const data = await response.json();
-      console.log('API response data:', data); // Mensaje de depuración detallado
-      console.log('API returned items count:', data.items ? data.items.length : 0);
       setIsLoading(false);
 
       if (data.items && Array.isArray(data.items)) {
-        console.log('API returned items:', data.items.length);
         const mappedPatients = data.items.map((patient: Patient) => ({
           id: patient.id,
           firstName: patient.firstName,
@@ -149,10 +158,14 @@ export function PatientProvider({ children }: { children: ReactNode }) {
           createdAt: new Date(patient.createdAt),
           updatedAt: new Date(patient.updatedAt)
         }));
-        console.log('Mapped patients:', mappedPatients.length);
+
+        // Guardar resultados en caché
+        searchCache.current[cacheKey] = {
+          timestamp: now,
+          results: mappedPatients
+        };
+
         return mappedPatients;
-      } else {
-        console.log('API response does not contain items array:', data);
       }
 
       return [];

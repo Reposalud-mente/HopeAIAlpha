@@ -204,3 +204,11 @@ body {
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* Eliminar efecto de tap en dispositivos móviles y otros efectos visuales al hacer clic */
+.no-tap-highlight {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none !important;
+}

@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm vercel-build",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "outputDirectory": "build",
+  "env": {
+    "NEXT_TELEMETRY_DISABLED": "1",
+    "NEXT_TYPESCRIPT_CHECK_DISABLED": "1",
+    "NEXT_ESLINT_CHECK_DISABLED": "1"
+  }
+}

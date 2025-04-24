@@ -2,9 +2,11 @@
   "name": "clinical-dashboard-app",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "node vercel-build.js",
     "start": "next start",
     "lint": "next lint",
     "prisma:seed": "ts-node --project tsconfig-seed.json -r dotenv/config src/prisma/seed.ts",

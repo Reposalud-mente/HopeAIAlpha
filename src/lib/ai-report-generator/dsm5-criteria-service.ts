@@ -38,7 +38,7 @@ export class DSM5CriteriaService {
       category: 'Trastornos de ansiedad',
       icdEquivalent: '6B01'
     },
-    
+
     // Mood disorders
     '6A70': {
       code: '296.2x',
@@ -54,7 +54,7 @@ export class DSM5CriteriaService {
       category: 'Trastornos depresivos',
       icdEquivalent: '6A71'
     },
-    
+
     // Neurodevelopmental disorders
     '6A00': {
       code: '317-319',
@@ -70,7 +70,7 @@ export class DSM5CriteriaService {
       category: 'Trastornos del neurodesarrollo',
       icdEquivalent: '6A01'
     },
-    
+
     // Psychotic disorders
     '6A20': {
       code: '295.90',
@@ -87,7 +87,7 @@ export class DSM5CriteriaService {
       icdEquivalent: '6A21'
     },
   };
-  
+
   /**
    * Gets DSM-5 criteria equivalent for an ICD-11 code
    * @param icdCode The ICD-11 code
@@ -96,7 +96,7 @@ export class DSM5CriteriaService {
   public static getDSM5EquivalentForICD(icdCode: string): DSM5Criteria | undefined {
     return this.ICD_TO_DSM_MAPPING[icdCode];
   }
-  
+
   /**
    * Gets all DSM-5 criteria
    * @returns Array of all DSM-5 criteria
@@ -104,16 +104,16 @@ export class DSM5CriteriaService {
   public static getAllDSM5Criteria(): DSM5Criteria[] {
     return Object.values(this.ICD_TO_DSM_MAPPING);
   }
-  
+
   /**
    * Gets DSM-5 criteria by category
    * @returns Object with DSM-5 criteria grouped by category
    */
   public static getDSM5CriteriaByCategory(): Record<string, DSM5Criteria[]> {
     const criteria = this.getAllDSM5Criteria();
-    
+
     // Group criteria by category
-    return criteria.reduce((acc, criterion) => {
+    return criteria.reduce((acc: Record<string, DSM5Criteria[]>, criterion: DSM5Criteria) => {
       if (!acc[criterion.category]) {
         acc[criterion.category] = [];
       }
@@ -121,7 +121,7 @@ export class DSM5CriteriaService {
       return acc;
     }, {} as Record<string, DSM5Criteria[]>);
   }
-  
+
   /**
    * Gets DSM-5 criteria for an assessment
    * @param assessmentId The assessment ID
@@ -135,12 +135,12 @@ export class DSM5CriteriaService {
         criteria: true,
       },
     });
-    
+
     // Map to DSM-5 equivalents
     const dsm5Criteria = assessmentICDCriteria
-      .map(icdCriteria => this.getDSM5EquivalentForICD(icdCriteria.icdCode))
-      .filter((criteria): criteria is DSM5Criteria => criteria !== undefined);
-    
+      .map((icdCriteria: { icdCode: string }) => this.getDSM5EquivalentForICD(icdCriteria.icdCode))
+      .filter((criteria: DSM5Criteria | undefined): criteria is DSM5Criteria => criteria !== undefined);
+
     return dsm5Criteria;
   }
 }

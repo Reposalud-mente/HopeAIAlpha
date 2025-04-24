@@ -12,7 +12,7 @@ function PatientSessionSummary({ patientId }: { patientId: string }) {
       .then((data) => {
         setCount(data.length);
         if (data.length > 0) {
-          const latestSession = data.reduce((a: any, b: any) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
+          const latestSession = data.reduce((a: { createdAt: string }, b: { createdAt: string }) => new Date(a.createdAt) > new Date(b.createdAt) ? a : b);
           setLatest(new Date(latestSession.createdAt).toLocaleDateString());
         }
       })
