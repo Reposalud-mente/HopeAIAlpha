@@ -1,0 +1,13 @@
+[build]
+  command = "npx prisma generate && NODE_OPTIONS='--experimental-json-modules' pnpm build"
+  publish = "build"
+
+[dev]
+  command = "pnpm dev"
+  port = 3000
+
+[functions]
+  directory = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

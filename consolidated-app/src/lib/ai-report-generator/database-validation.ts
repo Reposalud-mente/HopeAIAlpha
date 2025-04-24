@@ -65,7 +65,7 @@ export async function validateReportDataRequirements(assessmentId: string) {
 
     // Check if we have at least one primary diagnosis
     const hasPrimaryDiagnosis = assessment.icdCriteria.some(
-      (criteria) => criteria.isPrimary
+      (criteria: { isPrimary: boolean }) => criteria.isPrimary
     );
 
     if (!hasPrimaryDiagnosis) {
@@ -100,7 +100,7 @@ export async function checkDSM5CriteriaAvailability() {
     // Since the current schema only has ICDCriteria, we would need to extend it to include DSM5Criteria
     // For now, we'll just check if there are any ICD criteria as a proxy
     const criteriaCount = await prisma.iCDCriteria.count();
-    
+
     return {
       isAvailable: criteriaCount > 0,
       count: criteriaCount,
@@ -140,7 +140,7 @@ export async function getICDCriteriaByCategory() {
     });
 
     // Group criteria by category
-    const groupedCriteria = criteria.reduce((acc, criterion) => {
+    const groupedCriteria = criteria.reduce((acc: Record<string, typeof criteria>, criterion) => {
       if (!acc[criterion.category]) {
         acc[criterion.category] = [];
       }

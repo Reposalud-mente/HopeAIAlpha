@@ -2,7 +2,8 @@
 
 import React, { ReactNode } from 'react';
 import TopBar from '@/components/layout/topbar';
-import NewSidebar from '@/components/layout/new-sidebar';
+// Importamos el nuevo sidebar simplificado
+import SimplifiedSidebar from '@/components/layout/simplified-sidebar';
 import MobileSidebar from '@/components/layout/mobile-sidebar';
 import { useNavbar } from '@/contexts/NavbarContext';
 import { useDrawer } from '@/contexts/DrawerContext';
@@ -42,19 +43,19 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
       {/* Mobile Sidebar */}
       {!hideNavbar && <div className="md:hidden"><MobileSidebar /></div>}
 
-      <div className="relative flex flex-1 overflow-hidden pt-[57px]">
-        {/* Desktop Sidebar - Positioned as overlay */}
+      <div className="flex flex-1 overflow-hidden pt-[57px]">
+        {/* Desktop Sidebar - Fixed position */}
         {!hideNavbar && (
-          <div className="absolute left-0 top-0 h-full z-30 hidden md:block transition-all duration-300">
-            <NewSidebar />
+          <div className="fixed left-0 top-[57px] h-[calc(100vh-57px)] z-30 hidden md:block border-t-0">
+            <SimplifiedSidebar />
           </div>
         )}
 
         {/* Main content area with appropriate margin based on sidebar width */}
         <main
           className={cn(
-            "flex-1 w-full overflow-auto transition-all duration-300 ease-in-out",
-            !hideNavbar && (isExpanded ? "md:pl-64" : "md:pl-12")
+            "flex-1 overflow-auto transition-all duration-300 ease-in-out",
+            !hideNavbar && (isExpanded ? "ml-[240px]" : "ml-[56px]") // Dimensiones consistentes con SimplifiedSidebar
           )}
         >
           {children}

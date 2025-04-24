@@ -85,10 +85,10 @@ export class AIReportAgent {
     const clinicianName = `${clinician.firstName} ${clinician.lastName}`;
 
     // Extract consultation reasons
-    const consultationReasons = assessment.consultationReasons.map((reason: any) => reason.reason);
+    const consultationReasons = assessment.consultationReasons.map((reason: { reason: string }) => reason.reason);
 
     // Extract evaluation areas with notes
-    const evaluationAreas = assessment.evaluationAreas.map((evalArea: any) => ({
+    const evaluationAreas = assessment.evaluationAreas.map((evalArea: { area: { name: string, description: string }, notes: string }) => ({
       name: evalArea.area.name,
       description: evalArea.area.description,
       notes: evalArea.notes,
@@ -96,8 +96,8 @@ export class AIReportAgent {
 
     // Extract ICD criteria with primary diagnosis first
     const primaryDiagnosis = assessment.icdCriteria
-      .filter((criteria: any) => criteria.isPrimary)
-      .map((criteria: any) => ({
+      .filter((criteria: { isPrimary: boolean }) => criteria.isPrimary)
+      .map((criteria: { criteria: { code: string, name: string, description: string }, notes: string, certaintyLevel: string }) => ({
         code: criteria.criteria.code,
         name: criteria.criteria.name,
         description: criteria.criteria.description,
@@ -106,8 +106,8 @@ export class AIReportAgent {
       }));
 
     const secondaryDiagnoses = assessment.icdCriteria
-      .filter((criteria: any) => !criteria.isPrimary)
-      .map((criteria: any) => ({
+      .filter((criteria: { isPrimary: boolean }) => !criteria.isPrimary)
+      .map((criteria: { criteria: { code: string, name: string, description: string }, notes: string, certaintyLevel: string }) => ({
         code: criteria.criteria.code,
         name: criteria.criteria.name,
         description: criteria.criteria.description,
@@ -182,7 +182,7 @@ export class AIReportAgent {
   /**
    * Generates the header section of the report
    */
-  private generateHeaderSection(patient: any, clinician: any, clinic: any): string {
+  private generateHeaderSection(patient: { firstName: string, lastName: string, dateOfBirth: Date, gender?: string }, clinician: { firstName: string, lastName: string, licenseNumber?: string }, clinic: { name: string }): string {
     const patientName = `${patient.firstName} ${patient.lastName}`;
     const patientAge = this.calculateAge(patient.dateOfBirth);
     const clinicianName = `${clinician.firstName} ${clinician.lastName}`;
@@ -218,7 +218,7 @@ ${reasons.map(reason => `- ${reason}`).join('\n')}`;
   /**
    * Generates the evaluation areas section
    */
-  private generateEvaluationAreasSection(areas: any[]): string {
+  private generateEvaluationAreasSection(areas: { name: string, description: string, notes: string }[]): string {
     let section = `## ÁREAS EVALUADAS\n`;
 
     areas.forEach(area => {
@@ -236,7 +236,7 @@ ${reasons.map(reason => `- ${reason}`).join('\n')}`;
   /**
    * Generates the diagnosis section
    */
-  private generateDiagnosisSection(primaryDiagnosis: any[], secondaryDiagnoses: any[]): string {
+  private generateDiagnosisSection(primaryDiagnosis: { code: string, name: string, description: string, notes: string, certaintyLevel: string }[], secondaryDiagnoses: { code: string, name: string, description: string, notes: string, certaintyLevel: string }[]): string {
     let section = `## DIAGNÓSTICO\n`;
 
     if (primaryDiagnosis.length > 0) {
@@ -265,7 +265,7 @@ ${reasons.map(reason => `- ${reason}`).join('\n')}`;
   /**
    * Generates the conclusions section
    */
-  private generateConclusionsSection(evaluationAreas: any[], primaryDiagnosis: any[]): string {
+  private generateConclusionsSection(evaluationAreas: { name: string, description: string, notes: string }[], primaryDiagnosis: { code: string, name: string, description: string, notes: string, certaintyLevel: string }[]): string {
     // In a real implementation, this would use more sophisticated logic to generate
     // meaningful conclusions based on the evaluation areas and diagnoses
 
@@ -278,7 +278,7 @@ La evaluación de las diferentes áreas muestra ${evaluationAreas.length} áreas
   /**
    * Generates the recommendations section
    */
-  private generateRecommendationsSection(primaryDiagnosis: any[], evaluationAreas: any[]): string {
+  private generateRecommendationsSection(primaryDiagnosis: { code: string, name: string, description: string, notes: string, certaintyLevel: string }[], evaluationAreas: { name: string, description: string, notes: string }[]): string {
     // In a real implementation, this would use more sophisticated logic to generate
     // tailored recommendations based on the diagnoses and evaluation areas
 
@@ -292,7 +292,7 @@ La evaluación de las diferentes áreas muestra ${evaluationAreas.length} áreas
   /**
    * Generates the treatment plan section
    */
-  private generateTreatmentPlanSection(primaryDiagnosis: any[], evaluationAreas: any[]): string {
+  private generateTreatmentPlanSection(primaryDiagnosis: { code: string, name: string, description: string, notes: string, certaintyLevel: string }[], evaluationAreas: { name: string, description: string, notes: string }[]): string {
     // In a real implementation, this would use more sophisticated logic to generate
     // a tailored treatment plan based on the diagnoses and evaluation areas
 

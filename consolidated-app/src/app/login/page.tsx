@@ -24,11 +24,14 @@ export default function LoginPage() {
 
     try {
       const result = await signIn('credentials', {
-        redirect: false,
+        redirect: true,
+        callbackUrl: '/dashboard',
         email,
         password,
       });
 
+      // With redirect: true, we won't reach this code on successful login
+      // This will only execute if there's an error and redirect doesn't happen
       if (result?.error) {
         setError('Credenciales inválidas. Por favor, intenta de nuevo.');
         toast({
@@ -36,13 +39,6 @@ export default function LoginPage() {
           description: 'Credenciales inválidas. Por favor, intenta de nuevo.',
           variant: 'destructive',
         });
-      } else {
-        // Redirect to dashboard on successful login
-        toast({
-          title: 'Inicio de sesión exitoso',
-          description: 'Bienvenido a HopeAI',
-        });
-        router.push('/dashboard');
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -158,4 +154,4 @@ export default function LoginPage() {
       </Card>
     </div>
   );
-} 
+}
