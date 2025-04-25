@@ -11,6 +11,7 @@ import {
   Calendar,
   Settings,
   ChevronLeft,
+  Sparkles,
 } from 'lucide-react';
 import { useNavbar } from '@/contexts/NavbarContext';
 import { useAuth } from '@/contexts/auth-context';
@@ -24,6 +25,7 @@ const navigationItems = [
   { name: 'Telemedicina', href: '/dashboard', icon: Video },
   { name: 'Pacientes', href: '/patients', icon: Users },
   { name: 'Informes', href: '/reports', icon: FileText },
+  { name: 'Informes (Dinámico)', href: '/dynamic-reports', icon: Sparkles },
   { name: 'Consultas AI', href: '/ai-consult', icon: MessageSquare },
   { name: 'Calendario', href: '/calendar', icon: Calendar },
   { name: 'Configuración', href: '/settings', icon: Settings },

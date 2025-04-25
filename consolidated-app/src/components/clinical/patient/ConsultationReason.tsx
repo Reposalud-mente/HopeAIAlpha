@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { usePatient } from '@/contexts/PatientContext';
+import PatientInfoPanel from './PatientInfoPanel';
 
 interface ConsultationReasonProps {
   motivosConsulta: string[];
@@ -16,6 +18,7 @@ export default function ConsultationReason({
   onMotivosChange,
   onComplete
 }: ConsultationReasonProps) {
+  const { currentPatient } = usePatient();
   const [newMotivo, setNewMotivo] = useState('');
 
   // Suggested reasons for consultation
@@ -46,13 +49,22 @@ export default function ConsultationReason({
     onMotivosChange(newMotivos);
   };
 
+  if (!currentPatient) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-gray-500">Por favor seleccione un paciente primero.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="px-6 pb-6">
+      {/* Panel de información del paciente (siempre visible) */}
+      <PatientInfoPanel patient={currentPatient} className="mb-6" />
 
-
+      <div className="mt-4">
         {/* Add new reason */}
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-6">
           <Input
             placeholder="Agregar motivo de consulta"
             value={newMotivo}
@@ -63,8 +75,13 @@ export default function ConsultationReason({
                 addMotivo(newMotivo);
               }
             }}
+            className="bg-white border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
           />
-          <Button onClick={() => addMotivo(newMotivo)} disabled={!newMotivo.trim()}>
+          <Button
+            onClick={() => addMotivo(newMotivo)}
+            disabled={!newMotivo.trim()}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
             <Plus className="h-4 w-4 mr-1" />
             Agregar
           </Button>
@@ -82,8 +99,11 @@ export default function ConsultationReason({
                 >
                   <span>{motivo}</span>
                   <button
+                    type="button"
                     onClick={() => removeMotivo(index)}
                     className="h-4 w-4 rounded-full hover:bg-blue-200 flex items-center justify-center"
+                    aria-label={`Eliminar ${motivo}`}
+                    title={`Eliminar ${motivo}`}
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -101,12 +121,14 @@ export default function ConsultationReason({
           <div className="flex flex-wrap gap-2">
             {motivosSugeridos.map((motivo) => (
               <button
+                type="button"
                 key={motivo}
                 onClick={() => addMotivo(motivo)}
                 disabled={motivosConsulta.includes(motivo)}
                 className="px-3 py-1 text-sm rounded-full
                   border border-gray-300 hover:bg-gray-100
                   disabled:opacity-50 disabled:cursor-not-allowed"
+                title={`Agregar ${motivo}`}
               >
                 {motivo}
               </button>
@@ -115,14 +137,7 @@ export default function ConsultationReason({
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <Button
-          onClick={onComplete}
-          disabled={motivosConsulta.length === 0}
-        >
-          Continuar
-        </Button>
-      </div>
+      {/* Removed the Continuar button as it's now handled by the parent component */}
     </div>
   );
 }

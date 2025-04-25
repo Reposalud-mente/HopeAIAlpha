@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { usePatient } from '@/contexts/PatientContext';
 import { Button } from '@/components/ui/button';
-import { User, ClipboardList, MessageCircle, Layers, ListChecks, Sparkles } from 'lucide-react';
+import { User, ClipboardList, Edit, Sparkles, FileText } from 'lucide-react';
 import PatientSelection from '@/components/clinical/patient/PatientSelection';
 import ClinicalInfoForm from '@/components/clinical/patient/ClinicalInfoForm';
-import ConsultationReasons from '@/components/clinical/patient/ConsultationReason';
-import EvaluationAreas from '@/components/clinical/patient/EvaluationAreas';
-import ICDCriteria from '@/components/clinical/patient/ICDCriteria';
+import ReportPreviewEditor from '@/components/clinical/patient/ReportPreviewEditor';
 import ReportGenerator from '@/components/clinical/patient/ReportGenerator';
 import { AIAnalysisProcess } from '@/components/ai/AIAnalysisProcess';
 import { format } from 'date-fns';
@@ -22,22 +20,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 // Define the steps of the workflow
 const WORKFLOW_STEPS = [
   { id: 'patient-selection', label: 'Selección de Paciente', icon: <User className="w-5 h-5 text-blue-500" /> },
-  { id: 'clinical-info', label: 'Información Clínica', icon: <ClipboardList className="w-5 h-5 text-blue-500" /> },
-  { id: 'consultation-reasons', label: 'Motivos de Consulta', icon: <MessageCircle className="w-5 h-5 text-blue-500" /> },
-  { id: 'evaluation-areas', label: 'Áreas de Evaluación', icon: <Layers className="w-5 h-5 text-blue-500" /> },
-  { id: 'icd-criteria', label: 'Criterios CIE-11', icon: <ListChecks className="w-5 h-5 text-blue-500" /> },
-  { id: 'report-generation', label: 'Generación de Informe', icon: <Sparkles className="w-5 h-5 text-blue-500" /> }
+  { id: 'clinical-info', label: 'Tipo de Informe', icon: <ClipboardList className="w-5 h-5 text-blue-500" /> },
+  { id: 'report-preview', label: 'Previsualización y Edición', icon: <Edit className="w-5 h-5 text-blue-500" /> },
+  { id: 'report-generation', label: 'Redacción Final', icon: <Sparkles className="w-5 h-5 text-blue-500" /> }
 ];
 
 interface FormState {
   clinica: string;
   psicologo: string;
   fecha: string;
-  motivosConsulta: string[];
-  areasEvaluacion: string[];
-  criteriosCIE: string[];
   activeTab: string; // Use string for tab-based navigation
   assessmentId?: string; // Optional assessment ID for database integration
+
+  // Nuevos campos para el contexto clínico
+  tipoEvaluacion: string;
+  enfoqueTerapeutico: string;
+  instrumentosUtilizados: string[];
+  objetivosSesion: string;
+  derivacion: string;
+
+  // Nuevo campo para el tipo de informe
+  tipoInforme: string;
 }
 
 interface PatientReviewControllerProps {
@@ -59,11 +62,18 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
     clinica: 'Centro de Psicología Clínica',
     psicologo: 'Dr. Juan Martínez',
     fecha: format(new Date(), 'dd/MM/yyyy'),
-    motivosConsulta: [],
-    areasEvaluacion: [],
-    criteriosCIE: [],
     activeTab: WORKFLOW_STEPS[0].id, // Always start with patient selection
-    assessmentId: undefined // Will be set if we're working with an existing assessment
+    assessmentId: undefined, // Will be set if we're working with an existing assessment
+
+    // Valores iniciales para el contexto clínico
+    tipoEvaluacion: 'inicial',
+    enfoqueTerapeutico: '',
+    instrumentosUtilizados: [],
+    objetivosSesion: '',
+    derivacion: '',
+
+    // Valor inicial para el tipo de informe
+    tipoInforme: ''
   });
 
   // Current step index for the wizard - using activeTab instead
@@ -97,18 +107,10 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
     handleNextStep();
   };
 
-  // Fetch evaluation areas and ICD codes on mount
+  // Inicializar datos necesarios al montar el componente
   useEffect(() => {
-    // Fetch evaluation areas
-    fetch('/api/evaluation-areas')
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch evaluation areas'))
-      .then(data => setAvailableAreas(data))
-      .catch(() => setAvailableAreas([]));
-    // Fetch ICD codes
-    fetch('/api/icd-codes')
-      .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch ICD codes'))
-      .then(data => setRealCodes(data))
-      .catch(() => setRealCodes([]));
+    // Podemos mantener esta lógica para compatibilidad con versiones anteriores
+    // o para futuras mejoras, pero no es necesaria para el flujo simplificado
   }, []);
 
   // Load the selected patient if selectedPatientId is provided
@@ -414,13 +416,9 @@ ${draftText}
       case 'patient-selection':
         return !!currentPatient; // Can proceed if a patient is selected
       case 'clinical-info':
-        return !!formState.clinica && !!formState.psicologo && !!formState.fecha;
-      case 'consultation-reasons':
-        return formState.motivosConsulta.length > 0;
-      case 'evaluation-areas':
-        return formState.areasEvaluacion.length > 0;
-      case 'icd-criteria':
-        return formState.criteriosCIE.length > 0;
+        return !!formState.clinica && !!formState.psicologo && !!formState.fecha && !!formState.tipoInforme;
+      case 'report-preview':
+        return true; // Siempre se puede avanzar desde la previsualización
       case 'report-generation':
         return isDraftComplete;
       default:
@@ -434,70 +432,75 @@ ${draftText}
   const showReportActions = formState.activeTab === 'report-generation' && isDraftComplete;
 
   return (
-    <div className="w-full space-y-6">
-      {/* Header with instructions */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-blue-700">Informes Clínicos</h1>
-        <p className="text-gray-600 mt-2">Genere informes clínicos psicológicos siguiendo el proceso paso a paso. Utilice el botón <span className="font-medium text-blue-600">Siguiente</span> para avanzar entre las diferentes etapas.</p>
-      </div>
+    <div className="w-full space-y-8">
+      {/* This header is now handled by the parent component */}
 
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-6">
-        <p className="text-sm text-blue-700">Consejo: Complete cada paso con la información necesaria y pulse "Siguiente" para continuar. Al finalizar, podrá revisar, guardar o descargar su informe.</p>
-      </div>
+      {/* Horizontal step indicator - redesigned for better clarity */}
+      <div className="mb-8 bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
+        {/* Steps container with connecting line */}
+        <div className="relative flex items-center justify-between">
+          {/* Line connecting steps */}
+          <div className="absolute h-0.5 bg-gradient-to-r from-blue-100 via-gray-200 to-blue-100 left-8 right-8 top-1/2 transform -translate-y-1/2 z-0" />
 
-      {/* Horizontal step indicator */}
-      <div className="flex items-center justify-between mb-8 relative">
-        {/* Line connecting steps */}
-        <div className="absolute h-0.5 bg-gray-200 left-0 right-0 top-1/2 transform -translate-y-1/2 z-0" />
+          {/* Steps */}
+          <div className="flex justify-between w-full relative z-10">
+            {WORKFLOW_STEPS.map((step, index) => {
+              const status = getStepStatus(index);
+              const isActive = status === 'current';
+              const isCompleted = status === 'complete';
 
-        {WORKFLOW_STEPS.map((step, index) => {
-          const status = getStepStatus(index);
-          const isActive = status === 'current';
-          const isCompleted = status === 'complete';
-
-          return (
-            <div
-              key={step.id}
-              className="flex flex-col items-center relative z-10"
-              onClick={() => handleStepClick(index)}
-            >
-              <div
-                className={`flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm mb-2 transition-colors ${isActive ? 'bg-blue-500' : isCompleted ? 'bg-green-500' : 'bg-gray-300'}`}
-              >
-                {isCompleted ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                ) : (
-                  index + 1
-                )}
-              </div>
-              <span className={`text-xs font-medium ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`}>
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
+              return (
+                <div
+                  key={step.id}
+                  className="flex flex-col items-center cursor-pointer group"
+                  onClick={() => handleStepClick(index)}
+                >
+                  <div
+                    className={`flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm mb-3 transition-all shadow-sm ${isActive ? 'bg-blue-600 ring-4 ring-blue-100' : isCompleted ? 'bg-green-600' : 'bg-gray-300'} group-hover:scale-105`}
+                  >
+                    {isCompleted ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+                  <span className={`text-xs font-medium ${isActive ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-gray-500'} transition-colors group-hover:font-semibold`}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Content card */}
-      <Card className="p-6 shadow-sm border border-gray-200">
+      <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden rounded-xl mb-8">
         {/* Patient selection step */}
         {formState.activeTab === 'patient-selection' && (
           <div>
-            <h2 className="text-xl font-semibold mb-6">Seleccionar Clínica y Paciente</h2>
+            <div className="px-6 pt-6 pb-2">
+              <div className="flex items-center mb-2">
+                <div className="flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 mr-3">
+                  <User className="h-4 w-4 text-blue-600" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Seleccione su centro clínico y busque al paciente para iniciar el informe</p>
+              </div>
+            </div>
             <PatientSelection
               currentClinic={formState.clinica}
               onClinicChange={(clinica) => updateForm({ clinica })}
               onComplete={handleStepComplete}
             />
           </div>
-        )}
+        )},
 
         {/* Clinical info step */}
         {formState.activeTab === 'clinical-info' && (
           <div>
-            <h3 className="text-xl font-semibold mb-4">Información Clínica</h3>
+
             <ClinicalInfoForm
               clinica={formState.clinica}
               psicologo={formState.psicologo}
@@ -505,63 +508,92 @@ ${draftText}
               onClinicaChange={(clinica) => updateForm({ clinica })}
               onPsicologoChange={(psicologo) => updateForm({ psicologo })}
               onFechaChange={(fecha) => updateForm({ fecha })}
+              tipoEvaluacion={formState.tipoEvaluacion}
+              onTipoEvaluacionChange={(tipoEvaluacion) => updateForm({ tipoEvaluacion })}
+              enfoqueTerapeutico={formState.enfoqueTerapeutico}
+              onEnfoqueTerapeuticoChange={(enfoqueTerapeutico) => updateForm({ enfoqueTerapeutico })}
+              instrumentosUtilizados={formState.instrumentosUtilizados}
+              onInstrumentosChange={(instrumentosUtilizados) => updateForm({ instrumentosUtilizados })}
+              objetivosSesion={formState.objetivosSesion}
+              onObjetivosSesionChange={(objetivosSesion) => updateForm({ objetivosSesion })}
+              derivacion={formState.derivacion}
+              onDerivacionChange={(derivacion) => updateForm({ derivacion })}
+              tipoInforme={formState.tipoInforme}
+              onTipoInformeChange={(tipoInforme) => updateForm({ tipoInforme })}
               onComplete={handleStepComplete}
             />
           </div>
-        )}
+        )},
 
-        {/* Consultation reasons step */}
-        {formState.activeTab === 'consultation-reasons' && (
+        {/* Report preview and edit step */}
+        {formState.activeTab === 'report-preview' && (
           <div>
-            <h3 className="text-xl font-semibold mb-4">Motivos de Consulta</h3>
-            <ConsultationReasons
-              motivosConsulta={formState.motivosConsulta}
-              onMotivosChange={(motivosConsulta) => updateForm({ motivosConsulta })}
-              onComplete={handleStepComplete}
-            />
-          </div>
-        )}
 
-        {/* Evaluation areas step */}
-        {formState.activeTab === 'evaluation-areas' && (
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Áreas de Evaluación</h3>
-            <EvaluationAreas
-              areasEvaluacion={formState.areasEvaluacion}
-              onAreasChange={(areasEvaluacion) => updateForm({ areasEvaluacion })}
-              availableAreas={availableAreas}
-              onComplete={handleStepComplete}
-            />
+            {analysisPhase === 'pending' ? (
+              <div className="p-6 text-center">
+                <Button
+                  variant="default"
+                  onClick={startAnalysis}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md shadow-sm flex items-center mx-auto gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generar Borrador del Informe
+                </Button>
+                <p className="text-sm text-gray-500 mt-2">Nuestro sistema generará un borrador basado en el tipo de informe seleccionado.</p>
+              </div>
+            ) : analysisPhase === 'analyzing' ? (
+              <div className="p-6">
+                <AIAnalysisProcess
+                  onAnalysisComplete={handleAnalysisComplete}
+                  areasEvaluacion={[]}
+                  criteriosCIE={[]}
+                  motivosConsulta={[]}
+                  assessmentId={formState.assessmentId}
+                />
+              </div>
+            ) : (
+              <div className="p-6">
+                <ReportPreviewEditor
+                  patientData={{
+                    patient: currentPatient,
+                    clinica: formState.clinica,
+                    psicologo: formState.psicologo,
+                    fecha: formState.fecha,
+                    tipoInforme: formState.tipoInforme
+                  }}
+                  initialDraft={draftText}
+                  onDraftChange={setDraftText}
+                  onComplete={handleStepComplete}
+                  onSave={handleSaveReport}
+                  onDownload={handleDownloadReport}
+                  isSaving={isSaving}
+                  isDownloading={isDownloading}
+                />
+              </div>
+            )}
           </div>
-        )}
-
-        {/* ICD criteria step */}
-        {formState.activeTab === 'icd-criteria' && (
-          <div>
-            <h3 className="text-xl font-semibold mb-4">Criterios CIE-11</h3>
-            <ICDCriteria
-              criteriosCIE={formState.criteriosCIE}
-              onCriteriosChange={(criteriosCIE) => updateForm({ criteriosCIE })}
-              realCodes={realCodes}
-              areasEvaluacion={formState.areasEvaluacion}
-              onComplete={handleStepComplete}
-            />
-          </div>
-        )}
+        )},
 
         {/* Report generation step */}
         {formState.activeTab === 'report-generation' && (
           <div>
-            <h3 className="text-xl font-semibold mb-4">Generación de Informe</h3>
+            <div className="px-6 pt-6 pb-2">
+              <div className="flex items-center mb-2">
+                <div className="flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 mr-3">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Revise y personalice el informe psicológico generado</p>
+              </div>
+            </div>
             <ReportGenerator
               patientData={{
                 patient: currentPatient,
                 clinica: formState.clinica,
                 psicologo: formState.psicologo,
                 fecha: formState.fecha,
-                motivosConsulta: formState.motivosConsulta,
-                areasEvaluacion: formState.areasEvaluacion,
-                criteriosCIE: formState.criteriosCIE,
+                motivosConsulta: [],
+                areasEvaluacion: [],
+                criteriosCIE: [],
               }}
               analysisPhase={analysisPhase}
               draftText={draftText}
@@ -574,11 +606,11 @@ ${draftText}
         )}
 
         {/* Navigation buttons */}
-        <div className="flex items-center justify-between mt-8">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gradient-to-r from-gray-50 to-white">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={handlePreviousStep}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 px-4 py-2 rounded-md shadow-sm"
             disabled={WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab) === 0}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -594,7 +626,7 @@ ${draftText}
                   variant="outline"
                   onClick={() => setIsPreviewOpen(true)}
                   disabled={!isDraftComplete}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 transition-all duration-200 px-4 py-2 rounded-md shadow-sm"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -607,7 +639,7 @@ ${draftText}
                   variant="secondary"
                   onClick={handleSaveReport}
                   disabled={!isDraftComplete || isSaving}
-                  className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300"
+                  className="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 hover:border-blue-300 transition-all duration-200 px-4 py-2 rounded-md shadow-sm"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -619,7 +651,7 @@ ${draftText}
                   variant="default"
                   onClick={handleDownloadReport}
                   disabled={!isDraftComplete || isDownloading}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all duration-200 px-4 py-2 rounded-md"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -634,7 +666,7 @@ ${draftText}
                 variant="default"
                 onClick={handleNextStep}
                 disabled={!canProceedToNextStep()}
-                className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 shadow-sm font-medium"
+                className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all duration-200 px-4 py-2 rounded-md"
               >
                 Siguiente
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -648,10 +680,16 @@ ${draftText}
 
       {/* Report preview dialog */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Vista Previa del Informe</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white p-0">
+          <DialogHeader className="p-5 border-b border-gray-100">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center h-7 w-7 rounded-full bg-blue-100 mr-3">
+                <FileText className="h-4 w-4 text-blue-600" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">Vista previa del informe psicológico</p>
+            </div>
           </DialogHeader>
+          <div className="p-6">
           <ReportPreview
             patient={currentPatient ? {
               id: currentPatient.id,
@@ -674,21 +712,11 @@ ${draftText}
             isSaving={isSaving}
             isDownloading={isDownloading}
           />
+          </div>
         </DialogContent>
       </Dialog>
 
-      {/* AI Analysis Process overlay */}
-      {analysisPhase === 'analyzing' && (
-        <div className="mt-6">
-          <AIAnalysisProcess
-            onAnalysisComplete={handleAnalysisComplete}
-            areasEvaluacion={formState.areasEvaluacion}
-            criteriosCIE={formState.criteriosCIE}
-            motivosConsulta={formState.motivosConsulta}
-            assessmentId={formState.assessmentId}
-          />
-        </div>
-      )}
+
     </div>
   );
 }
