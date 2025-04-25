@@ -1,7 +1,8 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Patient } from '@/lib/types';
 import { ReportActionsBar } from '@/components/ui/report-actions-bar';
+import { FileText } from 'lucide-react';
 
 interface ReportPreviewProps {
   title?: string;
@@ -36,56 +37,57 @@ export function ReportPreview({
 }: ReportPreviewProps) {
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-gray-800">Vista Previa del Informe</h2>
-        <ReportActionsBar
-          onSave={onSave}
-          onDownload={onDownload}
-          onPrint={onPrint}
-          onCopy={onCopy}
-          onShare={onShare}
-          isSaving={isSaving}
-          isDownloading={isDownloading}
-        />
-      </div>
-      
-      <Card className="p-6 border border-gray-200 shadow-sm max-h-[700px] overflow-auto">
-        <div className="border-b border-blue-600 pb-4 mb-6">
-          <h1 className="text-2xl font-bold text-blue-600">{title}</h1>
-          <p className="text-gray-600">{clinic} | {date}</p>
+      <div className="border-b border-gray-200 pb-4 mb-6">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <FileText className="h-5 w-5 text-blue-600 mr-2" />
+            <h2 className="text-lg font-bold text-gray-800">Vista Previa del Informe</h2>
+          </div>
+          <ReportActionsBar
+            onSave={onSave}
+            onDownload={onDownload}
+            onPrint={onPrint}
+            onCopy={onCopy}
+            onShare={onShare}
+            isSaving={isSaving}
+            isDownloading={isDownloading}
+          />
         </div>
-        
-        <div className="space-y-4">
-          {patient && (
-            <div className="mb-4">
-              <p className="font-semibold text-blue-600">Paciente:</p>
-              <p>{patient.name}</p>
-              {patient.age && <p>Edad: {patient.age} años</p>}
-            </div>
+      </div>
+
+      <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 py-4">
+          <CardTitle className="text-lg font-bold text-gray-800">{title}</CardTitle>
+          {(clinic || date) && (
+            <p className="text-sm text-gray-600 mt-1">{clinic} {clinic && date && '|'} {date}</p>
           )}
-          
-          {date && (
-            <div className="mb-4">
-              <p className="font-semibold text-blue-600">Fecha de Evaluación:</p>
-              <p>{date}</p>
-            </div>
-          )}
-          
-          {psychologist && (
-            <div className="mb-4">
-              <p className="font-semibold text-blue-600">Profesional:</p>
-              <p>{psychologist}</p>
-            </div>
-          )}
-          
-          <div className="mb-4">
-            <p className="font-semibold text-blue-600">Informe:</p>
-            <div className="whitespace-pre-line mt-2 text-gray-800">
-              {content}
+        </CardHeader>
+        <CardContent className="p-6 max-h-[600px] overflow-auto">
+          <div className="space-y-4">
+            {patient && (
+              <div className="p-3 hover:bg-blue-50/30 rounded-md border-b border-gray-100 transition-colors">
+                <p className="text-sm font-medium text-gray-600 mb-1">Paciente:</p>
+                <p className="font-medium text-gray-800">{patient.name}</p>
+                {patient.age && <p className="text-sm text-gray-700 mt-1">Edad: {patient.age} años</p>}
+              </div>
+            )}
+
+            {psychologist && (
+              <div className="p-3 hover:bg-blue-50/30 rounded-md border-b border-gray-100 transition-colors">
+                <p className="text-sm font-medium text-gray-600 mb-1">Profesional:</p>
+                <p className="font-medium text-gray-800">{psychologist}</p>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <h3 className="font-medium text-gray-800 mb-3 pb-2 border-b border-gray-200">Contenido del Informe:</h3>
+              <div className="whitespace-pre-line text-gray-700 leading-relaxed">
+                {content}
+              </div>
             </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );
-} 
+}

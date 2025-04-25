@@ -69,40 +69,39 @@ export function PatientSelectionForReports({ onSelectPatient }: PatientSelection
   const totalPages = Math.ceil(patients.length / patientsPerPage);
 
   return (
-    <Card className="w-full p-8 bg-white shadow-xl border-2 border-transparent rounded-2xl relative ai-glow">
-        {/* Modern AI-driven card with animated blue glow */}
+    <Card className="w-full bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
       {/* Patient selection card - optimized for desktop web experience */}
-      <CardHeader className="pb-4">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 py-4">
         <div className="flex items-center gap-3">
-          <FileText className="text-blue-500 w-7 h-7" />
-          <CardTitle className="text-2xl font-extrabold tracking-tight text-blue-800">Seleccionar Paciente</CardTitle>
+          <FileText className="text-blue-600 w-5 h-5" />
+          <CardTitle className="text-lg font-bold text-gray-800">Seleccionar Paciente</CardTitle>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <div className="flex items-center gap-4 mb-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400 w-5 h-5" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5" />
             <Input
               placeholder="Buscar pacientes..."
-              className="pl-12 text-lg h-12 border-2 border-blue-200 focus:border-sky-400 focus:ring-2 focus:ring-sky-200 transition-shadow shadow-sm"
+              className="pl-10 border-gray-200 focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all shadow-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
-        <div className="mb-8 ml-1 text-sky-600 text-sm flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-blue-400" />
+        <div className="mb-4 text-blue-600 text-sm flex items-center gap-2 bg-blue-50 p-2 rounded-md">
+          <Sparkles className="w-4 h-4 text-blue-500" />
           <span>Búsqueda inteligente potenciada por <span className="font-semibold">IA</span></span>
         </div>
         {isLoading && (
           <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-6 w-6 text-blue-500 animate-spin mr-2" />
+            <Loader2 className="h-6 w-6 text-blue-600 animate-spin mr-2" />
             <p className="text-gray-600">Cargando pacientes...</p>
           </div>
         )}
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start">
-            <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5" />
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md flex items-start mb-4">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
             <div>
               <h3 className="font-medium text-red-800">Error</h3>
               <p className="text-sm text-red-700">{error}</p>
@@ -112,61 +111,66 @@ export function PatientSelectionForReports({ onSelectPatient }: PatientSelection
         {!isLoading && !error && (
           <>
             {currentPatients.length > 0 ? (
-              <table className="w-full text-left border-separate border-spacing-y-2 rounded-xl overflow-hidden shadow-md bg-gradient-to-br from-white via-blue-50 to-sky-50">
-                <thead>
-                  <tr className="text-gray-700 text-base bg-gradient-to-r from-blue-100 via-white to-sky-100">
-                    <th className="px-4 py-3 font-semibold">Nombre</th>
-                    <th className="px-4 py-3 font-semibold">Edad</th>
-                    <th className="px-4 py-3 font-semibold">Correo</th>
-                    <th className="px-4 py-3 font-semibold">Teléfono</th>
-                    <th className="px-4 py-3 font-semibold flex items-center gap-1">Acción <ArrowRight className="w-4 h-4 text-blue-400" /></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentPatients.map((patient) => (
-                    <tr key={patient.id} className="bg-white hover:bg-sky-50 rounded-xl transition-all shadow-sm group">
-                      <td className="px-4 py-4 font-semibold text-gray-800 text-base group-hover:text-blue-700">{patient.firstName} {patient.lastName}</td>
-                      <td className="px-4 py-4 text-gray-700">{calculateAge(patient.dateOfBirth)} años</td>
-                      <td className="px-4 py-4 text-gray-700">{patient.contactEmail}</td>
-                      <td className="px-4 py-4 text-gray-700">{patient.contactPhone || '-'}</td>
-                      <td className="px-4 py-4">
-                        <Button size="lg" variant="default" className="bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-sm flex items-center gap-1 transition-all duration-200 focus:ring-2 focus:ring-blue-200" onClick={() => onSelectPatient(patient)}>
-                          <Wand2 className="w-4 h-4" />
-                          Seleccionar
-                        </Button>
-                      </td>
+              <div className="overflow-hidden rounded-md border border-gray-200">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="text-gray-700 text-sm bg-gray-50 border-b border-gray-200">
+                      <th className="px-4 py-3 font-medium">Nombre</th>
+                      <th className="px-4 py-3 font-medium">Edad</th>
+                      <th className="px-4 py-3 font-medium">Correo</th>
+                      <th className="px-4 py-3 font-medium">Teléfono</th>
+                      <th className="px-4 py-3 font-medium">Acción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {currentPatients.map((patient) => (
+                      <tr key={patient.id} className="bg-white hover:bg-blue-50/30 transition-colors">
+                        <td className="px-4 py-3 font-medium text-gray-800">{patient.firstName} {patient.lastName}</td>
+                        <td className="px-4 py-3 text-gray-700">{calculateAge(patient.dateOfBirth)} años</td>
+                        <td className="px-4 py-3 text-gray-700">{patient.contactEmail}</td>
+                        <td className="px-4 py-3 text-gray-700">{patient.contactPhone || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Button
+                            variant="default"
+                            className="bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                            onClick={() => onSelectPatient(patient)}
+                          >
+                            Seleccionar
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
-              <div className="text-center py-8">
-                <UserCircle className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No se encontraron pacientes</h3>
-                <p className="text-gray-500 mb-6">No hay pacientes que coincidan con tu búsqueda.</p>
+              <div className="text-center py-8 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                <UserCircle className="h-14 w-14 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2 text-gray-800">No se encontraron pacientes</h3>
+                <p className="text-gray-500 mb-4">No hay pacientes que coincidan con tu búsqueda.</p>
               </div>
             )}
           </>
         )}
         {patients.length > patientsPerPage && (
-          <div className="flex justify-center mt-8">
-            <div className="flex gap-4 items-center">
+          <div className="flex justify-center mt-6">
+            <div className="flex gap-2 items-center">
               <Button
                 variant="outline"
-                size="lg"
-                className="px-8"
+                size="sm"
+                className="hover:bg-blue-50 hover:text-blue-700 transition-colors"
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
               >
                 Anterior
               </Button>
-              <div className="flex items-center px-6 text-lg font-semibold">
+              <div className="flex items-center px-4 text-sm font-medium text-gray-700 bg-gray-50 rounded-md border border-gray-200 py-2">
                 Página {currentPage} de {totalPages}
               </div>
               <Button
                 variant="outline"
-                size="lg"
-                className="px-8"
+                size="sm"
+                className="hover:bg-blue-50 hover:text-blue-700 transition-colors"
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >

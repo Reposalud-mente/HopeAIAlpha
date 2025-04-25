@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Check, AlertCircle } from 'lucide-react';
-import { Card } from '@/components/ui/card';
+import { Loader2, Check, AlertCircle, Sparkles, BrainCircuit, FileText } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { usePatient } from '@/contexts/PatientContext';
 import { useAIReportGeneration } from '@/hooks/useAIReportGeneration';
@@ -175,14 +175,16 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
 
   if (error) {
     return (
-      <Card className="p-6 bg-red-50 border-red-200">
-        <div className="flex items-center space-x-3">
-          <AlertCircle className="h-6 w-6 text-red-500" />
-          <div>
-            <h3 className="font-medium text-red-800">Error en el análisis</h3>
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        </div>
+      <Card className="border border-red-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-red-50 to-white border-b border-gray-100 py-4">
+          <CardTitle className="text-lg font-bold text-gray-800 flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
+            Error en el análisis
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <p className="text-sm text-red-600">{error}</p>
+        </CardContent>
       </Card>
     );
   }
@@ -190,26 +192,33 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
   // Show loading state
   if (isGenerating || (!error && !result)) {
     return (
-      <Card className="p-6">
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Análisis IA en proceso</h3>
-          <p className="text-sm text-gray-600">
-            Nuestro sistema está analizando la información del paciente para generar un borrador de informe.
-          </p>
+      <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 py-4">
+          <CardTitle className="text-lg font-bold text-gray-800 flex items-center">
+            <BrainCircuit className="h-5 w-5 text-blue-600 mr-2" />
+            Análisis IA en proceso
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Nuestro sistema está analizando la información del paciente para generar un borrador de informe.
+            </p>
 
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>{currentPhase}</span>
-              <span>{progress}%</span>
+            <div className="space-y-2 bg-blue-50/50 p-4 rounded-md border border-blue-100">
+              <div className="flex justify-between text-sm font-medium">
+                <span className="text-blue-700">{currentPhase}</span>
+                <span className="text-blue-700">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2 bg-blue-100" />
             </div>
-            <Progress value={progress} className="h-2" />
-          </div>
 
-          <div className="flex items-center space-x-2 text-blue-600">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Procesando datos clínicos</span>
+            <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-md">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm font-medium">Procesando datos clínicos</span>
+            </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
     );
   }
@@ -217,39 +226,51 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
   // Show success state
   if (result && !result.error) {
     return (
-      <Card className="p-6 bg-green-50 border-green-200">
-        <div className="flex items-center space-x-3">
-          <Check className="h-6 w-6 text-green-500" />
-          <div>
-            <h3 className="font-medium text-green-800">Informe generado correctamente</h3>
-            <p className="text-sm text-green-600">El borrador del informe está listo para su revisión.</p>
+      <Card className="border border-green-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-green-50 to-white border-b border-gray-100 py-4">
+          <CardTitle className="text-lg font-bold text-gray-800 flex items-center">
+            <Check className="h-5 w-5 text-green-600 mr-2" />
+            Informe generado correctamente
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-md border border-green-100">
+            <FileText className="h-5 w-5 text-green-600" />
+            <p className="text-sm text-green-700">El borrador del informe está listo para su revisión.</p>
           </div>
-        </div>
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="p-6">
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Análisis IA en proceso</h3>
-        <p className="text-sm text-gray-600">
-          Nuestro sistema está analizando la información del paciente para generar un borrador de informe.
-        </p>
+    <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 py-4">
+        <CardTitle className="text-lg font-bold text-gray-800 flex items-center">
+          <Sparkles className="h-5 w-5 text-blue-600 mr-2" />
+          Análisis IA en proceso
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Nuestro sistema está analizando la información del paciente para generar un borrador de informe.
+          </p>
 
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>{currentPhase}</span>
-            <span>{progress}%</span>
+          <div className="space-y-2 bg-blue-50/50 p-4 rounded-md border border-blue-100">
+            <div className="flex justify-between text-sm font-medium">
+              <span className="text-blue-700">{currentPhase}</span>
+              <span className="text-blue-700">{progress}%</span>
+            </div>
+            <Progress value={progress} className="h-2 bg-blue-100" />
           </div>
-          <Progress value={progress} className="h-2" />
-        </div>
 
-        <div className="flex items-center space-x-2 text-blue-600">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          <span className="text-sm">Procesando datos clínicos</span>
+          <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-md">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">Procesando datos clínicos</span>
+          </div>
         </div>
-      </div>
+      </CardContent>
     </Card>
   );
 }

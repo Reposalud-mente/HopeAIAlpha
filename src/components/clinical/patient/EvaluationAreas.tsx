@@ -7,6 +7,8 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { usePatient } from '@/contexts/PatientContext';
+import PatientInfoPanel from './PatientInfoPanel';
 
 interface EvaluationAreasProps {
   areasEvaluacion: string[];
@@ -70,6 +72,7 @@ export default function EvaluationAreas({
   onComplete,
   availableAreas: customAreas
 }: EvaluationAreasProps) {
+  const { currentPatient } = usePatient();
   // Use custom areas if provided, otherwise use default areas
   const availableAreas = customAreas && customAreas.length > 0 ? customAreas : defaultAreas;
   const MAX_SELECTIONS = 4; // Maximum number of areas that can be selected
@@ -84,11 +87,21 @@ export default function EvaluationAreas({
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
+  if (!currentPatient) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-gray-500">Por favor seleccione un paciente primero.</p>
+      </div>
+    );
+  }
 
-        <p className="text-sm text-gray-500 mb-6">
+  return (
+    <div className="px-6 pb-6">
+      {/* Panel de información del paciente (siempre visible) */}
+      <PatientInfoPanel patient={currentPatient} className="mb-6" />
+
+      <div>
+        <p className="text-sm text-gray-600 mb-6">
           Seleccione hasta {MAX_SELECTIONS} áreas a evaluar según el motivo de consulta.
         </p>
 
@@ -138,16 +151,10 @@ export default function EvaluationAreas({
         )}
       </div>
 
-      <div className="flex justify-between">
+      <div className="flex justify-between mt-6">
         <div className="text-sm text-gray-500">
           {areasEvaluacion.length} de {MAX_SELECTIONS} áreas seleccionadas
         </div>
-        <Button
-          onClick={onComplete}
-          disabled={areasEvaluacion.length === 0}
-        >
-          Continuar
-        </Button>
       </div>
     </div>
   );

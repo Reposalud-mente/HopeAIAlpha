@@ -1,0 +1,63 @@
+{
+    "name": "PrimaryButton",
+    "description": "A primary button component with customizable text and onClick handler.",
+    "props": [
+        {
+            "name": "children",
+            "type": "React.ReactNode",
+            "required": true,
+            "description": "The content of the button"
+        },
+        {
+            "name": "onClick",
+            "type": "() => void",
+            "required": false,
+            "description": "Function to call when the button is clicked"
+        },
+        {
+            "name": "disabled",
+            "type": "boolean",
+            "required": false,
+            "defaultValue": "false",
+            "description": "Whether the button is disabled"
+        },
+        {
+            "name": "variant",
+            "type": "\"primary\" | \"secondary\" | \"outline\"",
+            "required": false,
+            "defaultValue": "\"primary\"",
+            "description": "The variant of the button"
+        },
+        {
+            "name": "size",
+            "type": "\"sm\" | \"md\" | \"lg\"",
+            "required": false,
+            "defaultValue": "\"md\"",
+            "description": "The size of the button"
+        }
+    ],
+    "state": [
+        {
+            "name": "isHovered",
+            "type": "boolean",
+            "initialValue": "false",
+            "description": "Whether the button is being hovered"
+        },
+        {
+            "name": "isPressed",
+            "type": "boolean",
+            "initialValue": "false",
+            "description": "Whether the button is being pressed"
+        }
+    ],
+    "functionality": "The button should handle click events and show different styles based on its variant and size. It should also have hover and pressed states.",
+    "styling": "The button should use Tailwind CSS for styling. It should have different styles for each variant and size. The primary variant should have a solid background color, the secondary variant should have a lighter background color, and the outline variant should have a border with no background color.",
+    "dependencies": [
+        "react",
+        "clsx"
+    ],
+    "examples": [
+        "<PrimaryButton onClick={() => console.log('Button clicked')}>Click me</PrimaryButton>",
+        "<PrimaryButton variant=\"secondary\" size=\"lg\" disabled>Disabled Button</PrimaryButton>"
+    ]
+}

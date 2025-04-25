@@ -1,0 +1,35 @@
+{
+  "description": "Add loading state and icon support to the Button component",
+  "modifications": [
+    {
+      "type": "add",
+      "target": "props",
+      "value": "Add a 'loading' prop of type boolean with default value false"
+    },
+    {
+      "type": "add",
+      "target": "props",
+      "value": "Add an 'icon' prop of type React.ReactNode that is optional"
+    },
+    {
+      "type": "add",
+      "target": "props",
+      "value": "Add an 'iconPosition' prop of type \"left\" | \"right\" with default value \"left\""
+    },
+    {
+      "type": "update",
+      "target": "functionality",
+      "value": "Add support for showing a loading spinner when the loading prop is true and disable the button in this state"
+    },
+    {
+      "type": "update",
+      "target": "functionality",
+      "value": "Add support for showing an icon either before or after the button text based on the iconPosition prop"
+    },
+    {
+      "type": "add",
+      "target": "dependencies",
+      "value": "Add react-icons as a dependency for the loading spinner"
+    }
+  ]
+}

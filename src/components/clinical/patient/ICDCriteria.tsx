@@ -9,6 +9,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Info, Check, Search, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { usePatient } from '@/contexts/PatientContext';
+import PatientInfoPanel from './PatientInfoPanel';
 
 interface ICDCriteriaProps {
   criteriosCIE: string[];
@@ -94,6 +96,7 @@ export default function ICDCriteria({
   onComplete,
   realCodes
 }: ICDCriteriaProps) {
+  const { currentPatient } = usePatient();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('recommended');
   const [recommendedCodes, setRecommendedCodes] = useState<typeof allCodes>([]);
@@ -151,11 +154,21 @@ export default function ICDCriteria({
   // Display codes to show based on active tab
   const codesToShow = activeTab === 'all' ? allCodes : filteredCodes;
 
-  return (
-    <div className="space-y-6">
-      <div>
+  if (!currentPatient) {
+    return (
+      <div className="text-center py-6">
+        <p className="text-gray-500">Por favor seleccione un paciente primero.</p>
+      </div>
+    );
+  }
 
-        <p className="text-sm text-gray-500 mb-4">
+  return (
+    <div className="px-6 pb-6">
+      {/* Panel de información del paciente (siempre visible) */}
+      <PatientInfoPanel patient={currentPatient} className="mb-6" />
+
+      <div>
+        <p className="text-sm text-gray-600 mb-4">
           Seleccione los criterios diagnósticos de la CIE-11 aplicables a esta evaluación.
         </p>
 
@@ -278,11 +291,14 @@ export default function ICDCriteria({
                 >
                   <span>{code.id}: {code.name}</span>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleCriteriaToggle(codeId);
                     }}
                     className="text-gray-500 hover:text-gray-700"
+                    aria-label={`Eliminar criterio ${code.id}`}
+                    title={`Eliminar criterio ${code.id}`}
                   >
                     ×
                   </button>
@@ -293,13 +309,10 @@ export default function ICDCriteria({
         </div>
       )}
 
-      <div className="flex justify-end">
-        <Button
-          onClick={onComplete}
-          disabled={criteriosCIE.length === 0}
-        >
-          Continuar
-        </Button>
+      <div className="flex justify-between mt-6">
+        <div className="text-sm text-gray-500">
+          {criteriosCIE.length} criterios seleccionados
+        </div>
       </div>
     </div>
   );
