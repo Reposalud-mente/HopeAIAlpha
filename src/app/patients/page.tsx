@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/components/ui/use-toast';
 
 function PatientSessionSummary({ patientId }: { patientId: string }) {
   const [count, setCount] = useState<number | null>(null);
@@ -47,6 +48,7 @@ import PatientForm from '@/components/clinical/patient/PatientForm';
 import AppLayout from '@/components/layout/app-layout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatPatientName, calculateAge } from '@/lib/patient-utils';
 
 export default function PatientListPage() {
   const router = useRouter();
@@ -97,6 +99,9 @@ export default function PatientListPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
+  // Hook para mostrar toasts
+  const { toast } = useToast();
+
   // Handle patient creation
   const handleCreatePatient = async (patientData: any) => {
     const newPatient = await createPatient(patientData);
@@ -104,26 +109,24 @@ export default function PatientListPage() {
       setIsCreating(false);
       // Refresh the patient list
       loadPatients(searchTerm);
+      // Mostrar toast de éxito
+      toast({
+        title: "Paciente creado",
+        description: `${formatPatientName(newPatient)} ha sido creado correctamente.`,
+        duration: 3000,
+      });
+    } else {
+      // Mostrar toast de error
+      toast({
+        title: "Error al crear paciente",
+        description: "No se pudo crear el paciente. Inténtelo de nuevo.",
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   };
 
-  // Format patient name
-  const formatPatientName = (patient: PatientListItem) => {
-    return `${patient.firstName} ${patient.lastName}`;
-  };
-
-  // Calculate age from date of birth
-  const calculateAge = (dateOfBirth: Date) => {
-    const today = new Date();
-    let age = today.getFullYear() - dateOfBirth.getFullYear();
-    const monthDiff = today.getMonth() - dateOfBirth.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateOfBirth.getDate())) {
-      age--;
-    }
-
-    return age;
-  };
+  // Using formatPatientName and calculateAge from utility functions
 
   // Pagination
   const indexOfLastPatient = currentPage * patientsPerPage;

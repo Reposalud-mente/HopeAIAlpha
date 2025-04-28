@@ -1,0 +1,6 @@
+.bar-chart-bar {
+  background: #6366f1;
+  width: 24px;
+  border-radius: 4px;
+  transition: height 0.3s cubic-bezier(0.4,0,0.2,1);
+}

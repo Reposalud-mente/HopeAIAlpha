@@ -420,7 +420,10 @@ const ClinicalInfoForm: React.FC<ClinicalInfoFormProps> = ({
             {tipoInforme && SelectedReportComponent && (
               <div>
                 {/* Header & change button --------------------------------*/}
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                <div
+                  id="report-template-header"
+                  className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100"
+                >
                   <div className="flex items-center">
                     {REPORT_TYPES.find((t) => t.value === tipoInforme)?.icon}
                     <h4 className="text-base font-medium text-gray-800 ml-2">

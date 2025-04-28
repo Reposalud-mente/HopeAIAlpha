@@ -5,6 +5,7 @@ import { Search } from 'lucide-react';
 import { usePatient } from '@/contexts/PatientContext';
 import { Input } from '@/components/ui/input';
 import { SelectClinica } from '@/components/ui/select-clinica';
+import { calculateAge } from '@/lib/patient-utils';
 
 interface PatientSelectionProps {
   currentClinic: string;
@@ -12,19 +13,7 @@ interface PatientSelectionProps {
   onComplete: () => void;
 }
 
-// Calcular la edad a partir de la fecha de nacimiento
-const calculateAge = (dateOfBirth: Date): number => {
-  const today = new Date();
-  const birthDate = new Date(dateOfBirth);
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
-  }
-
-  return age;
-};
+// Using calculateAge from utility functions
 
 // Convertir pacientes reales al formato esperado por la interfaz
 const formatPatientForDisplay = (patient: any) => ({

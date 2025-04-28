@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ReportFieldsProps } from './ReportFieldsInterface';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,6 +70,15 @@ export default function FamilyReportFields({
 
     onFactoresRiesgoProteccionChange(factoresRiesgoProteccion + (factoresRiesgoProteccion ? '\n' : '') + factoresText);
   };
+
+  // Scroll to the template header when component mounts
+  useEffect(() => {
+    // Find the header element by ID
+    const headerElement = document.getElementById('report-template-header');
+    if (headerElement) {
+      headerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
 
   return (
     <Card className="border-none shadow-none bg-transparent">

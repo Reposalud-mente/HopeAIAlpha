@@ -1,0 +1,12 @@
+.alert {
+  padding: 16px;
+  background: #fff8db;
+  border: 1px solid #ffe066;
+  border-radius: 8px;
+  color: #856404;
+  margin-bottom: 16px;
+}
+
+.alertDescription {
+  margin: 0;
+}

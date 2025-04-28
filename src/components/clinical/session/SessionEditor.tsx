@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Session } from './types';
+import { Session, SessionWithRelations, SessionObjective, SessionActivity, SessionAttachment, AISuggestion } from './types';
 import { useSessionSocket } from '@/hooks/useSessionSocket';
+import { SessionStatus } from '@prisma/client';
 
 export interface SessionEditorProps {
   sessionId?: string;
-  onSave?: (session: Session) => void;
+  onSave?: (session: SessionWithRelations) => void;
   mode?: 'create' | 'edit';
   patientId?: string;
   isSaving?: boolean;
@@ -13,7 +14,7 @@ export interface SessionEditorProps {
 
 const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode = 'edit', patientId, isSaving }) => {
   const isCreate = mode === 'create' || !sessionId;
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<SessionWithRelations | null>(null);
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -21,14 +22,14 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode =
   const [objectivesStr, setObjectivesStr] = useState('');
   const [activitiesStr, setActivitiesStr] = useState('');
   // For AI suggestions interaction
-  const [aiSuggestions, setAiSuggestions] = useState<any[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   // For editing suggestion content inline
   const [editSuggestionIdx, setEditSuggestionIdx] = useState<number | null>(null);
   const [editSuggestionContent, setEditSuggestionContent] = useState<string>('');
 
   // Real-time: subscribe to updates and deletions
   // Type guard for Session
-  function isSession(obj: any): obj is Session {
+  function isSession(obj: any): obj is SessionWithRelations {
     return obj && typeof obj === 'object' && typeof obj.id === 'string' && typeof obj.patientId === 'string';
   }
 
@@ -54,19 +55,21 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode =
   useEffect(() => {
     if (isCreate) {
       // Initialize blank session
-      const blank: Session = {
+      const blank: SessionWithRelations = {
         id: '',
         patientId: patientId || '',
         clinicianId: '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         type: '',
-        objectives: {},
+        objectives: [] as SessionObjective[],
         notes: '',
-        activities: {},
-        status: 'draft',
-        attachments: {},
-        aiSuggestions: [],
+        activities: [] as SessionActivity[],
+        status: SessionStatus.DRAFT,
+        attachments: [] as SessionAttachment[],
+        aiSuggestions: [] as AISuggestion[],
+        patient: null as any, // Will be populated on save
+        clinician: null as any, // Will be populated on save
       };
       setSession(blank);
       setObjectivesStr(JSON.stringify(blank.objectives, null, 2));
@@ -99,16 +102,20 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode =
   const handleObjectivesChange = (val: string) => {
     setObjectivesStr(val);
     try {
-      const parsed = JSON.parse(val);
+      const parsed = JSON.parse(val) as SessionObjective[];
       handleChange('objectives', parsed);
-    } catch {}
+    } catch (error) {
+      console.error('Error parsing objectives JSON:', error);
+    }
   };
   const handleActivitiesChange = (val: string) => {
     setActivitiesStr(val);
     try {
-      const parsed = JSON.parse(val);
+      const parsed = JSON.parse(val) as SessionActivity[];
       handleChange('activities', parsed);
-    } catch {}
+    } catch (error) {
+      console.error('Error parsing activities JSON:', error);
+    }
   };
 
   const handleSave = async () => {
@@ -211,67 +218,151 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode =
   if (!session) return <div>No session found.</div>;
 
   return (
-    <div>
-      <h3>{isCreate ? 'Create Session' : 'Edit Session'}</h3>
-      <div>
-        <label>Type:</label>
-        <input value={session.type} onChange={e => handleChange('type', e.target.value)} />
+    <div className="space-y-4">
+      <h3 className="text-lg font-medium">{isCreate ? 'Create Session' : 'Edit Session'}</h3>
+      <div className="space-y-2">
+        <div>
+          <label htmlFor="session-type" className="block text-sm font-medium mb-1">Type:</label>
+          <input
+            id="session-type"
+            className="w-full p-2 border rounded-md"
+            value={session.type}
+            onChange={e => handleChange('type', e.target.value)}
+            placeholder="Session type"
+          />
+        </div>
+        <div>
+          <label htmlFor="session-status" className="block text-sm font-medium mb-1">Status:</label>
+          <select
+            id="session-status"
+            className="w-full p-2 border rounded-md"
+            value={session.status}
+            onChange={e => handleChange('status', e.target.value as SessionStatus)}
+          >
+            <option value={SessionStatus.DRAFT}>Borrador</option>
+            <option value={SessionStatus.SCHEDULED}>Programada</option>
+            <option value={SessionStatus.IN_PROGRESS}>En progreso</option>
+            <option value={SessionStatus.COMPLETED}>Completada</option>
+            <option value={SessionStatus.CANCELLED}>Cancelada</option>
+            <option value={SessionStatus.NO_SHOW}>No asistió</option>
+            <option value={SessionStatus.TRANSFERRED}>Transferida</option>
+          </select>
+        </div>
+        <div>
+          <label htmlFor="session-notes" className="block text-sm font-medium mb-1">Notes:</label>
+          <textarea
+            id="session-notes"
+            className="w-full p-2 border rounded-md"
+            value={session.notes || ''}
+            onChange={e => handleChange('notes', e.target.value)}
+            placeholder="Session notes"
+            rows={3}
+          />
+        </div>
+        <div>
+          <label htmlFor="session-objectives" className="block text-sm font-medium mb-1">Objectives (JSON):</label>
+          <textarea
+            id="session-objectives"
+            className="w-full p-2 border rounded-md font-mono text-sm"
+            value={objectivesStr}
+            onChange={e => handleObjectivesChange(e.target.value)}
+            rows={4}
+            placeholder="Enter objectives in JSON format"
+          />
+        </div>
+        <div>
+          <label htmlFor="session-activities" className="block text-sm font-medium mb-1">Activities (JSON):</label>
+          <textarea
+            id="session-activities"
+            className="w-full p-2 border rounded-md font-mono text-sm"
+            value={activitiesStr}
+            onChange={e => handleActivitiesChange(e.target.value)}
+            rows={4}
+            placeholder="Enter activities in JSON format"
+          />
+        </div>
       </div>
-      <div>
-        <label>Status:</label>
-        <input value={session.status} onChange={e => handleChange('status', e.target.value)} />
-      </div>
-      <div>
-        <label>Notes:</label>
-        <textarea value={session.notes || ''} onChange={e => handleChange('notes', e.target.value)} />
-      </div>
-      <div>
-        <label>Objectives (JSON):</label>
-        <textarea value={objectivesStr} onChange={e => handleObjectivesChange(e.target.value)} rows={4} />
-      </div>
-      <div>
-        <label>Activities (JSON):</label>
-        <textarea value={activitiesStr} onChange={e => handleActivitiesChange(e.target.value)} rows={4} />
-      </div>
-      <div>
-        <label>AI Suggestions:</label>
-        {aiSuggestions.length === 0 && <div>No suggestions.</div>}
-        <ul>
-          {aiSuggestions.map((s: any, idx: number) => (
-            <li key={idx} style={{ border: '1px solid #ddd', margin: '4px', padding: '4px' }}>
-              <div><strong>{s.type || 'Suggestion'}:</strong> {editSuggestionIdx === idx ? (
-                <textarea
-                  value={editSuggestionContent}
-                  onChange={e => setEditSuggestionContent(e.target.value)}
-                  rows={2}
-                  style={{ width: '100%' }}
-                />
-              ) : s.content}</div>
-              <div style={{ fontSize: '0.9em', color: '#666' }}>
-                Generated by: {s.generatedBy || 'AI'} | Time: {s.timestamp ? new Date(s.timestamp).toLocaleString() : 'N/A'} | Status: {s.status || 'pending'}
+
+      <div className="mt-6">
+        <label className="block text-sm font-medium mb-2">AI Suggestions:</label>
+        {aiSuggestions.length === 0 && <div className="text-gray-500 italic">No suggestions available.</div>}
+        <ul className="space-y-3">
+          {aiSuggestions.map((s: AISuggestion, idx: number) => (
+            <li key={idx} className="border border-gray-200 rounded-md p-3">
+              <div className="mb-2">
+                <strong className="text-gray-700">{s.type || 'Suggestion'}:</strong>
+                {editSuggestionIdx === idx ? (
+                  <textarea
+                    className="w-full mt-1 p-2 border rounded-md"
+                    value={editSuggestionContent}
+                    onChange={e => setEditSuggestionContent(e.target.value)}
+                    rows={2}
+                    placeholder="Edit suggestion content"
+                  />
+                ) : (
+                  <span className="ml-1">{s.content}</span>
+                )}
               </div>
-              <div style={{ marginTop: 4 }}>
+
+              <div className="text-xs text-gray-500 mb-2">
+                Generated by: {s.generatedBy || 'AI'} |
+                Time: {s.timestamp ? new Date(s.timestamp).toLocaleString() : 'N/A'} |
+                Status: {s.status || 'pending'}
+              </div>
+
+              <div className="flex space-x-2">
                 {editSuggestionIdx === idx ? (
                   <>
-                    <button onClick={() => handleSaveEditedSuggestion(idx)}>Save Edit</button>
-                    <button onClick={() => setEditSuggestionIdx(null)}>Cancel</button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                      onClick={() => handleSaveEditedSuggestion(idx)}
+                    >
+                      Save Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                      onClick={() => setEditSuggestionIdx(null)}
+                    >
+                      Cancel
+                    </button>
                   </>
                 ) : (
                   <>
-                    <button onClick={() => handleAcceptSuggestion(idx)}>Accept</button>
-                    <button onClick={() => handleEditSuggestion(idx)}>Edit</button>
-                    <button onClick={() => handleRejectSuggestion(idx)}>Reject</button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                      onClick={() => handleAcceptSuggestion(idx)}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 bg-gray-200 text-gray-700 text-xs rounded hover:bg-gray-300"
+                      onClick={() => handleEditSuggestion(idx)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                      onClick={() => handleRejectSuggestion(idx)}
+                    >
+                      Reject
+                    </button>
                   </>
                 )}
               </div>
+
               {/* Audit trail/history */}
               {Array.isArray(s.history) && s.history.length > 0 && (
-                <div style={{ fontSize: '0.8em', marginTop: 4, background: '#f9f9f9', padding: 4 }}>
-                  <strong>Audit Trail:</strong>
-                  <ul style={{ margin: 0, paddingLeft: 16 }}>
-                    {s.history.map((h: any, hidx: number) => (
-                      <li key={hidx}>
-                        [{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}] {h.user}: {h.action}{h.content ? ` (content: ${h.content})` : ''}
+                <div className="mt-2 bg-gray-50 p-2 rounded text-xs">
+                  <strong className="text-gray-700">Audit Trail:</strong>
+                  <ul className="mt-1 pl-4 list-disc">
+                    {s.auditTrail?.map((h, hidx: number) => (
+                      <li key={hidx} className="text-gray-600">
+                        [{h.timestamp ? new Date(h.timestamp).toLocaleString() : ''}] {h.action}{h.content ? ` (content: ${h.content})` : ''}
                       </li>
                     ))}
                   </ul>
@@ -281,9 +372,20 @@ const SessionEditor: React.FC<SessionEditorProps> = ({ sessionId, onSave, mode =
           ))}
         </ul>
       </div>
-      <button onClick={handleSave} disabled={saving || isSaving}>{(saving || isSaving) ? 'Saving...' : (isCreate ? 'Create' : 'Save')}</button>
-      <div style={{ fontSize: '0.85em', color: '#888', marginTop: 8 }}>
-        Changes to AI suggestions (accept/edit/reject) are tracked and saved to the audit trail. Remember to save the session to persist these actions.
+
+      <div className="mt-6">
+        <button
+          type="button"
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving || isSaving}
+        >
+          {(saving || isSaving) ? 'Saving...' : (isCreate ? 'Create' : 'Save')}
+        </button>
+
+        <div className="mt-2 text-xs text-gray-500">
+          Changes to AI suggestions (accept/edit/reject) are tracked and saved to the audit trail. Remember to save the session to persist these actions.
+        </div>
       </div>
     </div>
   );

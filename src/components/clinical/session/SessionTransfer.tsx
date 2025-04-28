@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SessionWithRelations } from './types';
 
 interface SessionTransferProps {
   sessionId: string;
@@ -29,17 +30,29 @@ const SessionTransfer: React.FC<SessionTransferProps> = ({ sessionId, onTransfer
   };
 
   return (
-    <div>
-      <h4>Transfer Session</h4>
-      <input
-        placeholder="Target Clinician ID"
-        value={targetClinicianId}
-        onChange={e => setTargetClinicianId(e.target.value)}
-      />
-      <button onClick={handleTransfer} disabled={loading || !targetClinicianId}>
+    <div className="space-y-4 p-4 border rounded-md bg-gray-50">
+      <h4 className="text-md font-medium">Transfer Session</h4>
+      <div className="space-y-2">
+        <label htmlFor="target-clinician" className="block text-sm font-medium mb-1">
+          Target Clinician ID
+        </label>
+        <input
+          id="target-clinician"
+          className="w-full p-2 border rounded-md"
+          placeholder="Enter clinician ID"
+          value={targetClinicianId}
+          onChange={e => setTargetClinicianId(e.target.value)}
+        />
+      </div>
+      <button
+        type="button"
+        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+        onClick={handleTransfer}
+        disabled={loading || !targetClinicianId}
+      >
         {loading ? 'Transferring...' : 'Transfer'}
       </button>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+      {error && <div className="mt-2 text-red-500">{error}</div>}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { validateReportDataRequirements } from './database-validation';
+import { calculateAge } from '@/lib/patient-utils';
 
 /**
  * Interface for the report generation request
@@ -78,7 +79,7 @@ export class AIReportAgent {
     // Extract patient data
     const patient = assessment.patient;
     const patientName = `${patient.firstName} ${patient.lastName}`;
-    const patientAge = this.calculateAge(patient.dateOfBirth);
+    const patientAge = calculateAge(patient.dateOfBirth);
 
     // Extract clinician data
     const clinician = assessment.clinician;
@@ -162,29 +163,14 @@ export class AIReportAgent {
     });
   }
 
-  /**
-   * Calculates age from date of birth
-   * @param dateOfBirth Date of birth
-   * @returns Age in years
-   */
-  private calculateAge(dateOfBirth: Date): number {
-    const today = new Date();
-    let age = today.getFullYear() - dateOfBirth.getFullYear();
-    const monthDifference = today.getMonth() - dateOfBirth.getMonth();
-
-    if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())) {
-      age--;
-    }
-
-    return age;
-  }
+  // Using calculateAge from utility functions
 
   /**
    * Generates the header section of the report
    */
   private generateHeaderSection(patient: { firstName: string, lastName: string, dateOfBirth: Date, gender?: string }, clinician: { firstName: string, lastName: string, licenseNumber?: string }, clinic: { name: string }): string {
     const patientName = `${patient.firstName} ${patient.lastName}`;
-    const patientAge = this.calculateAge(patient.dateOfBirth);
+    const patientAge = calculateAge(patient.dateOfBirth);
     const clinicianName = `${clinician.firstName} ${clinician.lastName}`;
     const currentDate = new Date().toLocaleDateString('es-ES', {
       year: 'numeric',

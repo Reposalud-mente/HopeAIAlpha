@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, UserCircle, Calendar, Mail, Phone, Loader2, AlertCircle, FileText, Sparkles, ArrowRight, Wand2 } from 'lucide-react';
+import { calculateAge } from '@/lib/patient-utils';
 
 interface PatientSelectionForReportsProps {
   onSelectPatient: (patient: PatientListItem) => void;
@@ -49,18 +50,7 @@ export function PatientSelectionForReports({ onSelectPatient }: PatientSelection
     }
   };
 
-  // Calculate age from date of birth
-  const calculateAge = (dateOfBirth: Date) => {
-    const today = new Date();
-    let age = today.getFullYear() - dateOfBirth.getFullYear();
-    const monthDiff = today.getMonth() - dateOfBirth.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateOfBirth.getDate())) {
-      age--;
-    }
-
-    return age;
-  };
+  // Using calculateAge from utility functions
 
   // Pagination
   const indexOfLastPatient = currentPage * patientsPerPage;

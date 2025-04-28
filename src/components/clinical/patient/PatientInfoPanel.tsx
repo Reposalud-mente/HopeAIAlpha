@@ -2,6 +2,7 @@
 
 import { Patient } from '@/contexts/PatientContext';
 import { Mail, Phone, FileText } from 'lucide-react';
+import { calculateAge } from '@/lib/patient-utils';
 
 interface PatientInfoPanelProps {
   patient: Patient;
@@ -9,19 +10,7 @@ interface PatientInfoPanelProps {
 }
 
 export default function PatientInfoPanel({ patient, className = '' }: PatientInfoPanelProps) {
-  // Calcular la edad a partir de la fecha de nacimiento
-  const calculateAge = (dateOfBirth: Date): number => {
-    const today = new Date();
-    const birthDate = new Date(dateOfBirth);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    return age;
-  };
+  // Using calculateAge from utility functions
 
   return (
     <div className={`bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 ${className}`}>

@@ -1,10 +1,24 @@
+// NEW IMPLEMENTATION — COMPLETE REWRITE FOR CLARITY & MAINTAINABILITY
+// -------------------------------------------------------------------------------------------------
+// Rationale: The previous implementation, while functional, duplicated large chunks of UI logic for
+// each textarea field, which made the component long, harder to maintain, and error-prone.  To
+// embrace HopeAI’s values of Simplicity (cleaner code / UI), Clinical Enhancement (better UX &
+// accessibility), and Efficiency (less boilerplate, faster future changes), the component has been
+// refactored to:
+//   • Extract a reusable <FieldTextarea> molecule that encapsulates label, tooltip, validation,
+//     suggestion button, and error message rendering.  This dramatically reduces duplication.
+//   • Keep state-lifting via props (same public API) to avoid a breaking change for parents yet
+//     isolate internal form concerns.
+//   • Enhance accessibility via explicit id/aria associations, keyboard-navigable suggestion button,
+//     and descriptive aria-props.
+//   • Simplify AI-suggestion handling with a single dictionary + helper.
+//   • Provide richer clinical anchors for the improvement slider.
+//   • Supply inline comments mapping each change to either a best practice or a HopeAI core value.
+// -------------------------------------------------------------------------------------------------
 'use client';
 
-import React, { useState } from 'react';
-import { ReportFieldsProps } from './ReportFieldsInterface';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import React, { useId, useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   TrendingUp,
   Activity,
@@ -12,21 +26,151 @@ import {
   ChevronRight,
   Info,
   AlertCircle,
-  Sparkles
+  Sparkles,
 } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { ReportFieldsProps } from './ReportFieldsInterface';
 
+// ----------------------------
+// Internal helper components
+// ----------------------------
+interface FieldTextareaProps {
+  label: string;
+  tooltip: string;
+  placeholder: string;
+  required?: boolean;
+  value: string;
+  /** Prop-drilled change handler coming from the parent */
+  onChange: (val: string) => void;
+  /** Callback to mark field as blurred (for validation) */
+  onBlur: () => void;
+  /** Whether field currently shows validation error */
+  showError: boolean;
+  /** Optional AI suggestion trigger */
+  onSuggest?: () => void;
+  /** Loading state of AI suggestion */
+  loading?: boolean;
+}
+
+/**
+ * FieldTextarea – reusable molecule for labelled textarea with validation, tooltip & optional
+ * suggestion button.  This reduces duplicated markup, improves consistency, and makes future
+ * field-type switches (e.g. from free text to checklist) trivial – HopeAI value: Efficiency.
+ */
+const FieldTextarea: React.FC<FieldTextareaProps> = ({
+  label,
+  tooltip,
+  placeholder,
+  required = false,
+  value,
+  onChange,
+  onBlur,
+  showError,
+  onSuggest,
+  loading = false,
+}) => {
+  const inputId = useId(); // unique per instance – accessibility best practice
+  const errorId = `${inputId}-error`;
+
+  return (
+    <div className="space-y-1.5">
+      {/* Label + Tooltip + (optional) Suggest button */}
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+            {label}
+            {required && <span className="text-red-500 ml-0.5">*</span>}
+          </Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* Info icon acts as additional accessible description target */}
+              <Info aria-label="Ayuda" className="h-3.5 w-3.5 text-gray-400 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs text-xs leading-relaxed">{tooltip}</TooltipContent>
+          </Tooltip>
+        </div>
+        {/* Suggestion button only shown when onSuggest prop provided (clinical decision support) */}
+        {!!onSuggest && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50"
+            onClick={onSuggest}
+            disabled={loading}
+            aria-label={`Generar sugerencia para ${label}`}
+          >
+            {loading ? (
+              <>
+                <span className="animate-spin h-3 w-3 mr-1 border-t-2 border-blue-600 border-solid rounded-full"></span>
+                Generando…
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5 mr-1" />
+                Sugerir
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+
+      {/* The controlled textarea */}
+      <Textarea
+        id={inputId}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        placeholder={placeholder}
+        aria-required={required}
+        aria-invalid={showError}
+        aria-describedby={showError ? errorId : undefined}
+        className={cn(
+          'min-h-[100px] resize-none bg-gray-50 border-gray-300 transition-colors duration-150',
+          'focus:border-blue-500 focus:ring-1 focus:ring-blue-500',
+          showError &&
+            'border-red-500 focus:border-red-600 focus:ring-red-600', // stronger error indication
+        )}
+      />
+
+      {/* Validation message */}
+      {showError && (
+        <div
+          id={errorId}
+          role="alert"
+          className="flex items-center gap-1 text-xs text-red-600 mt-1"
+        >
+          <AlertCircle className="h-3.5 w-3.5" />
+          <span>Este campo es obligatorio.</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ----------------------------
+// Main component props
+// ----------------------------
 interface TherapeuticFollowupFieldsProps extends ReportFieldsProps {
   evolucion: string;
   onEvolucionChange: (value: string) => void;
   cambiosSintomas: string;
   onCambiosSintomasChange: (value: string) => void;
-  nivelMejoria: number;
+  nivelMejoria: number; // 1-7 for CGI-I scale
   onNivelMejoriaChange: (value: number) => void;
   adherenciaTratamiento: string;
   onAdherenciaTratamientoChange: (value: string) => void;
@@ -41,7 +185,7 @@ export default function TherapeuticFollowupFields({
   onEvolucionChange,
   cambiosSintomas = '',
   onCambiosSintomasChange,
-  nivelMejoria = 5,
+  nivelMejoria = 4, // Default to 'Sin cambios' (4) on the CGI-I scale - valor neutral para prevenir sesgos clínicos
   onNivelMejoriaChange,
   adherenciaTratamiento = '',
   onAdherenciaTratamientoChange,
@@ -49,9 +193,24 @@ export default function TherapeuticFollowupFields({
   onAjusteObjetivosChange,
   observacionesTerapeuta = '',
   onObservacionesTerapeutaChange,
-  onComplete
+  onComplete,
 }: TherapeuticFollowupFieldsProps) {
-  // Validación de campos obligatorios
+  // ----------------------------------
+  // Ensure default value for CGI-I scale
+  // ----------------------------------
+  // Utilizamos useEffect para asegurar que el valor inicial sea siempre 4 ("Sin cambios")
+  // para prevenir sesgos clínicos, independientemente del valor recibido – HopeAI valor: Mejora Clínica
+  useEffect(() => {
+    // Establecemos el valor a 4 ("Sin cambios") al inicializar el componente
+    // para garantizar consistencia y prevenir sesgos clínicos
+    onNivelMejoriaChange(4);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Se ejecuta solo al montar el componente
+
+  // ----------------------------------
+  // Form validation helpers & state
+  // ----------------------------------
+  const isFieldEmpty = (val: string) => val.trim().length === 0;
   const [touched, setTouched] = useState({
     evolucion: false,
     cambiosSintomas: false,
@@ -60,9 +219,12 @@ export default function TherapeuticFollowupFields({
     observacionesTerapeuta: false,
   });
 
-  const [aiSuggestionActive, setAiSuggestionActive] = useState<string | null>(null);
+  // Add a state to track if form submission was attempted
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  const isFieldEmpty = (value: string) => value.trim().length === 0;
+  const markTouched = (field: keyof typeof touched) =>
+    setTouched((prev) => ({ ...prev, [field]: true }));
+
   const isFormValid =
     !isFieldEmpty(evolucion) &&
     !isFieldEmpty(cambiosSintomas) &&
@@ -70,36 +232,26 @@ export default function TherapeuticFollowupFields({
     !isFieldEmpty(ajusteObjetivos) &&
     !isFieldEmpty(observacionesTerapeuta);
 
-  const handleBlur = (field: keyof typeof touched) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
-  };
-
-  const handleSubmit = () => {
-    setTouched({
-      evolucion: true,
-      cambiosSintomas: true,
-      adherenciaTratamiento: true,
-      ajusteObjetivos: true,
-      observacionesTerapeuta: true,
-    });
-    if (isFormValid && onComplete) {
-      onComplete();
-    }
-  };
-
-  // Sugerencias de IA para cada campo
+  // ----------------------------------
+  // Simulated AI suggestions logic
+  // ----------------------------------
   const aiSuggestions = {
-    adherenciaTratamiento: "El paciente muestra buena adherencia al tratamiento farmacológico prescrito. Reporta tomar la medicación según lo indicado y no ha experimentado efectos secundarios significativos que interfieran con su cumplimiento.",
-    ajusteObjetivos: "Considerando el progreso actual, se mantienen los objetivos terapéuticos establecidos inicialmente. Se refuerza la importancia de continuar trabajando en las estrategias de afrontamiento ante situaciones de estrés.",
-    observacionesTerapeuta: "Se observa una actitud colaborativa durante la sesión. El paciente muestra mayor insight sobre sus patrones de pensamiento y ha comenzado a implementar las técnicas de regulación emocional aprendidas en situaciones cotidianas."
-  };
+    adherenciaTratamiento:
+      'El paciente muestra buena adherencia al tratamiento farmacológico prescrito. Reporta tomar la medicación según lo indicado y no ha experimentado efectos secundarios significativos que interfieran con su cumplimiento.',
+    ajusteObjetivos:
+      'Considerando el progreso actual, se mantienen los objetivos terapéuticos establecidos inicialmente. Se refuerza la importancia de continuar trabajando en las estrategias de afrontamiento ante situaciones de estrés.',
+    observacionesTerapeuta:
+      'Se observa una actitud colaborativa durante la sesión. El paciente muestra mayor insight sobre sus patrones de pensamiento y ha comenzado a implementar las técnicas de regulación emocional aprendidas en situaciones cotidianas.',
+  } as const;
 
-  const handleAiSuggestion = (field: string) => {
+  type AiField = keyof typeof aiSuggestions;
+  const [aiSuggestionActive, setAiSuggestionActive] = useState<AiField | null>(null);
+
+  const triggerAiSuggestion = (field: AiField) => {
     setAiSuggestionActive(field);
-
-    // Simular un breve retraso para dar sensación de procesamiento
+    // Simulate latency to hint at processing – better UX expectation management
     setTimeout(() => {
-      switch(field) {
+      switch (field) {
         case 'adherenciaTratamiento':
           onAdherenciaTratamientoChange(aiSuggestions.adherenciaTratamiento);
           break;
@@ -114,18 +266,57 @@ export default function TherapeuticFollowupFields({
     }, 600);
   };
 
-  // Color dinámico para el slider
-  const getSliderColor = (value: number) => {
-    if (value <= 3) return 'bg-red-200 text-red-800';
-    if (value <= 7) return 'bg-yellow-200 text-yellow-800';
-    return 'bg-green-200 text-green-800';
+  // ----------------------------------
+  // CGI-I scale helpers
+  // ----------------------------------
+  // Función para obtener el color de la etiqueta según el valor de la escala CGI-I
+  // Esto mejora la interpretabilidad clínica con indicadores visuales – HopeAI valor: Mejora Clínica
+  const getCGIColor = (val: number) => {
+    if (val <= 2) return 'bg-green-200 text-green-800 border-green-300'; // Improved
+    if (val === 3) return 'bg-blue-200 text-blue-800 border-blue-300'; // Slightly improved
+    if (val === 4) return 'bg-gray-200 text-gray-800 border-gray-300'; // No change
+    return 'bg-red-200 text-red-800 border-red-300'; // Worse (5-7)
   };
 
-  const getMejoriaText = (value: number) => {
-    if (value <= 3) return 'Mejoría mínima';
-    if (value <= 7) return 'Mejoría moderada';
-    return 'Mejoría significativa';
+  // Opciones de la escala CGI-I (Clinical Global Impression - Improvement)
+  // Escala validada de 7 puntos que reemplaza la escala numérica de 0-10 para mayor validez clínica
+  // y alineación con prácticas basadas en evidencia – HopeAI valor: Mejora Clínica
+  // Los números (1-7) se muestran junto a cada opción para facilitar la referencia clínica
+  // y mantener la consistencia con los formularios estándar de la escala CGI-I
+  const cgiOptions = [
+    { value: 1, label: 'Muchísimo mejor', description: 'Mejoría muy notable' },
+    { value: 2, label: 'Mucho mejor', description: 'Mejoría considerable' },
+    { value: 3, label: 'Levemente mejor', description: 'Mejoría leve pero apreciable' },
+    { value: 4, label: 'Sin cambios', description: 'No hay cambios apreciables' },
+    { value: 5, label: 'Levemente peor', description: 'Empeoramiento leve pero apreciable' },
+    { value: 6, label: 'Mucho peor', description: 'Empeoramiento considerable' },
+    { value: 7, label: 'Muchísimo peor', description: 'Empeoramiento muy grave' },
+  ];
+
+  // ----------------------------------
+  // Submission handler
+  // ----------------------------------
+  const handleSubmit = () => {
+    // Mark form submission as attempted to trigger validation messages
+    setSubmitAttempted(true);
+
+    // If the form is valid, proceed to the next step
+    if (isFormValid && onComplete) onComplete();
   };
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
+  // No need for a ref since we're scrolling to an element by ID
+
+  // Scroll to the template header when component mounts
+  useEffect(() => {
+    // Find the header element by ID
+    const headerElement = document.getElementById('report-template-header');
+    if (headerElement) {
+      headerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
 
   return (
     <TooltipProvider>
@@ -133,306 +324,207 @@ export default function TherapeuticFollowupFields({
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="space-y-4 max-w-4xl mx-auto"
+        className="space-y-6"
       >
-        <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-          <h1 className="text-xl font-semibold text-gray-800 mb-2">Seguimiento Terapéutico</h1>
-          <p className="text-sm text-gray-500 mb-3">
-            Complete los campos para documentar la evolución del paciente. Los campos marcados con <span className="text-red-500">*</span> son obligatorios.
-          </p>
 
-          {/* Sección 1: Evolución y Cambios */}
-          <motion.div
+        <Card className="border-none shadow-none bg-transparent">
+  <CardContent className="px-6 space-y-6">
+
+
+          {/* ---------- Sección 1: Evolución y Cambios ---------- */}
+          <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="mb-3"
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <header className="flex items-center gap-2 mb-2">
               <TrendingUp className="h-5 w-5 text-blue-600" />
               <h2 className="text-lg font-medium text-gray-700">Evolución y Cambios</h2>
-            </div>
+            </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Evolución */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Evolución desde la última sesión
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-pointer ml-1" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Describa los cambios observados en el paciente desde la sesión anterior
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Textarea
-                  value={evolucion}
-                  onChange={(e) => onEvolucionChange(e.target.value)}
-                  onBlur={() => handleBlur('evolucion')}
-                  placeholder="¿Qué cambios ha notado desde la última sesión?"
-                  className={cn(
-                    "min-h-[80px] resize-none bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
-                    touched.evolucion && isFieldEmpty(evolucion) && 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                  )}
-                />
-                {touched.evolucion && isFieldEmpty(evolucion) && (
-                  <div className="flex items-center gap-1 text-xs text-red-500 mt-0.5">
-                    <AlertCircle className="h-3 w-3" /> Este campo es obligatorio
-                  </div>
-                )}
-              </div>
+              <FieldTextarea
+                label="Evolución desde la última sesión"
+                tooltip="Describa los cambios observados en el paciente desde la sesión anterior (ej. ánimo, comportamiento, eventos significativos)."
+                placeholder="Ej: 'Paciente reporta mejor ánimo general, aunque tuvo una discusión familiar relevante…'"
+                required
+                value={evolucion}
+                onChange={onEvolucionChange}
+                onBlur={() => markTouched('evolucion')}
+                showError={submitAttempted && isFieldEmpty(evolucion)}
+              />
 
-              {/* Cambios en síntomas */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Cambios en síntomas
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-pointer ml-1" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Detalle los cambios específicos en los síntomas principales
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Textarea
-                  value={cambiosSintomas}
-                  onChange={(e) => onCambiosSintomasChange(e.target.value)}
-                  onBlur={() => handleBlur('cambiosSintomas')}
-                  placeholder="¿Qué cambios ha habido en los síntomas principales?"
-                  className={cn(
-                    "min-h-[80px] resize-none bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
-                    touched.cambiosSintomas && isFieldEmpty(cambiosSintomas) && 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                  )}
-                />
-                {touched.cambiosSintomas && isFieldEmpty(cambiosSintomas) && (
-                  <div className="flex items-center gap-1 text-xs text-red-500 mt-0.5">
-                    <AlertCircle className="h-3 w-3" /> Este campo es obligatorio
-                  </div>
-                )}
-              </div>
+              {/* Cambios de síntomas */}
+              <FieldTextarea
+                label="Cambios en síntomas principales"
+                tooltip="Detalle cambios específicos en los síntomas clave definidos en el plan (ej. frecuencia de ataques de pánico, nivel de ansiedad subjetivo, horas de sueño)."
+                placeholder="Ej: 'Reducción en frecuencia de rumiaciones negativas. Insomnio persiste…'"
+                required
+                value={cambiosSintomas}
+                onChange={onCambiosSintomasChange}
+                onBlur={() => markTouched('cambiosSintomas')}
+                showError={submitAttempted && isFieldEmpty(cambiosSintomas)}
+              />
             </div>
-          </motion.div>
+          </motion.section>
 
-          <Separator className="my-3" />
+          <Separator className="my-5" />
 
-          {/* Sección 2: Nivel de Mejoría y Adherencia */}
-          <motion.div
+          {/* ---------- Sección 2: Progreso y Adherencia ---------- */}
+          <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="mb-3"
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <header className="flex items-center gap-2 mb-2">
               <Activity className="h-5 w-5 text-blue-600" />
-              <h2 className="text-lg font-medium text-gray-700">Mejoría y Adherencia</h2>
-            </div>
+              <h2 className="text-lg font-medium text-gray-700">Progreso y Adherencia</h2>
+            </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {/* Nivel de mejoría */}
-              <div className="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-100">
-                <div className="flex items-center justify-between mb-0">
-                  <Label className="text-sm font-medium text-gray-700">Nivel de mejoría</Label>
-                  <Badge variant="outline" className={cn("font-medium text-xs py-0 h-5", getSliderColor(nivelMejoria))}>
-                    {getMejoriaText(nivelMejoria)}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Escala de Impresión Clínica Global - Mejoría (CGI-I) */}
+              {/* Implementación como dropdown para optimizar espacio y mantener consistencia – HopeAI valor: Simplicidad */}
+              <div className="space-y-3 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-1">
+                  <Label htmlFor="cgi-select" className="text-sm font-medium text-gray-700">
+                    Escala de Impresión Clínica Global - Mejoría (CGI-I)
+                  </Label>
+                  <Badge
+                    variant="outline"
+                    className={cn('font-semibold text-xs py-0.5 px-2 h-6 rounded', getCGIColor(nivelMejoria))}
+                  >
+                    {nivelMejoria ? `${nivelMejoria}. ${cgiOptions.find(opt => opt.value === nivelMejoria)?.label || ''}` : 'No seleccionado'}
                   </Badge>
                 </div>
 
-                <div className="px-1 py-0">
-                  <Slider
-                    defaultValue={[nivelMejoria]}
-                    max={10}
-                    step={1}
-                    onValueChange={(value) => onNivelMejoriaChange(value[0])}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>Sin mejoría</span>
-                    <span>Mejoría moderada</span>
-                    <span>Mejoría completa</span>
-                  </div>
+                {/* Select dropdown para la escala CGI-I - optimiza espacio y mantiene consistencia visual */}
+                {/*
+                  El valor por defecto es 'Sin cambios' (4) para evitar sesgos clínicos iniciales
+                  y promover una evaluación objetiva – HopeAI valor: Mejora Clínica
+                */}
+                <Select
+                  value={nivelMejoria.toString()}
+                  defaultValue="4"
+                  onValueChange={(value) => onNivelMejoriaChange(parseInt(value))}
+                >
+                  {/*
+                    Trigger del dropdown con altura y espaciado optimizados para facilitar la interacción
+                    y mejorar la legibilidad – HopeAI valor: Simplicidad y Eficiencia
+                  */}
+                  <SelectTrigger
+                    id="cgi-select"
+                    className="w-full bg-white border border-gray-300 rounded-md focus:border-blue-500 focus:ring-blue-500 h-10 py-2 px-3 text-sm"
+                    aria-label="Seleccionar nivel de mejoría global"
+                  >
+                    <SelectValue
+                      placeholder="Seleccione el nivel de mejoría"
+                      className="text-gray-600"
+                      // Renderiza el valor seleccionado con el número de la escala CGI-I para mayor claridad clínica
+                    />
+                  </SelectTrigger>
+                  {/*
+                    Contenedor del dropdown con altura máxima definida y estilos mejorados
+                    para una experiencia de usuario óptima – HopeAI valor: Mejora Clínica
+                  */}
+                  <SelectContent className="max-h-[280px] overflow-y-auto border border-gray-200 rounded-md shadow-md">
+                    {cgiOptions.map((option) => (
+                      <SelectItem
+                        key={option.value}
+                        value={option.value.toString()}
+                        className="py-3 px-3 border-b border-gray-100 last:border-0"
+                      >
+                        {/*
+                          Cada opción presenta un diseño limpio con espaciado adecuado entre
+                          la etiqueta principal y su descripción – HopeAI valor: Simplicidad
+                        */}
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium text-sm mb-1">
+                            <span className="inline-block w-5 mr-1 text-gray-600">{option.value}.</span>
+                            {option.label}
+                          </span>
+                          <span className="text-xs text-gray-500 pl-6">{option.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/*
+                  Texto explicativo que proporciona contexto clínico sobre la escala
+                  sin ocupar demasiado espacio visual – HopeAI valor: Mejora Clínica
+                */}
+                <div className="text-xs text-gray-500 mt-2 leading-relaxed">
+                  Escala validada de 7 puntos que evalúa el cambio clínico global desde el inicio del tratamiento. El valor por defecto es "Sin cambios" para evitar sesgos en la evaluación clínica.
                 </div>
               </div>
 
               {/* Adherencia al tratamiento */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Adherencia al tratamiento
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-pointer ml-1" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Evalúe el cumplimiento del tratamiento y la respuesta del paciente
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Textarea
-                  value={adherenciaTratamiento}
-                  onChange={(e) => onAdherenciaTratamientoChange(e.target.value)}
-                  onBlur={() => handleBlur('adherenciaTratamiento')}
-                  placeholder="¿Cómo ha sido la adherencia al tratamiento?"
-                  className={cn(
-                    "min-h-[80px] resize-none bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
-                    touched.adherenciaTratamiento && isFieldEmpty(adherenciaTratamiento) && 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                  )}
-                />
-                {touched.adherenciaTratamiento && isFieldEmpty(adherenciaTratamiento) && (
-                  <div className="flex items-center gap-1 text-xs text-red-500 mt-0.5">
-                    <AlertCircle className="h-3 w-3" /> Este campo es obligatorio
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  onClick={() => handleAiSuggestion('adherenciaTratamiento')}
-                  variant="outline"
-                  size="sm"
-                  className="mt-0.5 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-                  disabled={aiSuggestionActive !== null}
-                >
-                  {aiSuggestionActive === 'adherenciaTratamiento' ? (
-                    <>Generando sugerencia<span className="animate-pulse">...</span></>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                      Sugerir texto
-                    </>
-                  )}
-                </Button>
-              </div>
+              <FieldTextarea
+                label="Adherencia al plan terapéutico"
+                tooltip="Evalúe el cumplimiento del paciente con las tareas, ejercicios, medicación (si aplica) y asistencia a sesiones."
+                placeholder="Ej: 'Buena adherencia a tareas de registro. Olvidó medicación 2 veces…'"
+                required
+                value={adherenciaTratamiento}
+                onChange={onAdherenciaTratamientoChange}
+                onBlur={() => markTouched('adherenciaTratamiento')}
+                showError={submitAttempted && isFieldEmpty(adherenciaTratamiento)}
+                onSuggest={() => triggerAiSuggestion('adherenciaTratamiento')}
+                loading={aiSuggestionActive === 'adherenciaTratamiento'}
+              />
             </div>
-          </motion.div>
+          </motion.section>
 
-          <Separator className="my-3" />
+          <Separator className="my-5" />
 
-          {/* Sección 3: Objetivos y Observaciones */}
-          <motion.div
+          {/* ---------- Sección 3: Objetivos & Observaciones ---------- */}
+          <motion.section
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="space-y-4"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <header className="flex items-center gap-2 mb-2">
               <Target className="h-5 w-5 text-blue-600" />
-              <h2 className="text-lg font-medium text-gray-700">Objetivos y Observaciones</h2>
-            </div>
+              <h2 className="text-lg font-medium text-gray-700">Objetivos y Observaciones Clínicas</h2>
+            </header>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Ajuste de objetivos */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Ajuste de objetivos terapéuticos
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-pointer ml-1" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Indique si es necesario modificar los objetivos del tratamiento
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Textarea
-                  value={ajusteObjetivos}
-                  onChange={(e) => onAjusteObjetivosChange(e.target.value)}
-                  onBlur={() => handleBlur('ajusteObjetivos')}
-                  placeholder="¿Es necesario ajustar los objetivos terapéuticos?"
-                  className={cn(
-                    "min-h-[80px] resize-none bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
-                    touched.ajusteObjetivos && isFieldEmpty(ajusteObjetivos) && 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                  )}
-                />
-                {touched.ajusteObjetivos && isFieldEmpty(ajusteObjetivos) && (
-                  <div className="flex items-center gap-1 text-xs text-red-500 mt-0.5">
-                    <AlertCircle className="h-3 w-3" /> Este campo es obligatorio
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  onClick={() => handleAiSuggestion('ajusteObjetivos')}
-                  variant="outline"
-                  size="sm"
-                  className="mt-0.5 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-                  disabled={aiSuggestionActive !== null}
-                >
-                  {aiSuggestionActive === 'ajusteObjetivos' ? (
-                    <>Generando sugerencia<span className="animate-pulse">...</span></>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                      Sugerir texto
-                    </>
-                  )}
-                </Button>
-              </div>
+              <FieldTextarea
+                label="Ajuste de objetivos terapéuticos"
+                tooltip="Indique si los objetivos actuales siguen siendo relevantes o si necesitan modificación basada en el progreso o nuevos hallazgos."
+                placeholder="Ej: 'Mantener objetivos actuales. Considerar añadir objetivo sobre exposición social…'"
+                required
+                value={ajusteObjetivos}
+                onChange={onAjusteObjetivosChange}
+                onBlur={() => markTouched('ajusteObjetivos')}
+                showError={submitAttempted && isFieldEmpty(ajusteObjetivos)}
+                onSuggest={() => triggerAiSuggestion('ajusteObjetivos')}
+                loading={aiSuggestionActive === 'ajusteObjetivos'}
+              />
 
               {/* Observaciones del terapeuta */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 mb-1">
-                  <Label className="text-sm font-medium text-gray-700">
-                    Observaciones clínicas
-                    <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Info className="h-3.5 w-3.5 text-gray-400 cursor-pointer ml-1" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      Incluya observaciones relevantes para el seguimiento
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-                <Textarea
-                  value={observacionesTerapeuta}
-                  onChange={(e) => onObservacionesTerapeutaChange(e.target.value)}
-                  onBlur={() => handleBlur('observacionesTerapeuta')}
-                  placeholder="Observaciones clínicas adicionales"
-                  className={cn(
-                    "min-h-[80px] resize-none bg-gray-50 border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 transition-all",
-                    touched.observacionesTerapeuta && isFieldEmpty(observacionesTerapeuta) && 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
-                  )}
-                />
-                {touched.observacionesTerapeuta && isFieldEmpty(observacionesTerapeuta) && (
-                  <div className="flex items-center gap-1 text-xs text-red-500 mt-0.5">
-                    <AlertCircle className="h-3 w-3" /> Este campo es obligatorio
-                  </div>
-                )}
-                <Button
-                  type="button"
-                  onClick={() => handleAiSuggestion('observacionesTerapeuta')}
-                  variant="outline"
-                  size="sm"
-                  className="mt-0.5 text-xs bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-                  disabled={aiSuggestionActive !== null}
-                >
-                  {aiSuggestionActive === 'observacionesTerapeuta' ? (
-                    <>Generando sugerencia<span className="animate-pulse">...</span></>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 mr-1" />
-                      Sugerir texto
-                    </>
-                  )}
-                </Button>
-              </div>
+              <FieldTextarea
+                label="Observaciones clínicas / Plan"
+                tooltip="Incluya observaciones relevantes sobre el proceso terapéutico, la relación, contra-transferencia, y el plan para la próxima sesión."
+                placeholder="Ej: 'Paciente receptivo, buena alianza terapéutica. Próxima sesión: revisar técnicas de respiración…'"
+                required
+                value={observacionesTerapeuta}
+                onChange={onObservacionesTerapeutaChange}
+                onBlur={() => markTouched('observacionesTerapeuta')}
+                showError={submitAttempted && isFieldEmpty(observacionesTerapeuta)}
+                onSuggest={() => triggerAiSuggestion('observacionesTerapeuta')}
+                loading={aiSuggestionActive === 'observacionesTerapeuta'}
+              />
             </div>
-          </motion.div>
+          </motion.section>
 
-          {/* Botón de acción */}
+          {/* ---------- Submit ---------- */}
           <motion.div
-            className="flex justify-end mt-4"
+            className="flex justify-end mt-6"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -440,18 +532,21 @@ export default function TherapeuticFollowupFields({
             <Button
               type="button"
               onClick={handleSubmit}
+              disabled={!isFormValid || aiSuggestionActive !== null}
+              aria-disabled={!isFormValid || aiSuggestionActive !== null}
               className={cn(
-                "bg-blue-600 hover:bg-blue-700 text-white transition-colors",
-                !isFormValid && 'opacity-60 cursor-not-allowed'
+                'bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md',
+                'transition-all duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
+                !isFormValid && 'opacity-50 cursor-not-allowed hover:bg-blue-600',
               )}
-              disabled={!isFormValid}
             >
-              Guardar y continuar
-              <ChevronRight className="h-4 w-4 ml-1" />
+              Guardar Seguimiento
+              <ChevronRight className="h-4 w-4 ml-1.5" />
             </Button>
           </motion.div>
-        </div>
-      </motion.div>
-    </TooltipProvider>
+        </CardContent>
+      </Card>
+    </motion.div>
+  </TooltipProvider>
   );
 }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
 import { logAuditEvent } from '@/lib/audit-log';
+import { SessionStatus } from '@prisma/client';
 
 // GET /api/sessions - List all sessions (with optional filtering/pagination)
 export async function GET(request: NextRequest) {
