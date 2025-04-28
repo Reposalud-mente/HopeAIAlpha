@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Calendar, Clock, Plus } from "lucide-react";
 import SessionCreation from "./SessionCreation";
 import {
@@ -24,79 +24,83 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Session, SessionWithRelations } from "./types";
+import { SessionStatus } from "@prisma/client";
 
+// Interface for the session data displayed in the UI
+// This will be derived from the Prisma Session model
 interface SessionData {
   id: string;
-  date: string;
-  time: string;
-  duration: string;
+  date: string; // Derived from createdAt
+  time: string; // Derived from createdAt
+  duration: string; // Not in Prisma model, could be calculated or stored in activities
   type: string;
-  provider: string;
-  status: "completed" | "scheduled" | "cancelled" | "no-show";
+  provider: string; // Derived from clinician relation
+  status: SessionStatus;
   notes?: string;
 }
 
 interface PatientSessionsProps {
   patientId: string;
   patientName: string;
-  onSelectSession?: (session: SessionData) => void;
+  onSelectSession?: (session: SessionWithRelations) => void;
 }
 
-const sessionData: SessionData[] = [
-  {
-    id: "S-001",
-    date: "2023-10-15",
-    time: "09:00 AM",
-    duration: "60 min",
-    type: "Consulta inicial",
-    provider: "Dra. Sarah Johnson",
-    status: "completed",
-    notes: "El paciente reportó dolor crónico de espalda. Se prescribió fisioterapia y seguimiento en 2 semanas.",
-  },
-  {
-    id: "S-002",
-    date: "2023-10-29",
-    time: "10:30 AM",
-    duration: "30 min",
-    type: "Seguimiento",
-    provider: "Dra. Sarah Johnson",
-    status: "completed",
-    notes: "El paciente muestra mejoría con fisioterapia. Se continúa con el plan de tratamiento actual.",
-  },
-  {
-    id: "S-003",
-    date: "2023-11-12",
-    time: "11:00 AM",
-    duration: "30 min",
-    type: "Seguimiento",
-    provider: "Dr. Michael Chen",
-    status: "completed",
-    notes: "El dolor se redujo en un 40%. Se ajustó la dosis de medicación y se recomendó continuar la terapia física.",
-  },
-  {
-    id: "S-004",
-    date: "2023-12-05",
-    time: "02:15 PM",
-    duration: "45 min",
-    type: "Sesión de terapia",
-    provider: "Dra. Lisa Wong",
-    status: "no-show",
-  },
-  {
-    id: "S-005",
-    date: "2024-01-10",
-    time: "09:30 AM",
-    duration: "30 min",
-    type: "Seguimiento",
-    provider: "Dra. Sarah Johnson",
-    status: "completed",
-    notes: "El paciente ahora está sin dolor. Se le dio de alta de la fisioterapia.",
-  },
-];
-
 const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientName, onSelectSession }) => {
-  // patientId will be used for API calls in the future
   const [showCreate, setShowCreate] = useState(false);
+  const [sessions, setSessions] = useState<SessionWithRelations[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch sessions from the API
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/patients/${patientId}/sessions`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch sessions');
+        }
+        const data = await response.json();
+        setSessions(data);
+      } catch (err) {
+        console.error('Error fetching sessions:', err);
+        setError('Failed to load sessions');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (patientId) {
+      fetchSessions();
+    }
+  }, [patientId]);
+
+  // Transform SessionWithRelations to SessionData for UI display
+  const transformedSessions: SessionData[] = sessions.map(session => {
+    const createdDate = new Date(session.createdAt);
+    return {
+      id: session.id,
+      date: createdDate.toLocaleDateString(),
+      time: createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: '30 min', // Default duration or calculate from activities if available
+      type: session.type,
+      provider: session.clinician ?
+        `${session.clinician.firstName} ${session.clinician.lastName}` :
+        'Unknown Provider',
+      status: session.status,
+      notes: session.notes || undefined
+    };
+  });
+
+  // Handle session selection
+  const handleSelectSession = (sessionData: SessionData) => {
+    // Find the original session with all data
+    const fullSession = sessions.find(s => s.id === sessionData.id);
+    if (fullSession && onSelectSession) {
+      onSelectSession(fullSession);
+    }
+  };
   return (
     <div className="space-y-6">
       <Tabs defaultValue="list">
@@ -128,48 +132,81 @@ const PatientSessions: React.FC<PatientSessionsProps> = ({ patientId, patientNam
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sessionData.map(session => (
-                    <TableRow key={session.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-muted-foreground" />
-                          {session.date}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-muted-foreground" />
-                          {session.time}
-                        </div>
-                      </TableCell>
-                      <TableCell className="flex items-center gap-2">
-                        {session.type}
-                      </TableCell>
-
-                      <TableCell>
-                        <Badge variant={
-                          session.status === "completed"
-                            ? "default"
-                            : session.status === "scheduled"
-                            ? "secondary"
-                            : session.status === "cancelled"
-                            ? "destructive"
-                            : "outline"
-                        }>
-                          {session.status === "completed" ? "Completada" : session.status === "scheduled" ? "Programada" : session.status === "cancelled" ? "Cancelada" : "No asistió"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onSelectSession && onSelectSession(session)}
-                        >
-                          Ver detalles
-                        </Button>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">
+                        Cargando sesiones...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4 text-red-500">
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  ) : transformedSessions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-4">
+                        No hay sesiones registradas para este paciente.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    transformedSessions.map(session => (
+                      <TableRow key={session.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar size={16} className="text-muted-foreground" />
+                            {session.date}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Clock size={16} className="text-muted-foreground" />
+                            {session.time}
+                          </div>
+                        </TableCell>
+                        <TableCell className="flex items-center gap-2">
+                          {session.type}
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge variant={
+                            session.status === SessionStatus.COMPLETED
+                              ? "default"
+                              : session.status === SessionStatus.SCHEDULED
+                              ? "secondary"
+                              : session.status === SessionStatus.CANCELLED
+                              ? "destructive"
+                              : session.status === SessionStatus.NO_SHOW
+                              ? "outline"
+                              : session.status === SessionStatus.IN_PROGRESS
+                              ? "secondary"
+                              : session.status === SessionStatus.TRANSFERRED
+                              ? "outline"
+                              : "outline"
+                          }>
+                            {session.status === SessionStatus.COMPLETED ? "Completada" :
+                             session.status === SessionStatus.SCHEDULED ? "Programada" :
+                             session.status === SessionStatus.CANCELLED ? "Cancelada" :
+                             session.status === SessionStatus.NO_SHOW ? "No asistió" :
+                             session.status === SessionStatus.IN_PROGRESS ? "En progreso" :
+                             session.status === SessionStatus.TRANSFERRED ? "Transferida" :
+                             session.status === SessionStatus.DRAFT ? "Borrador" :
+                             session.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSelectSession(session)}
+                          >
+                            Ver detalles
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
 
                 </TableBody>
               </Table>

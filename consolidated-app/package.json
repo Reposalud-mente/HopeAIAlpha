@@ -21,6 +21,7 @@
     "seed": "ts-node --project tsconfig-seed.json -r dotenv/config src/prisma/seed.ts"
   },
   "dependencies": {
+    "@ai-sdk/google": "^1.2.13",
     "@auth/prisma-adapter": "^2.8.0",
     "@prisma/client": "^6.6.0",
     "@prisma/engines": "^6.6.0",

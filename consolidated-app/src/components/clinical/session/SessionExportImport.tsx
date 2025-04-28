@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SessionWithRelations } from './types';
 
 interface SessionExportImportProps {
   sessionId: string;
@@ -59,13 +60,59 @@ const SessionExportImport: React.FC<SessionExportImportProps> = ({ sessionId }) 
 
 
   return (
-    <div>
-      <h4>Export/Import Session</h4>
-      <button onClick={() => handleExport('json')} disabled={exporting}>Export as JSON</button>
-      <button onClick={() => handleExport('fhir')} disabled={exporting}>Export as FHIR</button>
-      <button onClick={() => handleExport('hl7')} disabled={exporting}>Export as HL7</button>
-      <input type="file" accept=".json,.hl7,.xml" onChange={handleImport} disabled={importing} />
-      {error && <div style={{ color: 'red' }}>{error}</div>}
+    <div className="space-y-4 p-4 border rounded-md bg-gray-50">
+      <h4 className="text-md font-medium">Export/Import Session</h4>
+
+      <div className="space-y-2">
+        <p className="text-sm text-gray-600">Export session data in different formats:</p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+            onClick={() => handleExport('json')}
+            disabled={exporting}
+          >
+            Export as JSON
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600 disabled:opacity-50"
+            onClick={() => handleExport('fhir')}
+            disabled={exporting}
+          >
+            Export as FHIR
+          </button>
+          <button
+            type="button"
+            className="px-3 py-1 bg-purple-500 text-white text-sm rounded hover:bg-purple-600 disabled:opacity-50"
+            onClick={() => handleExport('hl7')}
+            disabled={exporting}
+          >
+            Export as HL7
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="import-file" className="block text-sm font-medium">
+          Import session data:
+        </label>
+        <input
+          id="import-file"
+          type="file"
+          className="block w-full text-sm text-gray-500
+            file:mr-4 file:py-2 file:px-4
+            file:rounded file:border-0
+            file:text-sm file:font-semibold
+            file:bg-blue-50 file:text-blue-700
+            hover:file:bg-blue-100"
+          accept=".json,.hl7,.xml"
+          onChange={handleImport}
+          disabled={importing}
+        />
+      </div>
+
+      {error && <div className="mt-2 text-red-500">{error}</div>}
     </div>
   );
 };

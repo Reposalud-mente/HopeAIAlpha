@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
+import { SessionStatus } from '@prisma/client';
 
 // POST /api/sessions/[id]/transfer - Transfer session to another clinician/service
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // TODO: Add business logic for transfer validation and notifications
     const updated = await prisma.session.update({
       where: { id },
-      data: { clinicianId: targetClinicianId, status: 'transferred' },
+      data: { clinicianId: targetClinicianId, status: SessionStatus.TRANSFERRED },
     });
     return NextResponse.json(updated);
   } catch (error) {

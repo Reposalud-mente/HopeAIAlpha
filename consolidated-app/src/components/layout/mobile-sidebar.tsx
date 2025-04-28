@@ -13,7 +13,7 @@ const MobileSidebar = () => {
   // Forzar modo expandido en la vista móvil
   const forceExpanded = () => {
     if (!isExpanded) {
-      setExpanded(true);
+      setExpanded(true); // This will also reset isHoverExpanded to false in the context
     }
   };
 

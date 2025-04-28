@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import PatientSessions from '@/components/clinical/session/PatientSessions';
+import { Session, SessionWithRelations } from '@/components/clinical/session/types';
 import SessionEditor from '@/components/clinical/session/SessionEditor';
 import SessionTransfer from '@/components/clinical/session/SessionTransfer';
 import SessionExportImport from '@/components/clinical/session/SessionExportImport';
@@ -14,6 +15,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useToast } from '@/components/ui/use-toast';
 import {
   UserCircle,
   Calendar,
@@ -37,9 +39,10 @@ import PatientDetailSkeleton from '@/components/clinical/patient/PatientDetailSk
 import AppLayout from '@/components/layout/app-layout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { formatPatientName, calculateAge } from '@/lib/patient-utils';
 
 export default function PatientDetailPage() {
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SessionWithRelations | null>(null);
   const params = useParams();
   const router = useRouter();
   const patientId = params.id as string;
@@ -81,6 +84,9 @@ export default function PatientDetailPage() {
     };
   }, [patientId]);  // Eliminamos getPatient y patient de las dependencias para evitar re-renders innecesarios
 
+  // Hook para mostrar toasts
+  const { toast } = useToast();
+
   // Handle patient update
   const handleUpdatePatient = async (patientData: Partial<Patient>) => {
     if (patient) {
@@ -88,6 +94,20 @@ export default function PatientDetailPage() {
       if (updatedPatient) {
         setPatient(updatedPatient);
         setIsEditing(false);
+        // Mostrar toast de éxito
+        toast({
+          title: "Paciente actualizado",
+          description: `La información de ${formatPatientName(updatedPatient)} ha sido actualizada correctamente.`,
+          duration: 3000,
+        });
+      } else {
+        // Mostrar toast de error
+        toast({
+          title: "Error al actualizar",
+          description: "No se pudo actualizar la información del paciente. Inténtelo de nuevo.",
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     }
   };
@@ -96,32 +116,30 @@ export default function PatientDetailPage() {
   const handleDeletePatient = async () => {
     if (patient) {
       setIsDeleting(true);
+      const patientName = formatPatientName(patient); // Guardar el nombre antes de eliminar
       const success = await deletePatient(patient.id);
       if (success) {
+        // Mostrar toast de éxito
+        toast({
+          title: "Paciente eliminado",
+          description: `${patientName} ha sido eliminado correctamente.`,
+          duration: 3000,
+        });
         router.push('/patients');
       } else {
         setIsDeleting(false);
+        // Mostrar toast de error
+        toast({
+          title: "Error al eliminar",
+          description: "No se pudo eliminar el paciente. Inténtelo de nuevo.",
+          variant: "destructive",
+          duration: 5000,
+        });
       }
     }
   };
 
-  // Format patient name
-  const formatPatientName = (patient: Patient) => {
-    return `${patient.firstName} ${patient.lastName}`;
-  };
-
-  // Calculate age from date of birth
-  const calculateAge = (dateOfBirth: Date) => {
-    const today = new Date();
-    let age = today.getFullYear() - dateOfBirth.getFullYear();
-    const monthDiff = today.getMonth() - dateOfBirth.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateOfBirth.getDate())) {
-      age--;
-    }
-
-    return age;
-  };
+  // Patient utility functions are now imported from @/lib/patient-utils
 
   // Render PatientSessions below main info when patient is loaded
   if (isLoading) {

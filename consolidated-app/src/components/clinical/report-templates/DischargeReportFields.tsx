@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ReportFieldsProps } from './ReportFieldsInterface';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +59,15 @@ export default function DischargeReportFields({
     setTipoAlta(value);
     onIndicacionesAltaChange(`Tipo de alta: ${tiposAlta.find(t => t.value === value)?.label || value}\n${indicacionesAlta}`);
   };
+
+  // Scroll to the template header when component mounts
+  useEffect(() => {
+    // Find the header element by ID
+    const headerElement = document.getElementById('report-template-header');
+    if (headerElement) {
+      headerElement.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
 
   return (
     <Card className="border-none shadow-none bg-transparent">

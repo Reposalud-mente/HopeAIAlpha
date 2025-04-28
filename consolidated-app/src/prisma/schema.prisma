@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   seed     = "ts-node -r dotenv/config src/prisma/seed.ts"
@@ -12,69 +6,61 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
 }
 
 model User {
-  id              String         @id @default(uuid()) @db.Uuid
-  email           String         @unique
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique
   passwordHash    String
   firstName       String
   lastName        String
   role            Role
   licenseNumber   String?
   specialty       String?
-  clinicId        String?        @db.Uuid
+  clinicId        String?          @db.Uuid
   profileImageUrl String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   lastLoginAt     DateTime?
-  isActive        Boolean        @default(true)
-
-  // Relations
-  clinic          Clinic?        @relation(fields: [clinicId], references: [id])
+  isActive        Boolean          @default(true)
+  aiConsultations AIConsultation[]
+  appointments    Appointment[]
   assessments     Assessment[]
-  reports         Report[]
-  clinicalNotes   ClinicalNote[]
-  patients        Patient[]      @relation("CreatedByUser")
-  auditLogs       AuditLog[]
   attachments     Attachment[]
-  treatmentPlans  TreatmentPlan[]
+  auditLogs       AuditLog[]
+  clinicalNotes   ClinicalNote[]
   feedback        Feedback[]
-  appointments   Appointment[]
-  messages       Message[]
-  sessions        Session[]      @relation("ClinicianSessions")
-}
-
-enum Role {
-  PSYCHOLOGIST
-  SUPERVISOR
-  ADMIN
+  messages        Message[]
+  patients        Patient[]        @relation("CreatedByUser")
+  reports         Report[]
+  sessions        Session[]        @relation("ClinicianSessions")
+  treatmentPlans  TreatmentPlan[]
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
 }
 
 model Clinic {
-  id            String       @id @default(uuid()) @db.Uuid
-  name          String
-  address       String
-  contactPhone  String
-  contactEmail  String?
-  logoUrl       String?
-  website       String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  isActive      Boolean      @default(true)
-
-  // Relations
-  users         User[]
-  assessments   Assessment[]
+  id           String       @id @default(uuid()) @db.Uuid
+  name         String
+  address      String
+  contactPhone String
+  contactEmail String?
+  logoUrl      String?
+  website      String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  isActive     Boolean      @default(true)
+  assessments  Assessment[]
+  users        User[]
 }
 
 model Patient {
-  id                    String       @id @default(uuid()) @db.Uuid
+  id                    String        @id @default(uuid()) @db.Uuid
   firstName             String
   lastName              String
   dateOfBirth           DateTime
   gender                String?
-  contactEmail          String       @unique
+  contactEmail          String        @unique
   contactPhone          String?
   address               String?
   emergencyContactName  String?
@@ -84,70 +70,55 @@ model Patient {
   insuranceProvider     String?
   insuranceNumber       String?
   educationLevel        String?
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  createdById           String       @db.Uuid
-  isActive              Boolean      @default(true)
-
-  // Relations
-  createdBy             User         @relation("CreatedByUser", fields: [createdById], references: [id])
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  createdById           String        @db.Uuid
+  isActive              Boolean       @default(true)
+  appointments          Appointment[]
   assessments           Assessment[]
   attachments           Attachment[]
-  appointments          Appointment[]
   messages              Message[]
+  createdBy             User          @relation("CreatedByUser", fields: [createdById], references: [id])
   sessions              Session[]
 }
 
 model Assessment {
-  id                String                @id @default(uuid()) @db.Uuid
-  patientId         String                @db.Uuid
-  clinicianId       String                @db.Uuid
-  clinicId          String                @db.Uuid
-  assessmentDate    DateTime              @default(now())
-  status            AssessmentStatus      @default(DRAFT)
-  currentStep       String                @default("motivos_consulta")
-  lastUpdated       DateTime              @default(now()) @updatedAt
-  completionDate    DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-
-  // Relations
-  patient           Patient               @relation(fields: [patientId], references: [id])
-  clinician         User                  @relation(fields: [clinicianId], references: [id])
-  clinic            Clinic                @relation(fields: [clinicId], references: [id])
+  id                  String                     @id @default(uuid()) @db.Uuid
+  patientId           String                     @db.Uuid
+  clinicianId         String                     @db.Uuid
+  clinicId            String                     @db.Uuid
+  assessmentDate      DateTime                   @default(now())
+  status              AssessmentStatus           @default(DRAFT)
+  currentStep         String                     @default("motivos_consulta")
+  lastUpdated         DateTime                   @default(now()) @updatedAt
+  completionDate      DateTime?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  clinic              Clinic                     @relation(fields: [clinicId], references: [id])
+  clinician           User                       @relation(fields: [clinicianId], references: [id])
+  patient             Patient                    @relation(fields: [patientId], references: [id])
+  dsmCriteria         AssessmentDSM5Criteria[]
+  evaluationAreas     AssessmentEvaluationArea[]
+  icdCriteria         AssessmentICDCriteria[]
+  clinicalNotes       ClinicalNote[]
   consultationReasons ConsultationReason[]
-  evaluationAreas   AssessmentEvaluationArea[]
-  icdCriteria       AssessmentICDCriteria[]
-  dsmCriteria       AssessmentDSM5Criteria[]
-  reports           Report[]
-  clinicalNotes     ClinicalNote[]
-  treatmentPlans    TreatmentPlan[]
-}
-
-enum AssessmentStatus {
-  DRAFT
-  IN_PROGRESS
-  COMPLETED
-  ARCHIVED
+  reports             Report[]
+  treatmentPlans      TreatmentPlan[]
 }
 
 model ConsultationReason {
-  id            String     @id @default(uuid()) @db.Uuid
-  assessmentId  String     @db.Uuid
-  reason        String
-  createdAt     DateTime   @default(now())
-
-  // Relations
-  assessment    Assessment @relation(fields: [assessmentId], references: [id])
+  id           String     @id @default(uuid()) @db.Uuid
+  assessmentId String     @db.Uuid
+  reason       String
+  createdAt    DateTime   @default(now())
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
 }
 
 model EvaluationArea {
-  id          String                    @id
+  id          String                     @id
   name        String
   description String?
-  isActive    Boolean                   @default(true)
-
-  // Relations
+  isActive    Boolean                    @default(true)
   assessments AssessmentEvaluationArea[]
 }
 
@@ -156,66 +127,52 @@ model AssessmentEvaluationArea {
   areaId       String
   notes        String?
   createdAt    DateTime       @default(now())
-
-  // Relations
-  assessment   Assessment     @relation(fields: [assessmentId], references: [id])
   area         EvaluationArea @relation(fields: [areaId], references: [id])
+  assessment   Assessment     @relation(fields: [assessmentId], references: [id])
 
   @@id([assessmentId, areaId])
 }
 
-enum AppointmentStatus {
-  SCHEDULED
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
 model Appointment {
-  id          String   @id @default(uuid()) @db.Uuid
-  patientId   String   @db.Uuid
-  userId      String   @db.Uuid
-  date        DateTime
-  status      AppointmentStatus @default(SCHEDULED)
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  id        String            @id @default(uuid()) @db.Uuid
+  patientId String            @db.Uuid
+  userId    String            @db.Uuid
+  date      DateTime
+  status    AppointmentStatus @default(SCHEDULED)
+  notes     String?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  patient   Patient           @relation(fields: [patientId], references: [id])
+  user      User              @relation(fields: [userId], references: [id])
 }
 
 model Message {
-  id          String   @id @default(uuid()) @db.Uuid
-  patientId   String   @db.Uuid
-  userId      String   @db.Uuid
-  content     String
-  sentAt      DateTime @default(now())
-  read        Boolean  @default(false)
-
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  user        User     @relation(fields: [userId], references: [id])
+  id        String   @id @default(uuid()) @db.Uuid
+  patientId String   @db.Uuid
+  userId    String   @db.Uuid
+  content   String
+  sentAt    DateTime @default(now())
+  read      Boolean  @default(false)
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Session {
-  id            String   @id @default(uuid()) @db.Uuid
-  patientId     String   @db.Uuid
-  clinicianId   String   @db.Uuid
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id            String        @id @default(uuid()) @db.Uuid
+  patientId     String        @db.Uuid
+  clinicianId   String        @db.Uuid
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
   type          String
   objectives    Json?
   notes         String?
   activities    Json?
-  status        String
   attachments   Json?
   aiSuggestions Json?
-
-  // Relations
-  patient       Patient  @relation(fields: [patientId], references: [id])
-  clinician     User     @relation("ClinicianSessions", fields: [clinicianId], references: [id])
+  status        SessionStatus @default(DRAFT)
+  clinician     User          @relation("ClinicianSessions", fields: [clinicianId], references: [id])
+  patient       Patient       @relation(fields: [patientId], references: [id])
 }
-
 
 model ICDCriteria {
   code        String                  @id
@@ -223,23 +180,19 @@ model ICDCriteria {
   description String?
   category    String
   isActive    Boolean                 @default(true)
-
-  // Relations
   assessments AssessmentICDCriteria[]
-  dsmCriteria DSM5Criteria[]         // Relation to DSM-5 criteria that are equivalent
+  dsmCriteria DSM5Criteria[]
 }
 
 model AssessmentICDCriteria {
-  assessmentId   String       @db.Uuid
+  assessmentId   String      @db.Uuid
   icdCode        String
-  isPrimary      Boolean      @default(false)
+  isPrimary      Boolean     @default(false)
   certaintyLevel String?
   notes          String?
-  createdAt      DateTime     @default(now())
-
-  // Relations
-  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
-  criteria       ICDCriteria  @relation(fields: [icdCode], references: [code])
+  createdAt      DateTime    @default(now())
+  assessment     Assessment  @relation(fields: [assessmentId], references: [id])
+  criteria       ICDCriteria @relation(fields: [icdCode], references: [code])
 
   @@id([assessmentId, icdCode])
 }
@@ -254,8 +207,6 @@ model Report {
   updatedAt    DateTime   @updatedAt
   isFinal      Boolean    @default(false)
   filename     String?
-
-  // Relations
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
   createdBy    User       @relation(fields: [createdById], references: [id])
 }
@@ -268,24 +219,129 @@ model ClinicalNote {
   createdById  String     @db.Uuid
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-
-  // Relations
   assessment   Assessment @relation(fields: [assessmentId], references: [id])
   createdBy    User       @relation(fields: [createdById], references: [id])
 }
 
 model AuditLog {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String?     @db.Uuid
-  action      AuditAction
-  entityType  String
-  entityId    String      @db.Uuid
-  details     Json?
-  ipAddress   String?
-  createdAt   DateTime    @default(now())
+  id         String      @id @default(uuid()) @db.Uuid
+  userId     String?     @db.Uuid
+  entityType String
+  entityId   String      @db.Uuid
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime    @default(now())
+  action     AuditAction
+  user       User?       @relation(fields: [userId], references: [id])
+}
 
-  // Relations
-  user        User?       @relation(fields: [userId], references: [id])
+model Attachment {
+  id                String   @id @default(uuid()) @db.Uuid
+  relatedEntityType String
+  relatedEntityId   String   @db.Uuid
+  fileName          String
+  filePath          String
+  fileType          String
+  fileSize          BigInt
+  uploadedById      String   @db.Uuid
+  uploadedAt        DateTime @default(now())
+  description       String?
+  patientId         String?  @db.Uuid
+  patient           Patient? @relation(fields: [patientId], references: [id])
+  uploadedBy        User     @relation(fields: [uploadedById], references: [id])
+}
+
+model TreatmentPlan {
+  id               String     @id @default(uuid()) @db.Uuid
+  assessmentId     String     @db.Uuid
+  planText         String
+  startDate        DateTime?
+  expectedDuration String?
+  createdById      String     @db.Uuid
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  status           String     @default("active")
+  assessment       Assessment @relation(fields: [assessmentId], references: [id])
+  createdBy        User       @relation(fields: [createdById], references: [id])
+}
+
+model Feedback {
+  id         String    @id @default(uuid()) @db.Uuid
+  type       String
+  text       String
+  screenshot String?
+  url        String?
+  userAgent  String?
+  userId     String?   @db.Uuid
+  metadata   Json?
+  status     String    @default("new")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  user       User?     @relation(fields: [userId], references: [id])
+}
+
+model DSM5Criteria {
+  code          String                   @id
+  name          String
+  description   String?
+  category      String
+  icdEquivalent String?
+  isActive      Boolean                  @default(true)
+  assessments   AssessmentDSM5Criteria[]
+  icdCriteria   ICDCriteria?             @relation(fields: [icdEquivalent], references: [code])
+}
+
+model AssessmentDSM5Criteria {
+  assessmentId   String       @db.Uuid
+  dsmCode        String
+  isPrimary      Boolean      @default(false)
+  certaintyLevel String?
+  notes          String?
+  createdAt      DateTime     @default(now())
+  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
+  criteria       DSM5Criteria @relation(fields: [dsmCode], references: [code])
+
+  @@id([assessmentId, dsmCode])
+}
+
+model AIConsultation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  PSYCHOLOGIST
+  SUPERVISOR
+  ADMIN
+}
+
+enum AssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum SessionStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  TRANSFERRED
 }
 
 enum AuditAction {
@@ -297,84 +353,4 @@ enum AuditAction {
   ACCESS
   LOGIN
   LOGOUT
-}
-
-model Attachment {
-  id                String    @id @default(uuid()) @db.Uuid
-  relatedEntityType String
-  relatedEntityId   String    @db.Uuid
-  fileName          String
-  filePath          String
-  fileType          String
-  fileSize          BigInt
-  uploadedById      String    @db.Uuid
-  uploadedAt        DateTime  @default(now())
-  description       String?
-
-  // Relations
-  uploadedBy        User      @relation(fields: [uploadedById], references: [id])
-  patient           Patient?  @relation(fields: [patientId], references: [id])
-  patientId         String?   @db.Uuid
-}
-
-model TreatmentPlan {
-  id             String       @id @default(uuid()) @db.Uuid
-  assessmentId   String       @db.Uuid
-  planText       String
-  startDate      DateTime?
-  expectedDuration String?
-  createdById    String       @db.Uuid
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  status         String       @default("active")
-
-  // Relations
-  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
-  createdBy      User         @relation(fields: [createdById], references: [id])
-}
-
-model Feedback {
-  id          String    @id @default(uuid()) @db.Uuid
-  type        String    // 'issue', 'suggestion', 'general'
-  text        String    @db.Text
-  screenshot  String?   @db.Text
-  url         String?
-  userAgent   String?
-  userId      String?   @db.Uuid
-  metadata    Json?     // Additional metadata like browser info, screen size, etc.
-  status      String    @default("new") // 'new', 'in_progress', 'resolved', 'closed'
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  resolvedAt  DateTime?
-
-  // Relations
-  user        User?     @relation(fields: [userId], references: [id])
-}
-
-model DSM5Criteria {
-  code          String                    @id
-  name          String
-  description   String?
-  category      String
-  icdEquivalent String?
-  isActive      Boolean                   @default(true)
-
-  // Relations
-  assessments   AssessmentDSM5Criteria[]
-  icdCriteria   ICDCriteria?              @relation(fields: [icdEquivalent], references: [code])
-}
-
-model AssessmentDSM5Criteria {
-  assessmentId   String       @db.Uuid
-  dsmCode        String
-  isPrimary      Boolean      @default(false)
-  certaintyLevel String?
-  notes          String?
-  createdAt      DateTime     @default(now())
-
-  // Relations
-  assessment     Assessment   @relation(fields: [assessmentId], references: [id])
-  criteria       DSM5Criteria @relation(fields: [dsmCode], references: [code])
-
-  @@id([assessmentId, dsmCode])
 }

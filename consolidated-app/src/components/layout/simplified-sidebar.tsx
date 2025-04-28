@@ -26,42 +26,50 @@ const navigationItems = [
   { name: 'Pacientes', href: '/patients', icon: Users },
   { name: 'Informes', href: '/reports', icon: FileText },
   { name: 'Informes (Dinámico)', href: '/dynamic-reports', icon: Sparkles },
-  { name: 'Consultas AI', href: '/ai-consult', icon: MessageSquare },
+  { name: 'Consultas AI', href: '/consultas-ai', icon: MessageSquare },
   { name: 'Calendario', href: '/calendar', icon: Calendar },
   { name: 'Configuración', href: '/settings', icon: Settings },
 ];
 
 // Toggle button component for the sidebar
-const SidebarToggle = ({ isExpanded, toggleExpanded }: { isExpanded: boolean, toggleExpanded: () => void }) => {
+const SidebarToggle = ({ isExpanded, toggleExpanded, isHoverExpanded }: {
+  isExpanded: boolean,
+  toggleExpanded: () => void,
+  isHoverExpanded?: boolean
+}) => {
   return (
     <button
       type="button"
       onClick={toggleExpanded}
       className={cn(
-        "absolute transition-all duration-300 bg-white border border-[#e6e6e3] rounded-full p-1.5",
-        "shadow-sm hover:shadow-md hover:bg-gray-50",
-        "focus:outline-0 focus:ring-0 focus:shadow-sm focus:bg-white",
-        "active:outline-0 active:ring-0 active:shadow-sm active:bg-white",
+        "absolute transition-all duration-300 bg-white border rounded-full p-1.5",
+        "shadow-sm hover:shadow-md",
+        "focus:outline-0 focus:ring-0 focus:shadow-sm",
+        "active:outline-0 active:ring-0 active:shadow-sm",
         "right-[-10px] top-[16px] z-10",
+        isHoverExpanded
+          ? "border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300"
+          : "border-[#e6e6e3] hover:bg-gray-50 hover:border-gray-300", // Enhanced hover effects
         "no-tap-highlight" // Clase personalizada para eliminar el efecto de tap
       )}
       aria-label={isExpanded ? "Collapse sidebar" : "Expand sidebar"}
       title={isExpanded ? "Colapsar menú" : "Expandir menú"}
     >
       {isExpanded ? (
-        <ChevronLeft className="h-4 w-4 text-gray-700" />
+        <ChevronLeft className={cn("h-4 w-4 transition-all duration-200", isHoverExpanded ? "text-blue-500" : "text-gray-700")} />
       ) : (
-        <ChevronLeft className="h-4 w-4 rotate-180 text-gray-700" />
+        <ChevronLeft className="h-4 w-4 rotate-180 text-gray-700 transition-all duration-200" />
       )}
     </button>
   );
 };
 
 // Navigation item component
-const NavItem = ({ item, isActive, isExpanded }: {
+const NavItem = ({ item, isActive, isExpanded, isHoverExpanded }: {
   item: { name: string; href: string; icon: React.ElementType },
   isActive: boolean,
-  isExpanded: boolean
+  isExpanded: boolean,
+  isHoverExpanded?: boolean
 }) => {
   const Icon = item.icon;
 
@@ -69,34 +77,55 @@ const NavItem = ({ item, isActive, isExpanded }: {
     <Link
       href={item.href}
       className={cn(
-        "transition-all duration-200 rounded-md my-1",
-        isActive ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:bg-gray-50",
-        isExpanded ? "h-10 px-3 flex items-center" : "h-10 grid place-items-center"
+        "transition-all duration-200 rounded-md my-1 border border-transparent", // Added transparent border for hover effect
+        isActive
+          ? "text-blue-600 bg-blue-50"
+          : isExpanded
+            ? "text-gray-700 hover:bg-gray-50 hover:border-gray-200" // Subtle border on hover when expanded
+            : "text-gray-500 hover:border-gray-300", // Grey text when collapsed with hover border
+        isExpanded ? "h-10 px-3 flex items-center" : "h-10 grid place-items-center",
+        isHoverExpanded && !isActive && "hover:bg-blue-50/30 hover:border-blue-200" // Subtle hover effect when in hover mode
       )}
       title={!isExpanded ? item.name : undefined}
     >
       <Icon className={cn(
         "transition-all duration-200 h-5 w-5",
-        isActive ? "text-blue-600" : "text-gray-500"
+        isActive
+          ? "text-blue-600"
+          : isExpanded
+            ? (isHoverExpanded ? "text-blue-400" : "text-gray-500")
+            : "text-gray-500" // Always grey icons when collapsed
       )} />
 
       {isExpanded && (
-        <span className="ml-3 text-sm font-medium">{item.name}</span>
+        <span className={cn(
+          "ml-3 text-sm font-medium",
+          isActive ? "text-blue-600" : (isHoverExpanded && !isActive) ? "text-blue-500/80" : "text-gray-700"
+        )}>{item.name}</span>
       )}
     </Link>
   );
 };
 
 // User profile component
-const UserProfile = ({ user, isExpanded }: { user: any, isExpanded: boolean }) => {
+const UserProfile = ({ user, isExpanded, isHoverExpanded }: {
+  user: any,
+  isExpanded: boolean,
+  isHoverExpanded?: boolean
+}) => {
   return (
     <div className={cn(
-      "mt-auto border-t border-[#e6e6e3] transition-all duration-300 sticky bottom-0 bg-white",
-      isExpanded ? "p-4" : "py-4"
+      "mt-auto border-t transition-all duration-300 sticky bottom-0 bg-white",
+      isExpanded ? "p-4" : "py-4",
+      isHoverExpanded ? "border-blue-100" : "border-[#e6e6e3]" // Subtle border color in hover mode
     )}>
       {!isExpanded ? (
         <div className="grid place-items-center">
-          <div className="h-8 w-8 rounded-full bg-[#f8f8f8] text-gray-700 flex items-center justify-center border border-[#e6e6e3] shadow-sm">
+          <div className={cn(
+            "h-8 w-8 rounded-full bg-[#f8f8f8] flex items-center justify-center border shadow-sm transition-all duration-200",
+            isHoverExpanded ? "border-blue-200 text-blue-500" : "border-[#e6e6e3] text-gray-500", // Grey text when collapsed
+            "hover:border-gray-300" // Hover effect for border
+          )}>
             <span className="font-medium text-xs">
               {user?.name?.substring(0, 2) || 'DR'}
             </span>
@@ -104,13 +133,20 @@ const UserProfile = ({ user, isExpanded }: { user: any, isExpanded: boolean }) =
         </div>
       ) : (
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-[#f8f8f8] text-gray-700 flex items-center justify-center border border-[#e6e6e3] shadow-sm">
+          <div className={cn(
+            "h-8 w-8 rounded-full bg-[#f8f8f8] flex items-center justify-center border shadow-sm transition-all duration-200",
+            isHoverExpanded ? "border-blue-200 text-blue-500" : "border-[#e6e6e3] text-gray-700",
+            "hover:border-gray-300" // Hover effect for border
+          )}>
             <span className="font-medium text-xs">
               {user?.name?.substring(0, 2) || 'DR'}
             </span>
           </div>
           <div className="min-w-0 animate-fadeIn overflow-hidden">
-            <p className="text-sm font-medium truncate text-gray-700 max-w-[160px]">{user?.name || 'Dr. Rivera'}</p>
+            <p className={cn(
+              "text-sm font-medium truncate max-w-[160px]",
+              isHoverExpanded ? "text-blue-600" : "text-gray-700"
+            )}>{user?.name || 'Dr. Rivera'}</p>
             <p className="text-xs text-gray-500 truncate max-w-[160px]">{user?.role || 'Psicólogo'}</p>
           </div>
         </div>
@@ -123,7 +159,7 @@ const UserProfile = ({ user, isExpanded }: { user: any, isExpanded: boolean }) =
 const SimplifiedSidebar = () => {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { isExpanded, toggleExpanded } = useNavbar();
+  const { isExpanded, isHoverExpanded, toggleExpanded, handleMouseEnter, handleMouseLeave } = useNavbar();
 
   // Crear clases dinámicas para el ancho
   const sidebarWidthClass = isExpanded ? 'w-[240px]' : 'w-[56px]';
@@ -134,11 +170,17 @@ const SimplifiedSidebar = () => {
         "h-full transition-all duration-300 z-30 relative",
         sidebarWidthClass
       )}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      <div className="h-full bg-white border-r border-[#e6e6e3] flex flex-col overflow-hidden border-t-0 shadow-sm relative">
+      <div className={cn(
+        "h-full bg-white border-r flex flex-col overflow-hidden border-t-0 shadow-sm relative transition-all duration-300",
+        isHoverExpanded ? "border-blue-200 ring-1 ring-blue-100" : "border-[#e6e6e3] hover:border-gray-300", // Subtle visual indicator for hover mode and border hover effect
+        !isExpanded && "hover:shadow-md" // Add shadow on hover when collapsed
+      )}>
         <div className="h-full flex flex-col relative">
           {/* Toggle button */}
-          <SidebarToggle isExpanded={isExpanded} toggleExpanded={toggleExpanded} />
+          <SidebarToggle isExpanded={isExpanded} toggleExpanded={toggleExpanded} isHoverExpanded={isHoverExpanded} />
 
           {/* Spacer to replace logo section */}
           <div className="py-6"></div>
@@ -153,13 +195,14 @@ const SimplifiedSidebar = () => {
                   item={item}
                   isActive={isActive}
                   isExpanded={isExpanded}
+                  isHoverExpanded={isHoverExpanded}
                 />
               );
             })}
           </div>
 
           {/* User profile */}
-          <UserProfile user={user} isExpanded={isExpanded} />
+          <UserProfile user={user} isExpanded={isExpanded} isHoverExpanded={isHoverExpanded} />
         </div>
       </div>
     </div>

@@ -68,45 +68,55 @@ const upcomingAppointments = appointments
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <Video className="h-6 w-6 text-blue-600" />
-                </div>
-                <span className="text-sm font-medium text-blue-600">Hoy</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-1">3</h3>
-              <p className="text-gray-600">Consultas programadas</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <span className="text-sm font-medium text-green-600">Esta semana</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-1">12</h3>
-              <p className="text-gray-600">Consultas completadas</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-purple-100 p-3 rounded-full">
-                  <Clock className="h-6 w-6 text-purple-600" />
-                </div>
-                <span className="text-sm font-medium text-purple-600">Promedio</span>
-              </div>
-              <h3 className="text-2xl font-bold mb-1">45 min</h3>
-              <p className="text-gray-600">Duración de consulta</p>
-            </CardContent>
-          </Card>
+  {/* Card 1: Pacientes Activos */}
+  <Card className="flex flex-col justify-between bg-blue-50 border border-blue-100 shadow-none h-full">
+    <div className="flex flex-col flex-1 justify-between h-full p-4">
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-gray-500">Pacientes Activos</span>
         </div>
+        <div className="text-3xl font-bold text-blue-900 mt-2">{dashboardSummary?.activePatients ?? 0}</div>
+        <span className="text-sm text-gray-500">en tratamiento</span>
+      </div>
+      <div className="flex gap-2 mt-6 items-end">
+        <Button variant="outline" className="flex-1">Todos los Pacientes</Button>
+        <Button variant="outline" className="flex-1">Métricas</Button>
+      </div>
+    </div>
+  </Card>
+
+  {/* Card 2: Sesiones Hoy */}
+  <Card className="flex flex-col justify-between bg-green-50 border border-green-100 shadow-none h-full">
+    <div className="flex flex-col flex-1 justify-between h-full p-4">
+      <div>
+        <span className="text-xs text-gray-500">Sesiones Hoy</span>
+        <div className="text-3xl font-bold text-green-900 mt-2">{dashboardSummary?.sessionsToday ?? 0}</div>
+        <span className="text-xs text-gray-500 mt-1">{dashboardSummary?.pendingEvaluations ?? 0} evaluaciones pendientes</span>
+      </div>
+      <div className="flex gap-2 mt-6 items-end">
+        <Button variant="outline" className="flex-1">Calendario</Button>
+        <Button variant="outline" className="flex-1">To Do</Button>
+      </div>
+    </div>
+  </Card>
+
+  {/* Card 3: Asistente Clínico IA */}
+  <Card className="flex flex-col justify-between bg-purple-50 border border-purple-100 shadow-none h-full">
+    <div className="flex flex-col flex-1 justify-between h-full p-4">
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="h-2 w-2 rounded-full bg-green-400 inline-block"></span>
+          <span className="font-semibold text-purple-900">Listo para ayudar</span>
+        </div>
+        <span className="text-xs text-gray-500 mt-1">Tu apoyo inteligente para documentación y consultas clínicas</span>
+      </div>
+      <div className="flex gap-2 mt-6 items-end">
+        <Button variant="outline" className="flex-1">Consultar</Button>
+        <Button variant="outline" className="flex-1">Generar Informe</Button>
+      </div>
+    </div>
+  </Card>
+</div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
@@ -146,40 +156,46 @@ const upcomingAppointments = appointments
           </div>
 
           <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Mensajes Recientes</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">Promueve la comunicación y el vínculo con tus pacientes</p>
-              </CardHeader>
-              <CardContent>
-                {(() => {
-  // Only show one message per patient
-  const seenMsgPatientIds = new Set();
-  const uniqueMessages = messages.filter((msg: any) => {
-    if (seenMsgPatientIds.has(msg.patientId)) return false;
-    seenMsgPatientIds.add(msg.patientId);
-    return true;
-  }).slice(0, 2);
-  return uniqueMessages.map((msg: any) => {
-    const patient = patients.find((p: any) => p.id === msg.patientId);
-    return (
-      <div key={msg.id} className="mb-3 p-3 border rounded-lg">
-        <div className="flex justify-between mb-1">
-          <p className="font-medium">{patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente'}</p>
-          <span className="text-xs text-gray-500">{new Date(msg.sentAt).toLocaleTimeString('es-CL')}</span>
-        </div>
-        <p className="text-sm text-gray-700 italic truncate">
-          {msg.content?.trim()
-            ? msg.content
-            : 'Mensaje de vínculo terapéutico'}
-        </p>
+            <Card className="flex flex-col justify-between h-full bg-blue-50 border border-blue-100 shadow-none">
+  <div className="flex flex-col flex-1 justify-between h-full p-4">
+    <div>
+      <div className="mb-1">
+        <span className="text-xs text-gray-500">Mensajes Recientes</span>
+        <p className="text-xs text-blue-900 font-semibold mt-1">Promueve la comunicación y el vínculo con tus pacientes</p>
       </div>
-    );
-  });
-})()}
-                <Button variant="outline" className="w-full mt-2">Ver Todos los Mensajes</Button>
-              </CardContent>
-            </Card>
+      <div className="flex flex-col gap-2 mt-2">
+        {(() => {
+          // Only show one message per patient
+          const seenMsgPatientIds = new Set();
+          const uniqueMessages = messages.filter((msg: any) => {
+            if (seenMsgPatientIds.has(msg.patientId)) return false;
+            seenMsgPatientIds.add(msg.patientId);
+            return true;
+          }).slice(0, 2);
+          return uniqueMessages.length > 0 ? uniqueMessages.map((msg: any) => {
+            const patient = patients.find((p: any) => p.id === msg.patientId);
+            return (
+              <div key={msg.id} className="p-3 rounded-lg bg-white border border-blue-100">
+                <div className="flex justify-between mb-1">
+                  <p className="font-medium text-blue-900">{patient ? `${patient.firstName} ${patient.lastName}` : 'Paciente'}</p>
+                  <span className="text-xs text-blue-700">{new Date(msg.sentAt).toLocaleTimeString('es-CL')}</span>
+                </div>
+                <p className="text-sm text-blue-800 italic truncate">
+                  {msg.content?.trim()
+                    ? msg.content
+                    : 'Mensaje de vínculo terapéutico'}
+                </p>
+              </div>
+            );
+          }) : <div className="text-sm text-blue-400 italic">No hay mensajes recientes</div>;
+        })()}
+      </div>
+    </div>
+    <div className="flex items-end mt-6">
+      <Button variant="outline" className="flex-1">Ver Todos los Mensajes</Button>
+    </div>
+  </div>
+</Card>
           </div>
         </div>
       </div>
