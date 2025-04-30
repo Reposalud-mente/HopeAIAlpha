@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import { prisma } from '@/lib/prisma';
 import { logAuditEvent } from '@/lib/audit-log';
-import { SessionStatus } from '@prisma/client';
+import { SessionService, SessionValidationError } from '@/lib/services/session-service';
+import { ZodError } from 'zod';
 
 // GET /api/sessions - List all sessions (with optional filtering/pagination)
 export async function GET(request: NextRequest) {
@@ -20,9 +20,21 @@ export async function GET(request: NextRequest) {
         clinician: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    return NextResponse.json(sessions);
+
+    // Convert to TypeScript format with validation
+    const { prismaSessionToTypescript } = await import('@/lib/validations/session');
+    const validatedSessions = sessions.map(s => prismaSessionToTypescript(s));
+
+    return NextResponse.json(validatedSessions);
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch sessions', details: error }, { status: 500 });
+    console.error('Error fetching sessions:', error);
+    if (error instanceof ZodError) {
+      return NextResponse.json({
+        error: 'Validation error in sessions data',
+        details: error.format()
+      }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to fetch sessions', details: String(error) }, { status: 500 });
   }
 }
 
@@ -34,19 +46,15 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = await request.json();
-    const newSession = await prisma.session.create({
-      data: {
-        patientId: body.patientId,
-        clinicianId: body.clinicianId,
-        type: body.type,
-        objectives: body.objectives,
-        notes: body.notes,
-        activities: body.activities,
-        status: body.status,
-        attachments: body.attachments,
-        aiSuggestions: body.aiSuggestions,
-      },
-    });
+
+    // Set clinicianId from the authenticated user if not provided
+    if (!body.clinicianId) {
+      body.clinicianId = session.user.id;
+    }
+
+    // Create session with validation
+    const newSession = await SessionService.createSession(body);
+
     // Audit log: session creation
     await logAuditEvent({
       userId: session.user.id,
@@ -56,8 +64,28 @@ export async function POST(request: NextRequest) {
       details: { after: newSession },
       req: request,
     });
+
     return NextResponse.json(newSession, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to create session', details: error }, { status: 500 });
+    console.error('Error creating session:', error);
+
+    if (error instanceof SessionValidationError) {
+      return NextResponse.json({
+        error: 'Session validation failed',
+        details: error.errors
+      }, { status: 400 });
+    }
+
+    if (error instanceof ZodError) {
+      return NextResponse.json({
+        error: 'Invalid session data',
+        details: error.format()
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      error: 'Failed to create session',
+      details: String(error)
+    }, { status: 500 });
   }
 }

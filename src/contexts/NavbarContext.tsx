@@ -22,7 +22,7 @@ const getInitialState = (): boolean => {
       return savedState === 'true';
     }
   }
-  return true; // Default to expanded
+  return false; // Default to collapsed
 };
 
 export function NavbarProvider({ children }: { children: ReactNode }) {

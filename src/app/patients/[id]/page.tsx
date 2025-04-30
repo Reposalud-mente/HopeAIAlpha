@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import PatientSessions from '@/components/clinical/session/PatientSessions';
-import { Session, SessionWithRelations } from '@/components/clinical/session/types';
+import { SessionWithRelations } from '@/components/clinical/session/types';
 import SessionEditor from '@/components/clinical/session/SessionEditor';
 import SessionTransfer from '@/components/clinical/session/SessionTransfer';
 import SessionExportImport from '@/components/clinical/session/SessionExportImport';
@@ -318,7 +318,7 @@ export default function PatientDetailPage() {
             </TabsTrigger>
             <TabsTrigger value="assessments" className="data-[state=active]:font-medium data-[state=active]:text-blue-700 hover:bg-blue-50 hover:border-b-2 hover:border-blue-300 transition-colors duration-200 rounded-md px-4 py-2">
               <FileText className="h-4 w-4 mr-2" />
-              Evaluaciones
+              Informes
             </TabsTrigger>
             <TabsTrigger value="sessions" className="data-[state=active]:font-medium data-[state=active]:text-blue-700 hover:bg-blue-50 hover:border-b-2 hover:border-blue-300 transition-colors duration-200 rounded-md px-4 py-2">
               <Calendar className="h-4 w-4 mr-2" />
@@ -515,14 +515,8 @@ export default function PatientDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-slate-50 border-b border-gray-100">
                 <CardTitle className="text-lg flex items-center">
                   <FileText className="h-5 w-5 text-blue-600 mr-2" />
-                  Evaluaciones
+                  Informes
                 </CardTitle>
-                <Button asChild className="bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
-                  <Link href={`/reports?patientId=${patient.id}`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nueva Evaluación
-                  </Link>
-                </Button>
               </CardHeader>
               <CardContent className="p-5">
                 {patient.assessments && patient.assessments.length > 0 ? (
@@ -549,12 +543,12 @@ export default function PatientDetailPage() {
                 ) : (
                   <div className="text-center py-10 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
                     <FileText className="h-14 w-14 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2 text-gray-800">No hay evaluaciones</h3>
-                    <p className="text-gray-500 mb-6">Este paciente aún no tiene evaluaciones registradas.</p>
+                    <h3 className="text-lg font-medium mb-2 text-gray-800">No hay informes</h3>
+                    <p className="text-gray-500 mb-6">Este paciente aún no tiene informes registrados.</p>
                     <Button asChild className="bg-blue-600 hover:bg-blue-700 transition-colors">
                       <Link href={`/reports?patientId=${patient.id}`}>
                         <Plus className="h-4 w-4 mr-2" />
-                        Crear Evaluación
+                        Crear Informe
                       </Link>
                     </Button>
                   </div>

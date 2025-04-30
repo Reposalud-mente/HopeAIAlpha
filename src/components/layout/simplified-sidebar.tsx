@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 const navigationItems = [
   { name: 'Telemedicina', href: '/dashboard', icon: Video },
   { name: 'Pacientes', href: '/patients', icon: Users },
+  { name: 'Sesiones', href: '/sessions', icon: Calendar },
   { name: 'Informes', href: '/reports', icon: FileText },
   { name: 'Informes (Dinámico)', href: '/dynamic-reports', icon: Sparkles },
   { name: 'Consultas AI', href: '/consultas-ai', icon: MessageSquare },
@@ -81,26 +82,26 @@ const NavItem = ({ item, isActive, isExpanded, isHoverExpanded }: {
         isActive
           ? "text-blue-600 bg-blue-50"
           : isExpanded
-            ? "text-gray-700 hover:bg-gray-50 hover:border-gray-200" // Subtle border on hover when expanded
+            ? "text-gray-500 hover:bg-gray-50 hover:border-gray-200" // Grey text when expanded with subtle border on hover
             : "text-gray-500 hover:border-gray-300", // Grey text when collapsed with hover border
         isExpanded ? "h-10 px-3 flex items-center" : "h-10 grid place-items-center",
-        isHoverExpanded && !isActive && "hover:bg-blue-50/30 hover:border-blue-200" // Subtle hover effect when in hover mode
+        isHoverExpanded && !isActive && "hover:bg-gray-50 hover:border-gray-200" // Subtle hover effect with grey color when in hover mode
       )}
       title={!isExpanded ? item.name : undefined}
     >
       <Icon className={cn(
-        "transition-all duration-200 h-5 w-5",
+        "transition-all duration-200 h-[1.3vw] w-[1.3vw]",
         isActive
           ? "text-blue-600"
           : isExpanded
-            ? (isHoverExpanded ? "text-blue-400" : "text-gray-500")
+            ? "text-gray-500" // Always grey icons when expanded
             : "text-gray-500" // Always grey icons when collapsed
       )} />
 
       {isExpanded && (
         <span className={cn(
-          "ml-3 text-sm font-medium",
-          isActive ? "text-blue-600" : (isHoverExpanded && !isActive) ? "text-blue-500/80" : "text-gray-700"
+          "ml-[0.8vw] text-[1vw] font-medium",
+          isActive ? "text-blue-600" : "text-gray-500" // Always grey text for non-active items
         )}>{item.name}</span>
       )}
     </Link>
@@ -116,17 +117,17 @@ const UserProfile = ({ user, isExpanded, isHoverExpanded }: {
   return (
     <div className={cn(
       "mt-auto border-t transition-all duration-300 sticky bottom-0 bg-white",
-      isExpanded ? "p-4" : "py-4",
+      isExpanded ? "p-[1.3vw]" : "py-[1.3vw]",
       isHoverExpanded ? "border-blue-100" : "border-[#e6e6e3]" // Subtle border color in hover mode
     )}>
       {!isExpanded ? (
         <div className="grid place-items-center">
           <div className={cn(
             "h-8 w-8 rounded-full bg-[#f8f8f8] flex items-center justify-center border shadow-sm transition-all duration-200",
-            isHoverExpanded ? "border-blue-200 text-blue-500" : "border-[#e6e6e3] text-gray-500", // Grey text when collapsed
+            isHoverExpanded ? "border-gray-200 text-gray-500" : "border-[#e6e6e3] text-gray-500", // Grey text when collapsed
             "hover:border-gray-300" // Hover effect for border
           )}>
-            <span className="font-medium text-xs">
+            <span className="font-medium text-[0.8vw]">
               {user?.name?.substring(0, 2) || 'DR'}
             </span>
           </div>
@@ -135,19 +136,19 @@ const UserProfile = ({ user, isExpanded, isHoverExpanded }: {
         <div className="flex items-center gap-3">
           <div className={cn(
             "h-8 w-8 rounded-full bg-[#f8f8f8] flex items-center justify-center border shadow-sm transition-all duration-200",
-            isHoverExpanded ? "border-blue-200 text-blue-500" : "border-[#e6e6e3] text-gray-700",
+            isHoverExpanded ? "border-gray-200 text-gray-500" : "border-[#e6e6e3] text-gray-500",
             "hover:border-gray-300" // Hover effect for border
           )}>
-            <span className="font-medium text-xs">
+            <span className="font-medium text-[0.8vw]">
               {user?.name?.substring(0, 2) || 'DR'}
             </span>
           </div>
           <div className="min-w-0 animate-fadeIn overflow-hidden">
             <p className={cn(
-              "text-sm font-medium truncate max-w-[160px]",
-              isHoverExpanded ? "text-blue-600" : "text-gray-700"
+              "text-[1vw] font-medium truncate max-w-[11vw]",
+              "text-gray-500" // Always grey text for user name
             )}>{user?.name || 'Dr. Rivera'}</p>
-            <p className="text-xs text-gray-500 truncate max-w-[160px]">{user?.role || 'Psicólogo'}</p>
+            <p className="text-[0.8vw] text-gray-500 truncate max-w-[11vw]">{user?.role || 'Psicólogo'}</p>
           </div>
         </div>
       )}
@@ -162,7 +163,7 @@ const SimplifiedSidebar = () => {
   const { isExpanded, isHoverExpanded, toggleExpanded, handleMouseEnter, handleMouseLeave } = useNavbar();
 
   // Crear clases dinámicas para el ancho
-  const sidebarWidthClass = isExpanded ? 'w-[240px]' : 'w-[56px]';
+  const sidebarWidthClass = isExpanded ? 'w-[15vw] min-w-[180px] max-w-[260px]' : 'w-[3.5vw] min-w-[44px] max-w-[70px]';
 
   return (
     <div

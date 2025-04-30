@@ -1,12 +1,12 @@
 import { Providers } from '@/contexts/providers';
-import { Inter } from 'next/font/google';
+import { montserrat } from '@/fonts/montserrat';
 import '@/app/globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { DebugErrorBoundary } from '@/components/monitoring/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
 import { FloatingAIAssistant } from '@/components/ai/ai-assistance-card';
 
-const inter = Inter({ subsets: ['latin'] });
+
 
 export const metadata = {
   title: 'HopeAI - Plataforma de Psicología Clínica',
@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className={inter.className}>
+      <body className={`${montserrat.variable} font-montserrat-regular`}>
         <Providers>
           <DebugErrorBoundary>
             {children}

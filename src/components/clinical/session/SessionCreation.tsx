@@ -35,31 +35,62 @@ import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 // Hooks
+import { SessionAttachment } from './types';
+
 interface UseFileUploadProps {
-  onUpload?: (file: File) => void;
+  onUpload?: (file: File, attachment: SessionAttachment) => void;
   accept?: string;
   maxSize?: number;
+}
+
+async function uploadFile(file: File): Promise<SessionAttachment | null> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/uploads', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to upload file');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    return null;
+  }
 }
 
 function useFileUpload({ onUpload, accept = "*/*", maxSize = 10 }: UseFileUploadProps = {}) {
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const [uploading, setUploading] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const selectedFiles = Array.from(event.target.files || []);
+      if (selectedFiles.length === 0) return;
+
+      setUploading(true);
+
       // Validate files
       const newFiles: File[] = [];
       const newErrors: string[] = [];
       const newPreviews: string[] = [];
-      selectedFiles.forEach((file) => {
+
+      for (const file of selectedFiles) {
         // Check file size
         if (maxSize && file.size > maxSize * 1024 * 1024) {
           newErrors.push(`${file.name}: File size must be less than ${maxSize}MB`);
-          return;
+          continue;
         }
+
         // Check file type if accept is specified
         if (accept !== "*/*") {
           const acceptTypes = accept.split(",").map(type => type.trim());
@@ -69,18 +100,43 @@ function useFileUpload({ onUpload, accept = "*/*", maxSize = 10 }: UseFileUpload
             }
             return file.type === type;
           });
+
           if (!isAccepted) {
             newErrors.push(`${file.name}: Invalid file type`);
-            return;
+            continue;
           }
         }
-        newFiles.push(file);
-        newPreviews.push(URL.createObjectURL(file));
-        if (onUpload) onUpload(file);
-      });
+
+        try {
+          // Upload the file
+          const attachment = await uploadFile(file);
+
+          if (!attachment) {
+            newErrors.push(`${file.name}: Failed to upload file`);
+            continue;
+          }
+
+          newFiles.push(file);
+          newPreviews.push(URL.createObjectURL(file));
+
+          if (onUpload) {
+            onUpload(file, attachment);
+          }
+        } catch (error) {
+          console.error('Error processing file:', error);
+          newErrors.push(`${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      }
+
       setFiles((prev) => [...prev, ...newFiles]);
       setPreviews((prev) => [...prev, ...newPreviews]);
       setErrors((prev) => [...prev, ...newErrors]);
+      setUploading(false);
+
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
     [accept, maxSize, onUpload]
   );
@@ -94,6 +150,7 @@ function useFileUpload({ onUpload, accept = "*/*", maxSize = 10 }: UseFileUpload
     files,
     previews,
     errors,
+    uploading,
     fileInputRef,
     handleFileChange,
     removeFile,
@@ -101,26 +158,17 @@ function useFileUpload({ onUpload, accept = "*/*", maxSize = 10 }: UseFileUpload
 }
 
 // Main Session Creation Component
-export interface SessionFormData {
-  type: string; // "none" or a valid session type
-  status: string;
-  notes: string;
-  objectives: string;
-  activities: string;
-  aiSuggestions?: string;
-  attachments?: File[];
-  selectedNotes?: string[];
-  selectedPastSessions?: string[];
-  selectedReports?: string[];
-}
+import { SessionFormData, validateSessionForm, formDataToSessionInput } from '@/lib/validations/session-form';
 
 interface SessionCreationProps {
+  patientId: string;
+  patientName?: string;
   onSubmit: (data: SessionFormData) => void;
   onCancel: () => void;
   initialData?: Partial<SessionFormData>;
 }
 
-function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationProps) {
+function SessionCreation({ patientId, patientName, onSubmit, onCancel, initialData }: SessionCreationProps) {
   // Refs for focus management
   const formRef = useRef<HTMLFormElement>(null);
   const initialFocusRef = useRef<HTMLButtonElement>(null);
@@ -133,11 +181,14 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
     objectives: initialData?.objectives || "",
     activities: initialData?.activities || "",
     aiSuggestions: initialData?.aiSuggestions || "",
-    attachments: [],
-    selectedNotes: [],
-    selectedPastSessions: [],
-    selectedReports: [],
+    attachments: initialData?.attachments || [],
+    selectedNotes: initialData?.selectedNotes || [],
+    selectedPastSessions: initialData?.selectedPastSessions || [],
+    selectedReports: initialData?.selectedReports || [],
   });
+
+  // Track uploaded attachments separately
+  const [uploadedAttachments, setUploadedAttachments] = useState<SessionAttachment[]>([]);
 
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,7 +200,16 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
 
   // File upload
   const upload = useFileUpload({
-    onUpload: (file) => setForm((prev) => ({ ...prev, attachments: [...(prev.attachments || []), file] })),
+    onUpload: (file, attachment) => {
+      // Add the attachment to the uploadedAttachments state
+      setUploadedAttachments(prev => [...prev, attachment]);
+
+      // Also update the form state to include the file reference
+      setForm(prev => ({
+        ...prev,
+        attachments: [...(prev.attachments || []), attachment]
+      }));
+    },
     accept: "application/pdf,image/*,.doc,.docx,.txt",
     maxSize: 10,
   });
@@ -225,24 +285,14 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
   }, []);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<Record<keyof SessionFormData, string>> = {};
+    const result = validateSessionForm(form);
 
-    // Required fields validation
-    if (!form.type || form.type === "none") {
-      newErrors.type = "El tipo de sesión es obligatorio";
+    if (!result.success && result.errors) {
+      setErrors(result.errors);
+      return false;
     }
 
-    if (!form.notes.trim()) {
-      newErrors.notes = "Las notas clínicas son obligatorias";
-    }
-
-    if (!form.objectives.trim()) {
-      newErrors.objectives = "Los objetivos de la sesión son obligatorios";
-    }
-
-    // Set errors and return validation result
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -261,8 +311,33 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
     setSubmitStatus("idle");
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Convert form data to session input format
+      const sessionInput = formDataToSessionInput(form);
+
+      // Add patient ID and attachments to the session data
+      const sessionData = {
+        ...sessionInput,
+        patientId,
+        // Include the uploaded attachments
+        attachments: JSON.stringify(uploadedAttachments),
+        // Let the backend set clinicianId from the authenticated user
+      };
+
+      // Make actual API call
+      const response = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create session');
+      }
+
+      const createdSession = await response.json();
+      console.log('Session created:', createdSession);
+
       setSubmitStatus("success");
       onSubmit(form);
     } catch (error) {
@@ -275,14 +350,14 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
 
   const handleCancel = () => {
     // Check if form has been modified
-    const isFormModified = 
+    const isFormModified =
       form.type !== (initialData?.type || "none") ||
       form.status !== (initialData?.status || "draft") ||
       form.notes !== (initialData?.notes || "") ||
       form.objectives !== (initialData?.objectives || "") ||
       form.activities !== (initialData?.activities || "") ||
       (upload.files.length > 0);
-    
+
     if (isFormModified) {
       setShowConfirmDialog(true);
     } else {
@@ -477,40 +552,38 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
 
           {/* Tab navigation for mobile */}
           <div className="md:hidden border-b">
-            <TabsList className="w-full justify-between">
-              <TabsTrigger 
-                value="details" 
-                onClick={() => setActiveTab("details")}
-                className="flex-1 relative"
-              >
-                <span className="flex items-center">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Detalles
-                </span>
-                {Object.keys(errors).some(key => ["type", "notes", "objectives", "activities"].includes(key)) && (
-                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-2 w-2 p-0" />
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="attachments" 
-                onClick={() => setActiveTab("attachments")}
-                className="flex-1 relative"
-              >
-                <span className="flex items-center">
-                  <Paperclip className="h-4 w-4 mr-2" />
-                  Archivos
-                </span>
-                {upload.files.length > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px]">
-                    {upload.files.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger 
-                value="resources" 
-                onClick={() => setActiveTab("resources")}
-                className="flex-1 relative"
-              >
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full justify-between">
+                <TabsTrigger
+                  value="details"
+                  className="flex-1 relative"
+                >
+                  <span className="flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Detalles
+                  </span>
+                  {Object.keys(errors).some(key => ["type", "notes", "objectives", "activities"].includes(key)) && (
+                    <Badge variant="destructive" className="absolute -top-1 -right-1 h-2 w-2 p-0" />
+                  )}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="attachments"
+                  className="flex-1 relative"
+                >
+                  <span className="flex items-center">
+                    <Paperclip className="h-4 w-4 mr-2" />
+                    Archivos
+                  </span>
+                  {upload.files.length > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-[10px]">
+                      {upload.files.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger
+                  value="resources"
+                  className="flex-1 relative"
+                >
                 <span className="flex items-center">
                   <FileBarChart2 className="h-4 w-4 mr-2" />
                   Recursos
@@ -521,7 +594,8 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
                   </Badge>
                 )}
               </TabsTrigger>
-            </TabsList>
+              </TabsList>
+            </Tabs>
           </div>
 
           {/* Content area */}
@@ -723,31 +797,45 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
                     <Card>
                       <CardContent className="p-6">
                         <div className="flex flex-col items-center justify-center text-center p-6 border-2 border-dashed rounded-lg">
-                          <Upload className="h-10 w-10 text-muted-foreground mb-4" />
-                          <h3 className="text-lg font-medium mb-1">Arrastra archivos aquí</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            O haz clic para seleccionar archivos
-                          </p>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => upload.fileInputRef.current?.click()}
-                            className="flex items-center"
-                          >
-                            <Paperclip className="w-4 h-4 mr-2" /> Seleccionar archivos
-                          </Button>
-                          <input
-                            ref={upload.fileInputRef}
-                            type="file"
-                            multiple
-                            accept="application/pdf,image/*,.doc,.docx,.txt"
-                            className="hidden"
-                            onChange={upload.handleFileChange}
-                            aria-label="Subir archivos"
-                          />
-                          <p className="text-xs text-muted-foreground mt-4">
-                            PDF, imágenes, documentos Word o archivos de texto (máx. 10MB)
-                          </p>
+                          {upload.uploading ? (
+                            <>
+                              <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                              <h3 className="text-lg font-medium mb-1">Subiendo archivos...</h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Por favor espera mientras se suben los archivos
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                              <h3 className="text-lg font-medium mb-1">Arrastra archivos aquí</h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                O haz clic para seleccionar archivos
+                              </p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => upload.fileInputRef.current?.click()}
+                                className="flex items-center"
+                                disabled={upload.uploading}
+                              >
+                                <Paperclip className="w-4 h-4 mr-2" /> Seleccionar archivos
+                              </Button>
+                              <input
+                                ref={upload.fileInputRef}
+                                type="file"
+                                multiple
+                                accept="application/pdf,image/*,.doc,.docx,.txt"
+                                className="hidden"
+                                onChange={upload.handleFileChange}
+                                aria-label="Subir archivos"
+                                disabled={upload.uploading}
+                              />
+                              <p className="text-xs text-muted-foreground mt-4">
+                                PDF, imágenes, documentos Word o archivos de texto (máx. 10MB)
+                              </p>
+                            </>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -778,8 +866,8 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
                             const isDoc = file.type.includes("word") || file.name.endsWith(".doc") || file.name.endsWith(".docx");
 
                             return (
-                              <div 
-                                key={index} 
+                              <div
+                                key={index}
                                 className="flex items-center gap-3 p-3 rounded-md bg-gray-50 dark:bg-gray-800 border"
                               >
                                 <div className="flex items-center justify-center w-10 h-10 rounded-md bg-white dark:bg-gray-700 border">
@@ -891,7 +979,7 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
               >
                 Cancelar
               </Button>
-              
+
               {/* Mobile navigation buttons */}
               <div className="flex gap-2 sm:hidden order-3">
                 {activeTab !== "details" && (
@@ -907,7 +995,7 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                 )}
-                
+
                 {activeTab !== "resources" && (
                   <Button
                     type="button"
@@ -922,7 +1010,7 @@ function SessionCreation({ onSubmit, onCancel, initialData }: SessionCreationPro
                   </Button>
                 )}
               </div>
-              
+
               <Button
                 type="submit"
                 disabled={isSubmitting}
