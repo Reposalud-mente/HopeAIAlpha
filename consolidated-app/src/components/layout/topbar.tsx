@@ -21,7 +21,7 @@ const TopBar = () => {
 
   return (
     <header
-      className="bg-white shadow-sm py-2 border-b fixed top-0 right-0 left-0 z-40 h-[57px]"
+      className="bg-white shadow-sm py-[0.6vw] border-b fixed top-0 right-0 left-0 z-40 h-[4vw] min-h-[48px]"
       role="banner"
       aria-label="Top navigation bar"
     >
@@ -29,19 +29,19 @@ const TopBar = () => {
         {/* Hamburger menu for mobile */}
         <button
           type="button"
-          className="md:hidden mr-2 p-3 rounded-md hover:bg-gray-100 text-gray-600"
+          className="md:hidden mr-[0.5vw] p-[0.8vw] rounded-md hover:bg-gray-100 text-gray-600"
           aria-label="Abrir menú"
           tabIndex={0}
           onClick={openDrawer}
         >
-          <Menu size={24} />
+          <Menu size={20} style={{ width: '1.2vw', height: '1.2vw', minWidth: 18, minHeight: 18 }} />
         </button>
         <div className="flex items-center space-x-4 ml-12 md:ml-16">
 
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
+          <div className="w-[2.7vw] h-[2.7vw] min-w-[36px] min-h-[36px] bg-blue-600 rounded-xl flex items-center justify-center text-white text-[1.3vw] font-montserrat-bold">
             HA
           </div>
-          <h1 className="text-xl font-semibold">HopeAI</h1>
+          <h1 className="text-[1.1vw] font-montserrat-semibold">HopeAI</h1>
         </div>
 
         {/* Search Bar (hidden on mobile) */}
@@ -51,50 +51,31 @@ const TopBar = () => {
             <input
               type="text"
               placeholder="Buscar pacientes, notas o informes..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg bg-gray-50 text-sm"
+              className="w-full pl-[2.5vw] pr-[1vw] py-[0.7vw] border rounded-lg bg-gray-50 text-[1vw]"
             />
           </div>
         </div>
 
         {/* Quick Action Buttons (hidden on mobile) */}
-        <div className="hidden md:flex items-center space-x-3 mr-4">
+        <div className="hidden md:flex items-center space-x-[1vw] mr-[1vw]">
           {/* Generate Report Button */}
           <Link href="/reports/new">
-            <Button variant="outline" size="sm" className="flex items-center">
-              <FileText className="h-4 w-4 mr-1" />
+            <Button variant="outline" size="sm" className="flex items-center text-[1vw] px-[1vw] py-[0.5vw]">
+              <FileText className="h-[1vw] w-[1vw] min-h-[16px] min-w-[16px] mr-[0.5vw]" />
               <span>Generar Informe</span>
             </Button>
           </Link>
 
           {/* Create Meeting Button */}
           <Link href="/dashboard">
-            <Button variant="default" size="sm" className="flex items-center bg-blue-600 text-white hover:bg-blue-700">
-              <Video className="h-4 w-4 mr-1" />
+            <Button variant="default" size="sm" className="flex items-center bg-blue-600 text-white hover:bg-blue-700 text-[1vw] px-[1vw] py-[0.5vw]">
+              <Video className="h-[1vw] w-[1vw] min-h-[16px] min-w-[16px] mr-[0.5vw]" />
               <span>Nueva Consulta</span>
             </Button>
           </Link>
         </div>
 
-        <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <button type="button" className="p-2 hover:bg-gray-100 rounded-full relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
-              2
-            </span>
-          </button>
-
-          {/* User Profile */}
-          <div className="flex items-center space-x-2">
-            <div className="text-right mr-2">
-              <p className="font-medium text-sm">{user?.name || 'Dr. Psicólogo'}</p>
-              <p className="text-xs text-gray-500">{user?.role || 'PSYCHOLOGIST'}</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
-              Salir
-            </Button>
-          </div>
-        </div>
+        
       </div>
     </header>
   );

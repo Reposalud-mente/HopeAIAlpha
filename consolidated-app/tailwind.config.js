@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        sans: ['var(--font-merriweather-sans)', 'sans-serif'],
+        serif: ['var(--font-merriweather)', 'serif'],
+      },
       height: {
         '5.5': '1.375rem',
       },

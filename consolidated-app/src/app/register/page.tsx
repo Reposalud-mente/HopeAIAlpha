@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useAuth } from '@/contexts/auth-context';
@@ -10,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
+import { Shield, Users } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -24,7 +24,6 @@ export default function RegisterPage() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
   const { toast } = useToast();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,46 +115,53 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-calm-bg p-4">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl font-bold mb-4">
-            HA
+    <div className="min-h-screen flex items-center justify-center bg-tertiary p-4 animate-fadeIn">
+      <div className="absolute top-6 left-6 md:top-8 md:left-8">
+        <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
+          <span className="text-xl md:text-2xl font-montserrat-bold tracking-wider">HopeAI</span>
+        </Link>
+      </div>
+
+      <Card className="w-full max-w-md shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl">
+        <div className="h-1.5 w-full bg-gradient-to-r from-secondary via-secondary/90 to-primary"></div>
+        <CardHeader className="space-y-4 text-center pt-8">
+          <div className="mx-auto w-16 h-16 bg-secondary rounded-xl flex items-center justify-center text-white text-xl font-bold mb-2 shadow-md transition-transform duration-300 hover:scale-105">
+            <Users className="w-8 h-8" />
           </div>
-          <CardTitle className="text-2xl font-bold">Crear Cuenta</CardTitle>
-          <CardDescription>
-            Regístrate para acceder a HopeAI
+          <CardTitle className="text-2xl font-montserrat-bold tracking-wider text-gray-900 letter-spacing-wide">Crear Cuenta</CardTitle>
+          <CardDescription className="text-gray-600 font-montserrat-regular">
+            Regístrate para acceder a todas las herramientas clínicas
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="pt-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">Nombre <span className="text-red-500">*</span></Label>
+                <Label htmlFor="firstName" className="text-sm font-montserrat-medium text-gray-700">Nombre <span className="text-red-500">*</span></Label>
                 <Input
                   id="firstName"
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
                   required
-                  className="w-full"
+                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Apellido <span className="text-red-500">*</span></Label>
+                <Label htmlFor="lastName" className="text-sm font-montserrat-medium text-gray-700">Apellido <span className="text-red-500">*</span></Label>
                 <Input
                   id="lastName"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
                   required
-                  className="w-full"
+                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Correo electrónico <span className="text-red-500">*</span></Label>
+              <Label htmlFor="email" className="text-sm font-montserrat-medium text-gray-700">Correo electrónico <span className="text-red-500">*</span></Label>
               <Input
                 id="email"
                 name="email"
@@ -164,12 +170,12 @@ export default function RegisterPage() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password">Contraseña <span className="text-red-500">*</span></Label>
+              <Label htmlFor="password" className="text-sm font-montserrat-medium text-gray-700">Contraseña <span className="text-red-500">*</span></Label>
               <Input
                 id="password"
                 name="password"
@@ -178,13 +184,13 @@ export default function RegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
               />
-              <p className="text-xs text-gray-500">Mínimo 8 caracteres</p>
+              <p className="text-xs text-gray-500 mt-1 font-montserrat-regular">Mínimo 8 caracteres</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar contraseña <span className="text-red-500">*</span></Label>
+              <Label htmlFor="confirmPassword" className="text-sm font-montserrat-medium text-gray-700">Confirmar contraseña <span className="text-red-500">*</span></Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -193,57 +199,62 @@ export default function RegisterPage() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="w-full"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="licenseNumber">Número de licencia profesional</Label>
+              <Label htmlFor="licenseNumber" className="text-sm font-montserrat-medium text-gray-700">Número de licencia profesional</Label>
               <Input
                 id="licenseNumber"
                 name="licenseNumber"
                 value={formData.licenseNumber}
                 onChange={handleChange}
-                className="w-full"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="specialty">Especialidad</Label>
+              <Label htmlFor="specialty" className="text-sm font-montserrat-medium text-gray-700">Especialidad</Label>
               <Input
                 id="specialty"
                 name="specialty"
                 value={formData.specialty}
                 onChange={handleChange}
-                className="w-full"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
               />
             </div>
 
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-sm mt-2 font-montserrat-medium">{error}</p>}
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-secondary hover:bg-secondary/90 text-white py-2.5 font-montserrat-medium tracking-wide transition-all duration-300 btn-hover-effect mt-2"
               disabled={isLoading}
             >
               {isLoading ? 'Registrando...' : 'Registrarse'}
             </Button>
+
+            <div className="mt-8 flex items-center justify-center space-x-2 text-sm text-black">
+              <Shield className="h-5 w-5 text-black" />
+              <span className="font-montserrat-medium">Tus datos están protegidos</span>
+            </div>
           </form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="text-center text-sm text-gray-500">
+        <CardFooter className="flex flex-col space-y-4 pb-8 pt-4">
+          <div className="text-center text-sm text-gray-700">
             ¿Ya tienes una cuenta?{' '}
-            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="font-montserrat-medium text-primary hover:text-primary/80 transition-colors">
               Iniciar sesión
             </Link>
           </div>
-          <div className="text-center text-xs text-gray-500">
+          <div className="text-center text-xs text-gray-600">
             Al registrarte, aceptas nuestros{' '}
-            <Link href="#" className="underline hover:text-blue-500">
+            <Link href="#" className="font-montserrat-medium underline hover:text-primary/80 transition-colors">
               Términos
             </Link>{' '}
             y{' '}
-            <Link href="#" className="underline hover:text-blue-500">
+            <Link href="#" className="font-montserrat-medium underline hover:text-primary/80 transition-colors">
               Política de Privacidad
             </Link>
           </div>
