@@ -1,4 +1,4 @@
-import { PrismaClient, SessionStatus } from '@prisma/client';
+import { PrismaClient, SessionStatus, Role } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
 const prisma = new PrismaClient();
@@ -196,15 +196,15 @@ async function seedSessions() {
       return;
     }
 
-    // Get all users with role CLINICIAN
+    // Get all users with role PSYCHOLOGIST
     const clinicians = await prisma.user.findMany({
       where: {
-        role: 'CLINICIAN'
+        role: Role.PSYCHOLOGIST
       }
     });
 
     if (clinicians.length === 0) {
-      console.log('No clinicians found. Please seed users with CLINICIAN role first');
+      console.log('No clinicians found. Please seed users with PSYCHOLOGIST role first');
       return;
     }
 
@@ -238,12 +238,12 @@ async function seedSessions() {
       updatedAt.setHours(updatedAt.getHours() + Math.random() * 48); // Update within 48 hours
 
       // Randomly select 1-3 objectives
-      const objectives = Array.from({ length: Math.floor(Math.random() * 3) + 1 }).map(() => 
+      const objectives = Array.from({ length: Math.floor(Math.random() * 3) + 1 }).map(() =>
         getRandomItem(sampleObjectives)
       );
 
       // Randomly select 1-3 activities
-      const activities = Array.from({ length: Math.floor(Math.random() * 3) + 1 }).map(() => 
+      const activities = Array.from({ length: Math.floor(Math.random() * 3) + 1 }).map(() =>
         getRandomItem(sampleActivities)
       );
 
@@ -284,7 +284,8 @@ async function seedSessions() {
 export { seedSessions };
 
 // If this file is run directly (not imported)
-if (require.main === module) {
+// ESM version of the direct execution check
+if (import.meta.url === import.meta.resolve('./seed-sessions.ts')) {
   seedSessions()
     .then(async () => {
       await prisma.$disconnect();

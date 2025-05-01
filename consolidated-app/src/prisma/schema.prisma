@@ -94,6 +94,7 @@ model Assessment {
   completionDate      DateTime?
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
+  type                String                     @default("PSYCHOLOGICAL_EVALUATION")
   clinic              Clinic                     @relation(fields: [clinicId], references: [id])
   clinician           User                       @relation(fields: [clinicianId], references: [id])
   patient             Patient                    @relation(fields: [patientId], references: [id])

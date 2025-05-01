@@ -139,6 +139,16 @@ interface ReportStateMap {
   'alta-terapeutica': DischargeReportState;
 }
 
+// Example data for psychological evaluation template
+export const psychologicalEvaluationExample: PsychologicalEvaluationState = {
+  motivoConsulta: 'Paciente de 34 años que acude a consulta por presentar síntomas de ansiedad generalizada desde hace aproximadamente 6 meses. Refiere preocupación excesiva, dificultades para dormir, tensión muscular y problemas de concentración que afectan su desempeño laboral y relaciones interpersonales.',
+  antecedentes: 'Antecedentes familiares de trastornos de ansiedad (madre diagnosticada con trastorno de pánico). Sin antecedentes personales de tratamiento psicológico previo. Reporta episodio de estrés agudo hace 2 años relacionado con cambio laboral. No presenta enfermedades médicas significativas ni consumo de sustancias. Actualmente trabaja como ingeniero de sistemas en una empresa de tecnología.',
+  testsPsicometricos: ['stai', 'beck', 'scl90r', 'hamilton'],
+  resultadosPruebas: 'STAI: Puntuaciones elevadas tanto en ansiedad-estado (percentil 85) como ansiedad-rasgo (percentil 78), indicando niveles significativos de ansiedad actual y predisposición ansiosa.\n\nInventario de Depresión de Beck: Puntuación de 14, correspondiente a sintomatología depresiva leve.\n\nSCL-90-R: Elevaciones significativas en las escalas de ansiedad (T=68) y somatización (T=65), con índice de severidad global en rango clínico (T=63).\n\nEscala de Hamilton para Ansiedad: Puntuación total de 22, indicativa de ansiedad moderada a severa, con predominio de síntomas psíquicos sobre somáticos.',
+  diagnosticoPresuntivo: 'Trastorno de ansiedad generalizada (F41.1, CIE-10). Los síntomas cumplen criterios diagnósticos en términos de duración (más de 6 meses), manifestaciones clínicas (preocupación excesiva, tensión muscular, alteraciones del sueño) e impacto funcional significativo.',
+  recomendaciones: '1. Iniciar tratamiento psicoterapéutico con enfoque cognitivo-conductual, con frecuencia semanal, orientado al manejo de la ansiedad y reestructuración de patrones de pensamiento disfuncionales.\n\n2. Evaluación psiquiátrica para valorar posible tratamiento farmacológico complementario.\n\n3. Implementación de técnicas de relajación y mindfulness como parte del manejo sintomático.\n\n4. Psicoeducación sobre el trastorno de ansiedad generalizada y factores mantenedores.\n\n5. Seguimiento y reevaluación en 3 meses para valorar evolución y ajustar plan terapéutico según necesidad.',
+};
+
 // Provide sensible initial values for each report type ---------
 const initialReportStates: ReportStateMap = {
   'evaluacion-psicologica': {

@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Session, SessionWithRelations } from "./types";
 import { SessionStatus } from "@prisma/client";
+import { translateSessionType } from '@/lib/session-utils';
 
 // Interface for the session data displayed in the UI
 // This will be derived from the Prisma Session model
@@ -79,7 +80,7 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
       date: createdDate.toLocaleDateString(),
       time: createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       duration: '30 min', // Default duration or calculate from activities if available
-      type: session.type,
+      type: translateSessionType(session.type),
       provider: session.clinician ?
         `${session.clinician.firstName} ${session.clinician.lastName}` :
         'Unknown Provider',
@@ -99,22 +100,25 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100">
           <div>
-            <CardTitle>Sesiones para {patientName}</CardTitle>
+            <CardTitle className="text-lg flex items-center">
+              <Calendar className="h-5 w-5 text-primary mr-2" />
+              Sesiones para {patientName}
+            </CardTitle>
             <CardDescription>Todas las sesiones clínicas para este paciente.</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Hora</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+              <TableRow className="bg-gray-50/50 border-b border-gray-100">
+                <TableHead className="font-medium text-gray-700">Fecha</TableHead>
+                <TableHead className="font-medium text-gray-700">Hora</TableHead>
+                <TableHead className="font-medium text-gray-700">Tipo</TableHead>
+                <TableHead className="font-medium text-gray-700">Estado</TableHead>
+                <TableHead className="text-right font-medium text-gray-700">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -132,11 +136,11 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
                 </TableRow>
               ) : transformedSessions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                  <TableCell colSpan={5} className="text-center py-10 bg-gray-50/30 rounded-lg border border-dashed border-gray-200">
                     <Calendar className="h-14 w-14 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2 text-gray-800">No hay sesiones</h3>
                     <p className="text-gray-500 mb-6">Este paciente aún no tiene sesiones registradas.</p>
-                    <Button onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 transition-colors">
+                    <Button onClick={() => setShowCreate(true)} className="bg-primary hover:bg-primary/90 transition-all">
                       <Plus className="h-4 w-4 mr-2" />
                       Nueva Sesión
                     </Button>
@@ -145,21 +149,25 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
               ) : (
                 <>
                   {transformedSessions.map(session => (
-                    <TableRow key={session.id}>
+                    <TableRow key={session.id} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100 last:border-0">
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar size={16} className="text-muted-foreground" />
+                          <Calendar size={16} className="text-primary/70" />
                           {session.date}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Clock size={16} className="text-muted-foreground" />
+                          <Clock size={16} className="text-primary/70" />
                           {session.time}
                         </div>
                       </TableCell>
-                      <TableCell className="flex items-center gap-2">
-                        {session.type}
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-primary/10 text-primary">
+                            {session.type}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={
@@ -176,7 +184,7 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
                             : session.status === SessionStatus.TRANSFERRED
                             ? "outline"
                             : "outline"
-                        }>
+                        } className="font-medium">
                           {session.status === SessionStatus.COMPLETED ? "Completada" :
                            session.status === SessionStatus.SCHEDULED ? "Programada" :
                            session.status === SessionStatus.CANCELLED ? "Cancelada" :
@@ -192,6 +200,7 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
                           variant="outline"
                           size="sm"
                           onClick={() => handleSelectSession(session)}
+                          className="hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                         >
                           Ver detalles
                         </Button>
@@ -204,7 +213,7 @@ const PatientSessions = ({ patientId, patientName, onSelectSession }: PatientSes
                         onClick={() => setShowCreate(true)}
                         variant="outline"
                         size="sm"
-                        className="mt-2 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                        className="mt-2 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Agregar nueva sesión

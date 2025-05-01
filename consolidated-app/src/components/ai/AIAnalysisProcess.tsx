@@ -39,28 +39,43 @@ export function AIAnalysisProcess({
       return;
     }
 
-    // If we have an assessment ID, use the real AI agent
-    if (assessmentId) {
-      handleRealReportGeneration();
-    } else {
-      // Otherwise, use the mock implementation for backward compatibility
-      handleMockReportGeneration();
-    }
-  }, [currentPatient, assessmentId]);
+    // Always use the real AI report generation
+    handleRealReportGeneration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPatient, assessmentId, motivosConsulta, areasEvaluacion, criteriosCIE]);
 
   // Handle real report generation using the AI agent
   const handleRealReportGeneration = async () => {
     try {
-      if (!assessmentId) {
-        setError('No se ha proporcionado un ID de evaluación');
-        return;
-      }
+      // Create a temporary assessment ID if one is not provided
+      const tempAssessmentId = assessmentId || `temp-${Date.now()}`;
 
-      // Generate the report using the AI agent
-      const result = await generateReport(assessmentId, {
+      // Prepare the wizard data for the AI report generation
+      const wizardData = {
+        patientId: currentPatient?.id || 'unknown',
+        patientName: currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente',
+        patientAge: currentPatient?.dateOfBirth ? Math.floor((new Date().getTime() - new Date(currentPatient.dateOfBirth).getTime()) / 31557600000) : undefined,
+        patientGender: currentPatient?.gender,
+        patientDateOfBirth: currentPatient?.dateOfBirth?.toISOString().split('T')[0],
+        clinicianName: 'Dr. Psicólogo',
+        clinicName: 'Centro de Psicología Clínica',
+        assessmentDate: new Date().toISOString().split('T')[0],
+        reportType: 'evaluacion-psicologica',
+        consultationReasons: motivosConsulta,
+        evaluationAreas: areasEvaluacion,
+        icdCriteria: criteriosCIE,
+        isPrimaryDiagnosis: false,
         includeRecommendations: true,
         includeTreatmentPlan: true,
-        reportStyle: 'clinical'
+        language: 'es',
+      };
+
+      // Generate the report using the AI agent
+      const result = await generateReport(tempAssessmentId, {
+        includeRecommendations: true,
+        includeTreatmentPlan: true,
+        reportStyle: 'clinical',
+        wizardData: wizardData // Pass the wizard data to the hook
       });
 
       // If successful, pass the report text to the parent component
@@ -183,7 +198,50 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <p className="text-sm text-red-600">{error}</p>
+          <div className="space-y-4">
+            <p className="text-sm text-red-600">{error}</p>
+
+            <div className="bg-red-50/50 p-4 rounded-md border border-red-100">
+              <p className="text-sm font-medium text-gray-700 mb-2">Posibles soluciones:</p>
+              <ul className="list-disc pl-5 space-y-1 text-xs text-gray-600">
+                <li>Verifique que ha seleccionado correctamente al paciente</li>
+                <li>Compruebe que ha completado todos los campos requeridos</li>
+                <li>Intente generar el informe nuevamente</li>
+                <li>Si el problema persiste, puede continuar con un informe en blanco</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  // Generate a basic empty report to allow the user to continue
+                  const emptyReport = `# INFORME PSICOLÓGICO
+
+## DATOS DE IDENTIFICACIÓN
+**Paciente:** ${currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente'}
+
+## MOTIVO DE CONSULTA
+[Completar motivo de consulta]
+
+## ÁREAS EVALUADAS
+[Completar áreas evaluadas]
+
+## DIAGNÓSTICO
+[Completar diagnóstico]
+
+## CONCLUSIONES Y RECOMENDACIONES
+[Completar conclusiones y recomendaciones]
+`;
+                  onAnalysisComplete(emptyReport);
+                }}
+                className="text-blue-600 hover:bg-blue-50"
+              >
+                Continuar con plantilla básica
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -191,6 +249,33 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
 
   // Show loading state
   if (isGenerating || (!error && !result)) {
+    // Determine the current phase description
+    const getPhaseDescription = () => {
+      if (currentPhase.includes('Preparando datos')) {
+        return 'Recopilando información del paciente y preparando datos clínicos para análisis.'
+      } else if (currentPhase.includes('Analizando motivos')) {
+        return 'Procesando los motivos de consulta para determinar el enfoque del informe.'
+      } else if (currentPhase.includes('Evaluando áreas')) {
+        return 'Analizando las áreas psicológicas relevantes para la evaluación.'
+      } else if (currentPhase.includes('Correlacionando')) {
+        return 'Correlacionando hallazgos con criterios diagnósticos CIE-11.'
+      } else if (currentPhase.includes('Aplicando criterios DSM')) {
+        return 'Aplicando criterios diagnósticos DSM-5 para validación cruzada.'
+      } else if (currentPhase.includes('Iniciando modelo')) {
+        return 'Iniciando el modelo de IA para generar el informe clínico.'
+      } else if (currentPhase.includes('Generando borrador')) {
+        return 'El modelo de IA está generando el contenido del informe. Esto puede tomar unos momentos...'
+      } else if (currentPhase.includes('Estructurando contenido')) {
+        return 'Organizando el contenido clínico en secciones coherentes.'
+      } else if (currentPhase.includes('Refinando diagnóstico')) {
+        return 'Refinando el diagnóstico y las recomendaciones terapéuticas.'
+      } else if (currentPhase.includes('Completando documento')) {
+        return 'Finalizando el documento y verificando la coherencia clínica.'
+      } else {
+        return 'Procesando datos clínicos para generar el informe.'
+      }
+    };
+
     return (
       <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-gray-100 py-4">
@@ -203,6 +288,7 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
               Nuestro sistema está analizando la información del paciente para generar un borrador de informe.
+              Este proceso puede tomar hasta 1-2 minutos dependiendo de la complejidad.
             </p>
 
             <div className="space-y-2 bg-blue-50/50 p-4 rounded-md border border-blue-100">
@@ -211,12 +297,22 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
                 <span className="text-blue-700">{progress}%</span>
               </div>
               <Progress value={progress} className="h-2 bg-blue-100" />
+              <p className="text-xs text-gray-600 mt-2">{getPhaseDescription()}</p>
             </div>
 
             <div className="flex items-center space-x-2 text-blue-600 bg-blue-50 p-3 rounded-md">
               <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-sm font-medium">Procesando datos clínicos</span>
+              <span className="text-sm font-medium">
+                {progress < 50 ? 'Procesando datos clínicos' : 'Generando informe con IA'}
+              </span>
             </div>
+
+            {progress >= 50 && (
+              <div className="text-xs text-gray-500 italic">
+                Por favor espere mientras se completa la generación del informe. La calidad del resultado
+                depende del tiempo dedicado al análisis.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -234,9 +330,26 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-md border border-green-100">
-            <FileText className="h-5 w-5 text-green-600" />
-            <p className="text-sm text-green-700">El borrador del informe está listo para su revisión.</p>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3 bg-green-50 p-4 rounded-md border border-green-100">
+              <FileText className="h-5 w-5 text-green-600" />
+              <p className="text-sm text-green-700">El borrador del informe está listo para su revisión.</p>
+            </div>
+
+            <div className="text-sm text-gray-600">
+              <p className="mb-2">El sistema ha generado un informe basado en:</p>
+              <ul className="list-disc pl-5 space-y-1 text-xs">
+                <li>Datos del paciente</li>
+                <li>Motivos de consulta: {motivosConsulta.join(', ')}</li>
+                <li>Áreas evaluadas: {areasEvaluacion.join(', ')}</li>
+                <li>Criterios diagnósticos: {criteriosCIE.join(', ')}</li>
+              </ul>
+            </div>
+
+            <div className="text-xs text-gray-500 bg-blue-50/50 p-3 rounded border border-blue-100">
+              <p className="font-medium text-blue-700 mb-1">Próximos pasos:</p>
+              <p>Revise el borrador generado y realice los ajustes necesarios antes de finalizar el informe.</p>
+            </div>
           </div>
         </CardContent>
       </Card>

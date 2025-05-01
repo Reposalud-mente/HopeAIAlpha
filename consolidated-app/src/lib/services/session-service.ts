@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/prisma';
-import { 
-  sessionSchema, 
-  sessionInputSchema, 
-  prismaSessionToTypescript, 
+import {
+  sessionSchema,
+  sessionInputSchema,
+  prismaSessionToTypescript,
   typescriptSessionToPrisma,
   Session,
   SessionInput
@@ -12,7 +12,7 @@ import { ZodError } from 'zod';
 
 export class SessionValidationError extends Error {
   errors: any;
-  
+
   constructor(message: string, errors: any) {
     super(message);
     this.name = 'SessionValidationError';
@@ -28,10 +28,10 @@ export class SessionService {
     try {
       // Validate input data
       const validatedData = sessionInputSchema.parse(data);
-      
+
       // Convert to Prisma format
       const prismaData = typescriptSessionToPrisma(validatedData);
-      
+
       // Create session in database
       const createdSession = await prisma.session.create({
         data: prismaData,
@@ -40,7 +40,7 @@ export class SessionService {
           clinician: { select: { id: true, firstName: true, lastName: true } },
         },
       });
-      
+
       // Convert back to TypeScript format
       return prismaSessionToTypescript(createdSession);
     } catch (error) {
@@ -50,7 +50,7 @@ export class SessionService {
       throw error;
     }
   }
-  
+
   /**
    * Get a session by ID with validation
    */
@@ -62,14 +62,14 @@ export class SessionService {
         clinician: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    
+
     if (!session) {
       throw new Error(`Session with ID ${id} not found`);
     }
-    
+
     return prismaSessionToTypescript(session);
   }
-  
+
   /**
    * Update a session with validation
    */
@@ -80,19 +80,19 @@ export class SessionService {
       if (!currentSession) {
         throw new Error(`Session with ID ${id} not found`);
       }
-      
+
       // Merge current data with updates
       const mergedData = {
         ...currentSession,
         ...data,
       };
-      
+
       // Validate the merged data
       const validatedData = sessionInputSchema.parse(mergedData);
-      
+
       // Convert to Prisma format
       const prismaData = typescriptSessionToPrisma(validatedData);
-      
+
       // Update session in database
       const updatedSession = await prisma.session.update({
         where: { id },
@@ -102,7 +102,7 @@ export class SessionService {
           clinician: { select: { id: true, firstName: true, lastName: true } },
         },
       });
-      
+
       // Convert back to TypeScript format
       return prismaSessionToTypescript(updatedSession);
     } catch (error) {
@@ -112,14 +112,14 @@ export class SessionService {
       throw error;
     }
   }
-  
+
   /**
    * Delete a session
    */
   static async deleteSession(id: string): Promise<void> {
     await prisma.session.delete({ where: { id } });
   }
-  
+
   /**
    * Get sessions for a patient
    */
@@ -128,29 +128,30 @@ export class SessionService {
       where: { patientId },
       orderBy: { createdAt: 'desc' },
       include: {
+        patient: { select: { id: true, firstName: true, lastName: true } },
         clinician: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    
+
     return sessions.map(prismaSessionToTypescript);
   }
-  
+
   /**
    * Transfer a session to another clinician
    */
   static async transferSession(id: string, targetClinicianId: string): Promise<Session> {
     const updatedSession = await prisma.session.update({
       where: { id },
-      data: { 
-        clinicianId: targetClinicianId, 
-        status: SessionStatus.TRANSFERRED 
+      data: {
+        clinicianId: targetClinicianId,
+        status: SessionStatus.TRANSFERRED
       },
       include: {
         patient: { select: { id: true, firstName: true, lastName: true } },
         clinician: { select: { id: true, firstName: true, lastName: true } },
       },
     });
-    
+
     return prismaSessionToTypescript(updatedSession);
   }
 }

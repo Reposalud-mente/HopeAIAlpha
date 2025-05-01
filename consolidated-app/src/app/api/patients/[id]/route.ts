@@ -47,6 +47,20 @@ export async function GET(
                 lastName: true,
               },
             },
+            reports: {
+              orderBy: {
+                createdAt: 'desc',
+              },
+              include: {
+                createdBy: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -216,13 +230,8 @@ export async function DELETE(
       )
     }
 
-    // Check if the user has admin or supervisor role
-    if (!['ADMIN', 'SUPERVISOR'].includes(session.user.role)) {
-      return NextResponse.json(
-        { error: 'Forbidden - Insufficient permissions' },
-        { status: 403 }
-      )
-    }
+    // Note: Role restriction removed to allow any authenticated user to delete patients
+    // In a production environment, you might want to add role-based restrictions
 
     // Get the patient ID from the URL
     const { id } = await params

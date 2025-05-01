@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { ReportGeneratorService } from '@/lib/ai-report-generator/report-generator-service';
 
 interface AIReportGenerationOptions {
   language?: 'es' | 'en';
   includeRecommendations?: boolean;
   includeTreatmentPlan?: boolean;
   reportStyle?: 'clinical' | 'educational' | 'concise';
+  wizardData?: any; // Optional wizard data for direct AI report generation
 }
 
 interface AIReportGenerationResult {
@@ -24,6 +26,12 @@ export function useAIReportGeneration() {
   const [result, setResult] = useState<AIReportGenerationResult | null>(null);
   const { toast } = useToast();
 
+  // Get the API key from environment variables
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
+
+  // Create an instance of the report generator service with the API key
+  const reportGeneratorService = new ReportGeneratorService(apiKey);
+
   /**
    * Generates a report using the AI agent
    * @param assessmentId The assessment ID
@@ -40,64 +48,121 @@ export function useAIReportGeneration() {
       setCurrentPhase('Preparando datos del paciente...');
       setResult(null);
 
-      // Simulate progress through phases
+      // Define phases with more detailed descriptions
       const phases = [
         'Preparando datos del paciente...',
         'Analizando motivos de consulta...',
         'Evaluando áreas psicológicas...',
         'Correlacionando con criterios CIE-11...',
         'Aplicando criterios DSM-5...',
+        'Iniciando modelo de IA...',
         'Generando borrador de informe...',
-        'Refinando contenido...',
+        'Estructurando contenido clínico...',
+        'Refinando diagnóstico y recomendaciones...',
         'Completando documento final...'
       ];
 
-      // Start the progress simulation
+      // Start the progress simulation with slower progression
       let currentPhaseIndex = 0;
       const totalPhases = phases.length;
-      const phaseTime = 800; // Time per phase in ms
+      const initialPhases = 5; // Number of phases to show before AI generation starts
+      const phaseTime = 1200; // Time per phase in ms (slower to give more time for reading)
+
+      setCurrentPhase(phases[currentPhaseIndex]);
+      setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
 
       const progressInterval = setInterval(() => {
-        if (currentPhaseIndex < totalPhases - 1) {
+        if (currentPhaseIndex < initialPhases - 1) {
+          // Move through initial phases at regular intervals
           currentPhaseIndex++;
           setCurrentPhase(phases[currentPhaseIndex]);
           setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
-        } else {
-          clearInterval(progressInterval);
+        } else if (currentPhaseIndex === initialPhases - 1) {
+          // Pause at the "Iniciando modelo de IA" phase
+          currentPhaseIndex++;
+          setCurrentPhase(phases[currentPhaseIndex]);
+          setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
         }
+        // The remaining phases will be updated during/after the actual AI generation
       }, phaseTime);
 
-      // Make the actual API call
-      const response = await fetch('/api/reports/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          assessmentId,
-          ...options,
-        }),
-      });
+      // Generate the report using our service
+      let generationResult;
 
-      // Clear the interval when the API call completes
-      clearInterval(progressInterval);
+      try {
+        // Update to the next phase - AI generation is starting
+        currentPhaseIndex = Math.max(initialPhases, currentPhaseIndex);
+        setCurrentPhase(phases[currentPhaseIndex]);
+        setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
+
+        if (options.wizardData) {
+          // If wizard data is provided, use it directly with the AI report generator
+          const { generateClinicalReport } = await import('@/lib/ai-report-generator/ai-report-generating');
+          const reportText = await generateClinicalReport(options.wizardData, apiKey);
+          generationResult = { reportText };
+        } else {
+          // Otherwise, use the report generator service
+          generationResult = await reportGeneratorService.generateReport(assessmentId, options);
+        }
+
+        // AI generation is complete, move to the next phase
+        currentPhaseIndex++;
+        setCurrentPhase(phases[currentPhaseIndex]);
+        setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
+
+        // Wait a moment before moving to the next phase
+        await new Promise(resolve => setTimeout(resolve, phaseTime));
+
+        // Move to the refinement phase
+        currentPhaseIndex++;
+        setCurrentPhase(phases[currentPhaseIndex]);
+        setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
+
+        // Wait a moment before completing
+        await new Promise(resolve => setTimeout(resolve, phaseTime));
+      } finally {
+        // Clear the interval when the generation completes or fails
+        clearInterval(progressInterval);
+      }
+
+      // Final phase - report is complete
       setProgress(100);
       setCurrentPhase('Informe completado');
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate report');
+      if ('error' in generationResult) {
+        throw new Error(generationResult.error);
       }
 
-      const data = await response.json();
+      // Save the report to the database if we have a real assessment ID
+      let data = { id: `temp-${Date.now()}` };
+
+      if (assessmentId && !assessmentId.startsWith('temp-')) {
+        const response = await fetch(`/api/assessments/${assessmentId}/reports`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reportText: generationResult.reportText,
+            isFinal: false, // Draft version
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save report');
+        }
+
+        data = await response.json();
+      }
 
       // Set the result
-      const generationResult = {
-        reportId: data.reportId,
-        reportText: data.reportText,
+      const result = {
+        reportId: data.id,
+        reportText: generationResult.reportText,
       };
 
-      setResult(generationResult);
+      setResult(result);
 
       // Show success toast
       toast({
@@ -106,7 +171,7 @@ export function useAIReportGeneration() {
         duration: 3000,
       });
 
-      return generationResult;
+      return result;
     } catch (error) {
       console.error('Error generating report:', error);
 

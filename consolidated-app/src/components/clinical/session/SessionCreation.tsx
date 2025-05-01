@@ -214,10 +214,57 @@ function SessionCreation({ patientId, patientName, onSubmit, onCancel, initialDa
     maxSize: 10,
   });
 
-  // Simulate fetching notes, sessions, reports
-  const notes = ["Evaluación inicial", "Nota de progreso", "Resumen de alta"];
-  const pastSessions = ["Sesión 1 - 2024-01-01", "Sesión 2 - 2024-02-01"];
-  const reports = ["Informe de resonancia magnética", "Resultados de laboratorio", "Carta de consulta"];
+  // State for patient-specific resources
+  const [notes, setNotes] = useState<string[]>([]);
+  const [pastSessions, setPastSessions] = useState<string[]>([]);
+  const [reports, setReports] = useState<string[]>([]);
+
+  // Fetch patient-specific resources
+  useEffect(() => {
+    if (!patientId) return;
+
+    // Fetch past sessions for this patient
+    const fetchPastSessions = async () => {
+      try {
+        const response = await fetch(`/api/patients/${patientId}/sessions`);
+        if (response.ok) {
+          const sessions = await response.json();
+          // Format sessions for display
+          const formattedSessions = sessions.map((session: any) =>
+            `Sesión ${session.type} - ${new Date(session.createdAt).toLocaleDateString()}`
+          );
+          setPastSessions(formattedSessions);
+        }
+      } catch (error) {
+        console.error('Error fetching past sessions:', error);
+      }
+    };
+
+    // Fetch patient reports if available
+    const fetchReports = async () => {
+      try {
+        // This would need to be replaced with the actual endpoint for patient reports
+        // For now, we're keeping it empty as requested
+      } catch (error) {
+        console.error('Error fetching reports:', error);
+      }
+    };
+
+    // Fetch clinical notes if available
+    const fetchNotes = async () => {
+      try {
+        // This would need to be replaced with the actual endpoint for patient notes
+        // For now, we're keeping it empty as requested
+      } catch (error) {
+        console.error('Error fetching notes:', error);
+      }
+    };
+
+    // Execute the fetch functions
+    fetchPastSessions();
+    fetchReports();
+    fetchNotes();
+  }, [patientId]);
 
   // Focus management
   useEffect(() => {
@@ -933,12 +980,12 @@ function SessionCreation({ patientId, patientName, onSubmit, onCancel, initialDa
                       <Separator />
 
                       <ResourceSection
-                        title="Informes médicos"
+                        title="Informes clínicos"
                         icon={<FileBarChart2 className="h-5 w-5 text-red-500" />}
                         items={reports}
                         selectedItems={form.selectedReports || []}
                         onChange={(selected) => handleChange("selectedReports", selected)}
-                        emptyMessage="No hay informes médicos disponibles"
+                        emptyMessage="No hay informes clínicos disponibles"
                       />
                     </div>
                   </div>

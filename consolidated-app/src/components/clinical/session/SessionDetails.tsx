@@ -1,31 +1,34 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  FileText, 
-  User, 
-  Tag, 
-  CheckCircle, 
-  Edit, 
-  Trash2, 
-  ArrowRightLeft, 
-  Download, 
-  X, 
+import { cn } from '@/lib/utils';
+import {
+  Calendar,
+  Clock,
+  FileText,
+  FileX,
+  User,
+  Tag,
+  CheckCircle,
+  Edit,
+  Trash2,
+  ArrowRightLeft,
+  Download,
+  X,
   Paperclip,
   ChevronLeft
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
-import { useRouter } from 'next/navigation';
+// import { useRouter } from 'next/navigation';
 import { SessionWithRelations } from './types';
 import { SessionStatus } from '@prisma/client';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useSessionSocket } from '@/hooks/useSessionSocket';
+import { translateSessionType } from '@/lib/session-utils';
 
 interface SessionDetailsProps {
   sessionId: string;
@@ -34,9 +37,9 @@ interface SessionDetailsProps {
   onDelete?: () => void;
 }
 
-const SessionDetails: React.FC<SessionDetailsProps> = ({ 
-  sessionId, 
-  onEdit, 
+const SessionDetails: React.FC<SessionDetailsProps> = ({
+  sessionId,
+  onEdit,
   onBack,
   onDelete
 }) => {
@@ -44,57 +47,50 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<{
+    notes: boolean;
+    objectives: boolean;
+    activities: boolean;
+    attachments: boolean;
+  }>({ notes: true, objectives: true, activities: true, attachments: true });
+
+  const expandAll = () => {
+    setExpandedSections({
+      notes: true,
+      objectives: true,
+      activities: true,
+      attachments: true
+    });
+  };
+
+  const collapseAll = () => {
+    setExpandedSections({
+      notes: false,
+      objectives: false,
+      activities: false,
+      attachments: false
+    });
+  };
+
+  const toggleSection = (section: 'notes' | 'objectives' | 'activities' | 'attachments') => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
   const { toast } = useToast();
-  const router = useRouter();
 
   // Fetch session details
   useEffect(() => {
     const fetchSessionDetails = async () => {
       setLoading(true);
       try {
-        // In a real implementation, this would be:
-        // const response = await fetch(`/api/sessions/${sessionId}`);
-        // if (!response.ok) throw new Error('Failed to fetch session details');
-        // const data = await response.json();
-        
-        // For now, we'll use mock data
-        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-        
-        // Mock session data
-        const mockSession: SessionWithRelations = {
-          id: sessionId,
-          patientId: '101',
-          clinicianId: '201',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          type: 'Evaluación inicial',
-          notes: 'El paciente presenta síntomas de ansiedad moderada. Se observa tensión muscular y preocupación excesiva por situaciones cotidianas. Reporta dificultades para conciliar el sueño y concentrarse en el trabajo.',
-          objectives: [
-            { title: 'Evaluar nivel de ansiedad', completed: true, priority: 'high' },
-            { title: 'Identificar factores desencadenantes', completed: true, priority: 'medium' },
-            { title: 'Establecer plan de tratamiento inicial', completed: false, priority: 'high' }
-          ],
-          activities: [
-            { title: 'Entrevista clínica estructurada', duration: 30, completed: true },
-            { title: 'Aplicación de escala de ansiedad de Beck', duration: 15, completed: true },
-            { title: 'Técnica de respiración diafragmática', duration: 10, completed: true }
-          ],
-          status: 'COMPLETED',
-          patient: {
-            id: '101',
-            firstName: 'Juan',
-            lastName: 'Pérez',
-            email: 'juan@example.com',
-          },
-          clinician: {
-            id: '201',
-            firstName: 'Dr. Carlos',
-            lastName: 'Rivera',
-            email: 'carlos@example.com',
-          }
-        };
-        
-        setSession(mockSession);
+        // Fetch the actual session data from the API
+        const response = await fetch(`/api/sessions/${sessionId}`);
+        if (!response.ok) throw new Error('Failed to fetch session details');
+        const data = await response.json();
+
+        setSession(data);
       } catch (err) {
         console.error('Error fetching session details:', err);
         setError('No se pudo cargar los detalles de la sesión');
@@ -127,20 +123,17 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
   // Handle delete
   const handleDelete = async () => {
     try {
-      // In a real implementation, this would be:
-      // const response = await fetch(`/api/sessions/${sessionId}`, {
-      //   method: 'DELETE',
-      // });
-      // if (!response.ok) throw new Error('Failed to delete session');
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      // Use the actual API endpoint
+      const response = await fetch(`/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete session');
+
       toast({
         title: "Sesión eliminada",
         description: "La sesión ha sido eliminada exitosamente.",
       });
-      
+
       if (onDelete) {
         onDelete();
       } else {
@@ -161,18 +154,18 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
   // Handle export
   const handleExport = async () => {
     try {
-      // In a real implementation, this would be:
-      // const response = await fetch(`/api/sessions/${sessionId}/export?format=json`);
-      // if (!response.ok) throw new Error('Failed to export session');
-      // const blob = await response.blob();
-      // const url = window.URL.createObjectURL(blob);
-      // const a = document.createElement('a');
-      // a.href = url;
-      // a.download = `session-${sessionId}.json`;
-      // document.body.appendChild(a);
-      // a.click();
-      // window.URL.revokeObjectURL(url);
-      
+      // Use the actual API endpoint
+      const response = await fetch(`/api/sessions/${sessionId}/export?format=json`);
+      if (!response.ok) throw new Error('Failed to export session');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `session-${sessionId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+
       toast({
         title: "Sesión exportada",
         description: "La sesión ha sido exportada exitosamente.",
@@ -187,14 +180,16 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
     }
   };
 
-  // Handle transfer
-  const handleTransfer = () => {
-    // In a real implementation, this would open a dialog to select a clinician
-    toast({
-      title: "Funcionalidad en desarrollo",
-      description: "La transferencia de sesiones estará disponible próximamente.",
-    });
-  };
+  // Handle transfer - Commented out as it's not currently used
+  // const handleTransfer = () => {
+  //   // In a real implementation, this would open a dialog to select a clinician
+  //   toast({
+  //     title: "Funcionalidad en desarrollo",
+  //     description: "La transferencia de sesiones estará disponible próximamente.",
+  //   });
+  // };
+
+  // Using the shared translateSessionType function from session-utils
 
   // Render status badge
   const getStatusBadge = (status: SessionStatus | string) => {
@@ -220,13 +215,22 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
 
   if (loading) {
     return (
-      <Card className="w-full">
-        <CardContent className="pt-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-pulse flex flex-col items-center">
-              <div className="h-12 w-12 bg-gray-200 rounded-full mb-4"></div>
-              <div className="h-4 w-48 bg-gray-200 rounded mb-2"></div>
-              <div className="h-3 w-32 bg-gray-200 rounded"></div>
+      <Card className="w-full border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100">
+          <div className="h-8 w-48 bg-gray-200 rounded animate-pulse"></div>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="space-y-6">
+            <div className="bg-gray-50/70 rounded-lg p-4 border border-gray-100 h-24 animate-pulse">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="h-16 bg-gray-100/80 rounded animate-pulse"></div>
+                <div className="h-16 bg-gray-100/80 rounded animate-pulse"></div>
+              </div>
+            </div>
+            <div className="h-32 bg-gray-100/50 rounded-lg border border-gray-100 animate-pulse"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-24 bg-gray-100/50 rounded-lg border border-gray-100 animate-pulse"></div>
+              <div className="h-24 bg-gray-100/50 rounded-lg border border-gray-100 animate-pulse"></div>
             </div>
           </div>
         </CardContent>
@@ -236,13 +240,26 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
 
   if (error || !session) {
     return (
-      <Card className="w-full">
-        <CardContent className="pt-6">
-          <div className="flex flex-col justify-center items-center h-64">
-            <X className="h-12 w-12 text-red-500 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Error al cargar la sesión</h3>
-            <p className="text-muted-foreground mb-4">{error || 'No se encontró la sesión solicitada'}</p>
-            <Button onClick={onBack}>Volver</Button>
+      <Card className="w-full border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="pb-3 bg-gradient-to-r from-red-50 to-white border-b border-gray-100">
+          <CardTitle className="text-lg font-semibold text-red-600 flex items-center gap-2">
+            <X className="h-5 w-5" />
+            Error al cargar la sesión
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="bg-red-50/30 rounded-lg p-6 border border-red-100 flex flex-col items-center justify-center text-center">
+            <div className="bg-white p-3 rounded-full shadow-sm mb-4">
+              <X className="h-8 w-8 text-red-500" />
+            </div>
+            <h3 className="text-lg font-medium mb-2 text-gray-800">No se pudo cargar la sesión</h3>
+            <p className="text-gray-600 mb-6">{error || 'No se encontró la sesión solicitada'}</p>
+            <Button
+              onClick={onBack}
+              className="bg-primary hover:bg-primary/90 transition-colors"
+            >
+              Volver a sesiones
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -253,52 +270,56 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
 
   return (
     <>
-      <Card className="w-full">
-        <CardHeader className="pb-3">
+      <Card className="w-full border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+        <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               {onBack && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={onBack} 
-                  className="mr-2"
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onBack}
+                  className="mr-2 hover:bg-white/50 hover:text-primary transition-colors"
                   aria-label="Volver"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
               )}
               <div>
-                <CardTitle className="text-xl">Detalles de la sesión</CardTitle>
-                <CardDescription>
-                  {session.type} - {createdDate.toLocaleDateString()}
-                </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-lg font-semibold">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-primary/10 text-primary">
+                      {translateSessionType(session.type)}
+                    </span>
+                  </CardTitle>
+                  {getStatusBadge(session.status)}
+                </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExport}
-                className="text-xs"
-              >
-                <Download className="h-3.5 w-3.5 mr-1" />
-                Exportar
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+            <div className="flex gap-1.5">
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onEdit}
-                className="text-xs"
+                className="text-xs hover:bg-primary/10 hover:text-primary transition-colors"
               >
                 <Edit className="h-3.5 w-3.5 mr-1" />
                 Editar
               </Button>
-              <Button 
-                variant="destructive" 
-                size="sm" 
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleExport}
+                className="text-xs hover:bg-blue-50 hover:text-blue-600 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Exportar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="text-xs"
+                className="text-xs hover:bg-red-50 hover:text-red-600 transition-colors"
               >
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Eliminar
@@ -307,179 +328,383 @@ const SessionDetails: React.FC<SessionDetailsProps> = ({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Session metadata */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-start gap-2">
-              <User className="h-5 w-5 text-blue-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Paciente</p>
-                <p className="text-sm text-muted-foreground">
-                  {session.patient ? `${session.patient.firstName} ${session.patient.lastName}` : 'Desconocido'}
-                </p>
+          {/* Session metadata - Styled like accordion cards */}
+          <div className="overflow-hidden hover:shadow-sm transition-shadow border border-gray-100 rounded-lg">
+            <div className="bg-gradient-to-r from-indigo-50/70 to-indigo-50/30 px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="bg-indigo-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="h-4 w-4 text-indigo-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium">Participantes y detalles</h3>
+                </div>
               </div>
             </div>
-            <div className="flex items-start gap-2">
-              <User className="h-5 w-5 text-green-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Profesional</p>
-                <p className="text-sm text-muted-foreground">
-                  {session.clinician ? `${session.clinician.firstName} ${session.clinician.lastName}` : 'Desconocido'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Calendar className="h-5 w-5 text-amber-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Fecha y hora</p>
-                <p className="text-sm text-muted-foreground">
-                  {createdDate.toLocaleDateString()} - {createdDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Tag className="h-5 w-5 text-purple-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Tipo</p>
-                <p className="text-sm text-muted-foreground">{session.type}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-red-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Estado</p>
-                <div className="mt-1">{getStatusBadge(session.status)}</div>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Clock className="h-5 w-5 text-gray-500 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium">Duración</p>
-                <p className="text-sm text-muted-foreground">
-                  {session.activities && session.activities.reduce((total, activity) => total + (activity.duration || 0), 0)} minutos
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Session notes */}
-          <div className="space-y-2">
-            <h3 className="text-md font-medium flex items-center gap-2">
-              <FileText className="h-4 w-4 text-blue-500" />
-              Notas clínicas
-            </h3>
-            <div className="p-4 bg-gray-50 rounded-md">
-              <p className="text-sm whitespace-pre-line">{session.notes}</p>
-            </div>
-          </div>
-
-          {/* Session objectives */}
-          {session.objectives && session.objectives.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-md font-medium flex items-center gap-2">
-                <Tag className="h-4 w-4 text-green-500" />
-                Objetivos
-              </h3>
-              <div className="space-y-2">
-                {session.objectives.map((objective, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-gray-50 rounded-md">
-                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${objective.completed ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                      {objective.completed ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        <Clock className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{objective.title}</p>
-                      {objective.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{objective.description}</p>
-                      )}
-                    </div>
-                    {objective.priority && (
-                      <Badge variant="outline" className={
-                        objective.priority === 'high' ? 'bg-red-50 text-red-600' :
-                        objective.priority === 'medium' ? 'bg-amber-50 text-amber-600' :
-                        'bg-blue-50 text-blue-600'
-                      }>
-                        {objective.priority === 'high' ? 'Alta' :
-                         objective.priority === 'medium' ? 'Media' : 'Baja'}
-                      </Badge>
-                    )}
+            <div className="p-4 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left column - People */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Participantes</span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Session activities */}
-          {session.activities && session.activities.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-md font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4 text-purple-500" />
-                Actividades
-              </h3>
-              <div className="space-y-2">
-                {session.activities.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-gray-50 rounded-md">
-                    <div className={`h-5 w-5 rounded-full flex items-center justify-center ${activity.completed ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                      {activity.completed ? (
-                        <CheckCircle className="h-4 w-4" />
-                      ) : (
-                        <Clock className="h-4 w-4" />
-                      )}
+                  <div className="flex items-center justify-between p-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium">Paciente</span>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{activity.title}</p>
-                      {activity.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{activity.description}</p>
-                      )}
-                    </div>
-                    {activity.duration && (
-                      <Badge variant="outline" className="bg-purple-50 text-purple-600">
-                        {activity.duration} min
-                      </Badge>
-                    )}
+                    <span className="text-sm text-gray-700">
+                      {session.patient ? `${session.patient.firstName} ${session.patient.lastName}` : 'Desconocido'}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                  <div className="flex items-center justify-between p-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-green-100 flex items-center justify-center">
+                        <User className="h-4 w-4 text-green-600" />
+                      </div>
+                      <span className="text-sm font-medium">Profesional</span>
+                    </div>
+                    <span className="text-sm text-gray-700">
+                      {session.clinician ? `${session.clinician.firstName} ${session.clinician.lastName}` : 'Desconocido'}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Attachments */}
-          {session.attachments && session.attachments.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-md font-medium flex items-center gap-2">
-                <Paperclip className="h-4 w-4 text-amber-500" />
-                Archivos adjuntos
-              </h3>
-              <div className="space-y-2">
-                {session.attachments.map((attachment, index) => (
-                  <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-md">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{attachment.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Subido el {new Date(attachment.uploadedAt).toLocaleDateString()}
+                {/* Right column - Session details */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Detalles</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                      <p className="text-xs text-gray-500">Duración</p>
+                      <p className="text-sm font-medium">
+                        {session.activities && Array.isArray(session.activities)
+                          ? session.activities.reduce((total: number, activity: any) => total + (activity.duration || 0), 0)
+                          : 0} minutos
                       </p>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600">
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <div className="p-2 hover:bg-gray-50/50 rounded-md transition-colors">
+                      <p className="text-xs text-gray-500">Fecha</p>
+                      <p className="text-sm font-medium">
+                        {createdDate.toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
-                ))}
+                </div>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Global controls */}
+          <div className="flex justify-end mb-2">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={expandAll}
+                className="text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                Expandir todo
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={collapseAll}
+                className="text-xs hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                Contraer todo
+              </Button>
+            </div>
+          </div>
+
+          {/* Accordion sections container */}
+          <div className="accordion-container border border-gray-100 rounded-lg overflow-hidden divide-y-0 divide-gray-100">
+
+          {/* Notes Card */}
+          <div className="overflow-hidden hover:shadow-sm transition-shadow">
+            <div
+              className="bg-gradient-to-r from-blue-50/70 to-blue-50/30 px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection('notes')}
+            >
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium">Notas clínicas</h3>
+                  <p className="text-xs text-gray-500">{session.notes ? `${session.notes.substring(0, 30)}${session.notes.length > 30 ? '...' : ''}` : 'Sin notas'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-xs px-2 py-0.5 rounded-full ${expandedSections.notes ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {expandedSections.notes ? 'Mostrando' : 'Ver notas'}
+                </span>
+                <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors ${expandedSections.notes ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                  {expandedSections.notes ? (
+                    <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                  ) : (
+                    <ChevronLeft className="h-3.5 w-3.5 -rotate-90" />
+                  )}
+                </div>
+              </div>
+            </div>
+            <div
+              className={cn(
+                "border-t border-gray-100 transition-all duration-300 ease-in-out overflow-hidden",
+                expandedSections.notes ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 border-t-0"
+              )}>
+                <div className="p-4 bg-white">
+                  {session.notes ? (
+                    <div className="bg-gray-50/50 p-4 rounded-md border border-gray-100">
+                      <p className="text-sm leading-relaxed whitespace-pre-line text-gray-800">{session.notes}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50/50 p-4 rounded-md border border-gray-100 flex flex-col items-center justify-center text-center">
+                      <FileX className="h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-500">No hay notas clínicas para esta sesión.</p>
+                      <Button variant="ghost" size="sm" className="mt-2 text-xs" onClick={onEdit}>
+                        <Edit className="h-3.5 w-3.5 mr-1" />
+                        Añadir notas
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+          </div>
+
+          {/* Content cards with expandable sections */}
+            {/* Objectives card */}
+            {session.objectives && Array.isArray(session.objectives) && session.objectives.length > 0 && (
+              <div className="overflow-hidden hover:shadow-sm transition-shadow border-t border-gray-100">
+                <div
+                  className="bg-gradient-to-r from-green-50/70 to-green-50/30 px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSection('objectives')}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="bg-green-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Tag className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Objetivos</h3>
+                      <p className="text-xs text-gray-500">
+                        {Array.isArray(session.objectives)
+                          ? `${session.objectives.filter((o: any) => o.completed).length} de ${session.objectives.length} completados`
+                          : '0 de 0 completados'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${expandedSections.objectives ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {expandedSections.objectives ? 'Mostrando' : 'Ver todos'}
+                    </span>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors ${expandedSections.objectives ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {expandedSections.objectives ? (
+                        <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-3.5 w-3.5 -rotate-90" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "border-t border-gray-100 transition-all duration-300 ease-in-out overflow-hidden",
+                    expandedSections.objectives ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 border-t-0"
+                  )}>
+                    <div className="p-4 bg-white">
+                      <div className="bg-gray-50/50 rounded-md border border-gray-100 overflow-hidden">
+                        <ul className="divide-y divide-gray-100">
+                          {Array.isArray(session.objectives) && session.objectives.map((objective: any, index: number) => (
+                            <li key={index} className="p-3 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-start gap-3">
+                                <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${objective.completed ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                  {objective.completed ? (
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Clock className="h-3.5 w-3.5" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{objective.title}</p>
+                                  {objective.description && (
+                                    <p className="text-xs text-gray-500 mt-1">{objective.description}</p>
+                                  )}
+                                </div>
+                                {objective.priority && (
+                                  <Badge variant="outline" className={
+                                    objective.priority === 'high' ? 'bg-red-50 text-red-600' :
+                                    objective.priority === 'medium' ? 'bg-amber-50 text-amber-600' :
+                                    'bg-blue-50 text-blue-600'
+                                  }>
+                                    {objective.priority === 'high' ? 'Alta' :
+                                     objective.priority === 'medium' ? 'Media' : 'Baja'}
+                                  </Badge>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            )}
+
+            {/* Activities card */}
+            {session.activities && Array.isArray(session.activities) && session.activities.length > 0 && (
+              <div className="overflow-hidden hover:shadow-sm transition-shadow border-t border-gray-100">
+                <div
+                  className="bg-gradient-to-r from-purple-50/70 to-purple-50/30 px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSection('activities')}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="bg-purple-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Clock className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Actividades</h3>
+                      <p className="text-xs text-gray-500">
+                        {Array.isArray(session.activities)
+                          ? `${session.activities.filter((a: any) => a.completed).length} de ${session.activities.length} completadas`
+                          : '0 de 0 completadas'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${expandedSections.activities ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {expandedSections.activities ? 'Mostrando' : 'Ver todas'}
+                    </span>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors ${expandedSections.activities ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {expandedSections.activities ? (
+                        <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-3.5 w-3.5 -rotate-90" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "border-t border-gray-100 transition-all duration-300 ease-in-out overflow-hidden",
+                    expandedSections.activities ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 border-t-0"
+                  )}>
+                    <div className="p-4 bg-white">
+                      <div className="bg-gray-50/50 rounded-md border border-gray-100 overflow-hidden">
+                        <ul className="divide-y divide-gray-100">
+                          {Array.isArray(session.activities) && session.activities.map((activity: any, index: number) => (
+                            <li key={index} className="p-3 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-start gap-3">
+                                <div className={`h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${activity.completed ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
+                                  {activity.completed ? (
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Clock className="h-3.5 w-3.5" />
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{activity.title}</p>
+                                  {activity.description && (
+                                    <p className="text-xs text-gray-500 mt-1">{activity.description}</p>
+                                  )}
+                                </div>
+                                {activity.duration && (
+                                  <Badge variant="outline" className="bg-purple-50 text-purple-600">
+                                    {activity.duration} min
+                                  </Badge>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            )}
+
+            {/* Attachments card */}
+            {session.attachments && Array.isArray(session.attachments) && session.attachments.length > 0 && (
+              <div className="overflow-hidden hover:shadow-sm transition-shadow border-t border-gray-100">
+                <div
+                  className="bg-gradient-to-r from-amber-50/70 to-amber-50/30 px-4 py-3 border-b border-gray-100 flex items-center justify-between cursor-pointer"
+                  onClick={() => toggleSection('attachments')}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="bg-amber-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Paperclip className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium">Archivos adjuntos</h3>
+                      <p className="text-xs text-gray-500">
+                        {Array.isArray(session.attachments) ? session.attachments.length : 0} archivos disponibles
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${expandedSections.attachments ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {expandedSections.attachments ? 'Mostrando' : 'Ver todos'}
+                    </span>
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center transition-colors ${expandedSections.attachments ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>
+                      {expandedSections.attachments ? (
+                        <ChevronLeft className="h-3.5 w-3.5 rotate-90" />
+                      ) : (
+                        <ChevronLeft className="h-3.5 w-3.5 -rotate-90" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "border-t border-gray-100 transition-all duration-300 ease-in-out overflow-hidden",
+                    expandedSections.attachments ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0 border-t-0"
+                  )}>
+                    <div className="p-4 bg-white">
+                      <div className="bg-gray-50/50 rounded-md border border-gray-100 overflow-hidden">
+                        <ul className="divide-y divide-gray-100">
+                          {Array.isArray(session.attachments) && session.attachments.map((attachment: any, index: number) => (
+                            <li key={index} className="p-3 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="bg-blue-100 h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <FileText className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium">{attachment.name}</p>
+                                  <p className="text-xs text-gray-500">
+                                    Subido el {new Date(attachment.uploadedAt).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50 h-8 w-8 p-0 rounded-full">
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            )}
+          </div>
+          {/* End of accordion container */}
         </CardContent>
-        <CardFooter className="flex justify-between border-t pt-6">
-          <Button variant="outline" onClick={onBack}>
+        <CardFooter className="flex justify-end gap-3 border-t pt-4 pb-4 bg-gray-50/30">
+          <Button
+            variant="ghost"
+            onClick={onBack}
+            className="hover:bg-white hover:text-gray-700 transition-colors"
+          >
             Volver
           </Button>
-          <Button variant="outline" onClick={handleTransfer}>
-            <ArrowRightLeft className="h-4 w-4 mr-2" />
-            Transferir
+          <Button
+            variant="default"
+            onClick={onEdit}
+            className="bg-primary hover:bg-primary/90 transition-colors"
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Editar sesión
           </Button>
         </CardFooter>
       </Card>

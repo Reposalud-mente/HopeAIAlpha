@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "vercel-build": "node vercel-build.js",
+    "build": "next build && node scripts/copy-pdfkit-fonts.js",
+    "vercel-build": "node vercel-build.cjs && node scripts/copy-pdfkit-fonts.js",
     "start": "next start",
     "lint": "next lint",
     "prisma:seed": "ts-node --project tsconfig-seed.json -r dotenv/config src/prisma/seed.ts",
     "prisma:seed:dsm5": "node scripts/seed-dsm5.js",
-    "prisma:seed:sessions": "ts-node --esm prisma/seed.ts",
+    "prisma:seed:sessions": "node prisma/seed-sessions.js",
+    "prisma:seed:reports": "node prisma/seed-reports.cjs",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "ai:report": "node scripts/generate-report.js",
@@ -24,6 +25,7 @@
   "dependencies": {
     "@ai-sdk/google": "^1.2.13",
     "@auth/prisma-adapter": "^2.8.0",
+    "@google/genai": "^0.12.0",
     "@prisma/client": "^6.6.0",
     "@prisma/engines": "^6.6.0",
     "@radix-ui/react-alert-dialog": "^1.1.11",
@@ -58,6 +60,7 @@
     "esbuild": "^0.25.2",
     "framer-motion": "^12.4.7",
     "jspdf": "^3.0.0",
+    "langbase": "^1.1.59",
     "lucide-react": "^0.476.0",
     "next": "15.1.7",
     "next-auth": "^4.24.11",
@@ -73,6 +76,7 @@
     "typeit": "^8.8.7",
     "typeit-react": "^2.7.8",
     "zod": "^3.24.3",
+    "zod-to-json-schema": "^3.24.5",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
