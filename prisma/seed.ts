@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 import { seedSessions } from './seed-sessions';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcryptjs';
@@ -12,24 +12,28 @@ const users = [
     email: 'doctor@example.com',
     firstName: 'Carlos',
     lastName: 'Rodríguez',
-    role: 'CLINICIAN',
-    password: bcrypt.hashSync('password123', 10),
+    role: Role.PSYCHOLOGIST,
+    passwordHash: bcrypt.hashSync('password123', 10),
+    licenseNumber: 'PSY12345',
+    specialty: 'Psicología Clínica',
   },
   {
     id: uuidv4(),
     email: 'admin@example.com',
     firstName: 'Ana',
     lastName: 'Martínez',
-    role: 'ADMIN',
-    password: bcrypt.hashSync('password123', 10),
+    role: Role.ADMIN,
+    passwordHash: bcrypt.hashSync('password123', 10),
   },
   {
     id: uuidv4(),
     email: 'therapist@example.com',
     firstName: 'Laura',
     lastName: 'Gómez',
-    role: 'CLINICIAN',
-    password: bcrypt.hashSync('password123', 10),
+    role: Role.PSYCHOLOGIST,
+    passwordHash: bcrypt.hashSync('password123', 10),
+    licenseNumber: 'PSY67890',
+    specialty: 'Psicología Infantil',
   },
 ];
 
@@ -103,9 +107,9 @@ async function main() {
   // Seed patients
   console.log('Seeding patients...');
   for (const patient of patients) {
-    // Assign a random clinician as the creator
-    const clinicians = users.filter(u => u.role === 'CLINICIAN');
-    const randomClinician = clinicians[Math.floor(Math.random() * clinicians.length)];
+    // Assign a random psychologist as the creator
+    const psychologists = users.filter(u => u.role === Role.PSYCHOLOGIST);
+    const randomClinician = psychologists[Math.floor(Math.random() * psychologists.length)];
 
     await prisma.patient.create({
       data: {

@@ -60,6 +60,8 @@ interface PatientContextType {
   createPatient: (patientData: Partial<Patient>) => Promise<Patient | null>;
   updatePatient: (id: string, patientData: Partial<Patient>) => Promise<Patient | null>;
   deletePatient: (id: string) => Promise<boolean>;
+  bulkDeletePatients: (ids: string[]) => Promise<boolean>;
+  bulkUpdatePatients: (ids: string[], data: Partial<Patient>) => Promise<boolean>;
 
   // Loading states
   isLoading: boolean;
@@ -359,8 +361,13 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete patient');
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete patient');
+        } catch (parseError) {
+          const errorText = await response.text();
+          throw new Error(errorText || 'Failed to delete patient');
+        }
       }
 
       setIsLoading(false);
@@ -382,6 +389,122 @@ export function PatientProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Bulk delete patients (mark as inactive)
+  const bulkDeletePatients = async (ids: string[]): Promise<boolean> => {
+    if (!ids.length) return false;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Process each patient deletion sequentially
+      let allSuccessful = true;
+
+      for (const id of ids) {
+        const response = await fetch(`/api/patients/${id}`, {
+          credentials: 'same-origin',
+          method: 'DELETE',
+        });
+
+        if (!response.ok) {
+          allSuccessful = false;
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error(`Failed to delete patient ${id}:`, errorJson);
+          } catch {
+            console.error(`Failed to delete patient ${id}:`, errorText);
+          }
+        } else {
+          // Remove from recent patients
+          setRecentPatients(prev => prev.filter(p => p.id !== id));
+
+          // Clear current patient if this is the one being viewed
+          if (currentPatient && currentPatient.id === id) {
+            setCurrentPatient(null);
+          }
+        }
+      }
+
+      setIsLoading(false);
+      return allSuccessful;
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Error deleting patients');
+      console.error('Error deleting patients:', err);
+      return false;
+    }
+  };
+
+  // Bulk update patients (activate/deactivate)
+  const bulkUpdatePatients = async (ids: string[], data: Partial<Patient>): Promise<boolean> => {
+    if (!ids.length) return false;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Process each patient update sequentially
+      let allSuccessful = true;
+
+      for (const id of ids) {
+        const response = await fetch(`/api/patients/${id}`, {
+          credentials: 'same-origin',
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+          allSuccessful = false;
+          const errorText = await response.text();
+          try {
+            const errorJson = JSON.parse(errorText);
+            console.error(`Failed to update patient ${id}:`, errorJson);
+          } catch {
+            console.error(`Failed to update patient ${id}:`, errorText);
+          }
+        } else {
+          const patient = await response.json();
+
+          // Update recent patients list if this patient is in it
+          setRecentPatients(prev => {
+            const index = prev.findIndex(p => p.id === id);
+            if (index >= 0) {
+              const updated = [...prev];
+              updated[index] = {
+                ...updated[index],
+                ...data,
+                updatedAt: new Date()
+              };
+              return updated;
+            }
+            return prev;
+          });
+
+          // Update current patient if this is the one being viewed
+          if (currentPatient && currentPatient.id === id) {
+            setCurrentPatient({
+              ...currentPatient,
+              ...data,
+              updatedAt: new Date()
+            });
+          }
+        }
+      }
+
+      setIsLoading(false);
+      return allSuccessful;
+    } catch (err) {
+      setIsLoading(false);
+      setError(err instanceof Error ? err.message : 'Error updating patients');
+      console.error('Error updating patients:', err);
+      return false;
+    }
+  };
+
   return (
     <PatientContext.Provider value={{
       currentPatient,
@@ -393,6 +516,8 @@ export function PatientProvider({ children }: { children: ReactNode }) {
       createPatient,
       updatePatient,
       deletePatient,
+      bulkDeletePatients,
+      bulkUpdatePatients,
       isLoading,
       error
     }}>

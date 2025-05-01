@@ -36,25 +36,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/dashboard/summary/route.js"
     ],
-    "/api/messages/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/messages/route.js"
-    ],
     "/api/appointments/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/appointments/route.js"
     ],
-    "/sessions/page": [
+    "/api/messages/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/sessions/page.js"
+      "static/chunks/app/api/messages/route.js"
     ],
-    "/_not-found/page": [
+    "/reports/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/_not-found/page.js"
+      "static/chunks/app/reports/page.js"
+    ],
+    "/api/patients/[id]/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/patients/[id]/route.js"
     ]
   }
 }

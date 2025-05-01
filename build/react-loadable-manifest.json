@@ -4,5 +4,9 @@
     "files": [
       "static/chunks/_app-pages-browser_node_modules_pnpm_next_15_1_7__opentelemetry__bb0e88e8ebb9903bfdf03e11d2cc-5ef04a.js"
     ]
+  },
+  "hooks\\useAIReportGeneration.ts -> @/lib/ai-report-generator/ai-report-generating": {
+    "id": "hooks\\useAIReportGeneration.ts -> @/lib/ai-report-generator/ai-report-generating",
+    "files": []
   }
 }

@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     let aiResponseContent = '';
 
     try {
-      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       console.log('Calling Google AI with API key:', apiKey ? 'API key exists' : 'API key missing');
 
       if (apiKey) {

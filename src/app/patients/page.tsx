@@ -31,6 +31,11 @@ import { usePatient, PatientListItem } from '@/contexts/PatientContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import {
   UserCircle,
@@ -41,7 +46,17 @@ import {
   Plus,
   AlertCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LayoutGrid,
+  List,
+  Filter,
+  X,
+  CheckSquare,
+  Square,
+  Trash2,
+  Download,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import Link from 'next/link';
 import PatientForm from '@/components/clinical/patient/PatientForm';
@@ -52,7 +67,7 @@ import { formatPatientName, calculateAge } from '@/lib/patient-utils';
 
 export default function PatientListPage() {
   const router = useRouter();
-  const { searchPatients, createPatient, isLoading, error } = usePatient();
+  const { searchPatients, createPatient, bulkDeletePatients, bulkUpdatePatients, isLoading, error } = usePatient();
 
   // State for patient list
   const [patients, setPatients] = useState<PatientListItem[]>([]);
@@ -62,24 +77,51 @@ export default function PatientListPage() {
   const [totalPatients, setTotalPatients] = useState(0);
   const [patientsPerPage] = useState(10);
 
+  // State for bulk actions and filtering
+  const [selectedPatients, setSelectedPatients] = useState<string[]>([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'delete' | 'activate' | 'deactivate' | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+
   // Función para cargar pacientes
   const loadPatients = async (search: string) => {
     try {
       const results = await searchPatients(search);
       console.log('Patients loaded:', results); // Mensaje de depuración
-      setPatients(results);
-      setTotalPatients(results.length);
+
+      // Apply status filter if needed
+      let filteredResults = results;
+      if (statusFilter !== 'all') {
+        filteredResults = results.filter(patient =>
+          statusFilter === 'active' ? patient.isActive : !patient.isActive
+        );
+      }
+
+      setPatients(filteredResults);
+      setTotalPatients(filteredResults.length);
+
+      // Clear selected patients when loading new data
+      setSelectedPatients([]);
     } catch (error) {
       console.error('Error loading patients:', error);
     }
   };
 
-  // Cargar todos los pacientes al inicio
+  // Cargar todos los pacientes al inicio y restaurar preferencia de vista
   useEffect(() => {
     console.log('Cargando pacientes al inicio...');
     // Llamamos a loadPatients con una cadena vacía para cargar todos los pacientes
     loadPatients('');
     console.log('Solicitud de carga de pacientes enviada');
+
+    // Restaurar preferencia de vista desde localStorage
+    const savedViewMode = localStorage.getItem('patientsViewMode');
+    if (savedViewMode === 'grid' || savedViewMode === 'list') {
+      setViewMode(savedViewMode);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -97,10 +139,119 @@ export default function PatientListPage() {
 
     return () => clearTimeout(debounceTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter]);
+
+  // Effect to show/hide bulk actions bar
+  useEffect(() => {
+    setShowBulkActions(selectedPatients.length > 0);
+  }, [selectedPatients]);
 
   // Hook para mostrar toasts
   const { toast } = useToast();
+
+  // Toggle selection of a single patient
+  const togglePatientSelection = (patientId: string) => {
+    setSelectedPatients(prev => {
+      if (prev.includes(patientId)) {
+        return prev.filter(id => id !== patientId);
+      } else {
+        return [...prev, patientId];
+      }
+    });
+  };
+
+  // Toggle selection of all patients on current page
+  const toggleSelectAll = () => {
+    if (selectedPatients.length === currentPatients.length) {
+      setSelectedPatients([]);
+    } else {
+      setSelectedPatients(currentPatients.map(patient => patient.id));
+    }
+  };
+
+  // Handle bulk actions
+  const handleBulkAction = (action: 'delete' | 'activate' | 'deactivate') => {
+    setBulkActionType(action);
+    setIsConfirmDialogOpen(true);
+  };
+
+  // Execute bulk action after confirmation
+  const executeBulkAction = async () => {
+    if (!bulkActionType) return;
+
+    setIsBulkActionLoading(true);
+
+    try {
+      let success = false;
+
+      // Implement the actual bulk actions here
+      switch (bulkActionType) {
+        case 'delete':
+          // Call the bulk delete function
+          success = await bulkDeletePatients(selectedPatients);
+          if (success) {
+            toast({
+              title: "Pacientes eliminados",
+              description: `${selectedPatients.length} pacientes han sido eliminados.`,
+              duration: 3000,
+            });
+          } else {
+            throw new Error('No se pudieron eliminar algunos pacientes');
+          }
+          break;
+
+        case 'activate':
+          // Call the bulk update function to activate patients
+          success = await bulkUpdatePatients(selectedPatients, { isActive: true });
+          if (success) {
+            toast({
+              title: "Pacientes activados",
+              description: `${selectedPatients.length} pacientes han sido activados.`,
+              duration: 3000,
+            });
+          } else {
+            throw new Error('No se pudieron activar algunos pacientes');
+          }
+          break;
+
+        case 'deactivate':
+          // Call the bulk update function to deactivate patients
+          success = await bulkUpdatePatients(selectedPatients, { isActive: false });
+          if (success) {
+            toast({
+              title: "Pacientes desactivados",
+              description: `${selectedPatients.length} pacientes han sido desactivados.`,
+              duration: 3000,
+            });
+          } else {
+            throw new Error('No se pudieron desactivar algunos pacientes');
+          }
+          break;
+      }
+
+      // Reload patients after bulk action
+      await loadPatients(searchTerm);
+
+    } catch (error) {
+      console.error('Error executing bulk action:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "No se pudo completar la acción. Inténtelo de nuevo.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsBulkActionLoading(false);
+      setIsConfirmDialogOpen(false);
+      setBulkActionType(null);
+    }
+  };
+
+  // Handle status filter change
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value as 'all' | 'active' | 'inactive');
+    loadPatients(searchTerm);
+  };
 
   // Handle patient creation
   const handleCreatePatient = async (patientData: any) => {
@@ -192,9 +343,9 @@ export default function PatientListPage() {
           </Button>
         </div>
 
-        {/* Search and filter bar */}
-        <div className="mb-6 flex gap-4">
-          <div className="relative flex-1">
+        {/* Search and filter bar with view toggle */}
+        <div className="mb-6 flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Buscar pacientes..."
@@ -203,60 +354,277 @@ export default function PatientListPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          {/* Filter dropdown */}
+          <div className="flex items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  <span>Filtros</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="p-2">
+                  <p className="text-sm font-medium mb-2">Estado</p>
+                  <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="active">Activos</SelectItem>
+                      <SelectItem value="inactive">Inactivos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* View toggle */}
+          <div className="flex items-center space-x-2">
+            <Button
+              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => {
+                setViewMode('grid');
+                localStorage.setItem('patientsViewMode', 'grid');
+              }}
+              className="h-9 w-9"
+              title="Vista de cuadrícula"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'outline'}
+              size="icon"
+              onClick={() => {
+                setViewMode('list');
+                localStorage.setItem('patientsViewMode', 'list');
+              }}
+              className="h-9 w-9"
+              title="Vista de lista"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
-        {/* Patient list - Modern card grid layout */}
+        {/* Bulk actions bar - appears when patients are selected */}
+        {showBulkActions && (
+          <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-blue-700">
+                {selectedPatients.length} {selectedPatients.length === 1 ? 'paciente' : 'pacientes'} seleccionado{selectedPatients.length !== 1 ? 's' : ''}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedPatients([])}
+                className="text-blue-700 hover:bg-blue-100"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Limpiar selección
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('activate')}
+                className="bg-white"
+              >
+                <UserCheck className="h-4 w-4 mr-1" />
+                Activar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('deactivate')}
+                className="bg-white"
+              >
+                <UserX className="h-4 w-4 mr-1" />
+                Desactivar
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleBulkAction('delete')}
+                className="bg-white text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Eliminar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Patient list - Toggleable between grid and list view */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Lista de Pacientes</CardTitle>
+            {viewMode === 'grid' && currentPatients.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  checked={currentPatients.length > 0 && selectedPatients.length === currentPatients.length}
+                  onCheckedChange={toggleSelectAll}
+                  id="select-all-grid"
+                />
+                <label htmlFor="select-all-grid" className="text-sm cursor-pointer">
+                  Seleccionar todos
+                </label>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {patients.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {currentPatients.map((patient) => {
-                  // Avatar initials
-                  const initials = `${patient.firstName?.[0] || ''}${patient.lastName?.[0] || ''}`.toUpperCase();
-                  // Status badge (active/inactive)
-                  const statusColor = patient.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500';
-                  return (
-                    <div key={patient.id} className="flex flex-col bg-white border rounded-lg shadow-sm p-4 transition hover:shadow-md">
-                      <div className="flex items-center mb-3">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600 mr-3" aria-label="Avatar">
-                          {initials}
-                        </div>
-                        <div className="flex flex-col flex-1">
-                          <span className="font-semibold text-lg leading-tight truncate" title={formatPatientName(patient)}>{formatPatientName(patient)}</span>
-                          <span className={`mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor} w-max`} aria-label={patient.isActive ? 'Activo' : 'Inactivo'}>
-                            {patient.isActive ? 'Activo' : 'Inactivo'}
-                          </span>
-                          <PatientSessionSummary patientId={patient.id} />
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1 text-sm text-gray-600 mb-3">
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-400" />
-                          <span>{calculateAge(patient.dateOfBirth)} años</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 mr-1 text-gray-400" />
-                          <span>{patient.contactEmail}</span>
-                        </div>
-                        {patient.contactPhone && (
-                          <div className="flex items-center">
-                            <Phone className="h-4 w-4 mr-1 text-gray-400" />
-                            <span>{patient.contactPhone}</span>
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {currentPatients.map((patient) => {
+                    // Avatar initials
+                    const initials = `${patient.firstName?.[0] || ''}${patient.lastName?.[0] || ''}`.toUpperCase();
+                    // Status badge (active/inactive)
+                    const statusColor = patient.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-500';
+                    const isSelected = selectedPatients.includes(patient.id);
+                    return (
+                      <div
+                        key={patient.id}
+                        className={`flex flex-col bg-white border rounded-lg shadow-sm p-4 transition hover:shadow-md ${isSelected ? 'border-blue-500 bg-blue-50/30' : ''}`}
+                      >
+                        <div className="flex items-center mb-3">
+                          <div className="flex items-center gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => togglePatientSelection(patient.id)}
+                              aria-label={`Seleccionar paciente ${formatPatientName(patient)}`}
+                              className="mr-1"
+                            />
+                            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-xl font-bold text-blue-600" aria-label="Avatar">
+                              {initials}
+                            </div>
                           </div>
-                        )}
+                          <div className="flex flex-col flex-1 ml-3">
+                            <span className="font-semibold text-lg leading-tight truncate" title={formatPatientName(patient)}>{formatPatientName(patient)}</span>
+                            <span className={`mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor} w-max`} aria-label={patient.isActive ? 'Activo' : 'Inactivo'}>
+                              {patient.isActive ? 'Activo' : 'Inactivo'}
+                            </span>
+                            <PatientSessionSummary patientId={patient.id} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center">
+                            <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                            <span>{calculateAge(patient.dateOfBirth)} años</span>
+                          </div>
+                          <div className="flex items-center">
+                            <Mail className="h-4 w-4 mr-1 text-gray-400" />
+                            <span>{patient.contactEmail}</span>
+                          </div>
+                          {patient.contactPhone && (
+                            <div className="flex items-center">
+                              <Phone className="h-4 w-4 mr-1 text-gray-400" />
+                              <span>{patient.contactPhone}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-auto flex gap-2">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/patients/${patient.id}`}>Ver Detalles</Link>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="mt-auto flex gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/patients/${patient.id}`}>Ver Detalles</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-md border border-gray-200">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[40px]">
+                          <Checkbox
+                            checked={currentPatients.length > 0 && selectedPatients.length === currentPatients.length}
+                            onCheckedChange={toggleSelectAll}
+                            aria-label="Seleccionar todos los pacientes"
+                          />
+                        </TableHead>
+                        <TableHead>Paciente</TableHead>
+                        <TableHead>Estado</TableHead>
+                        <TableHead>Edad</TableHead>
+                        <TableHead>Contacto</TableHead>
+                        <TableHead>Sesiones</TableHead>
+                        <TableHead className="text-right">Acciones</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentPatients.map((patient) => {
+                        // Avatar initials
+                        const initials = `${patient.firstName?.[0] || ''}${patient.lastName?.[0] || ''}`.toUpperCase();
+                        const isSelected = selectedPatients.includes(patient.id);
+                        return (
+                          <TableRow
+                            key={patient.id}
+                            className={`hover:bg-muted/50 ${isSelected ? 'bg-blue-50/50' : ''}`}
+                          >
+                            <TableCell>
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => togglePatientSelection(patient.id)}
+                                aria-label={`Seleccionar paciente ${formatPatientName(patient)}`}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-lg font-bold text-blue-600" aria-label="Avatar">
+                                  {initials}
+                                </div>
+                                <div>
+                                  <div className="font-medium">{formatPatientName(patient)}</div>
+                                  <div className="text-sm text-muted-foreground">{patient.contactEmail}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={patient.isActive ? "default" : "outline"} className={patient.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-gray-100 text-gray-500 hover:bg-gray-100"}>
+                                {patient.isActive ? 'Activo' : 'Inactivo'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-4 w-4 text-gray-400" />
+                                <span>{calculateAge(patient.dateOfBirth)} años</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1">
+                                  <Mail className="h-4 w-4 text-gray-400" />
+                                  <span className="text-sm">{patient.contactEmail}</span>
+                                </div>
+                                {patient.contactPhone && (
+                                  <div className="flex items-center gap-1">
+                                    <Phone className="h-4 w-4 text-gray-400" />
+                                    <span className="text-sm">{patient.contactPhone}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <PatientSessionSummary patientId={patient.id} />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="outline" size="sm" asChild>
+                                <Link href={`/patients/${patient.id}`}>Ver Detalles</Link>
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )
             ) : (
               <div className="flex flex-col items-center justify-center py-12">
                 <UserCircle className="h-16 w-16 text-gray-200 mb-4" />
@@ -301,6 +669,52 @@ export default function PatientListPage() {
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Dialog for Bulk Actions */}
+        {isConfirmDialogOpen && bulkActionType && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+              <div className="p-4 border-b">
+                <h2 className="text-xl font-semibold">
+                  {bulkActionType === 'delete' ? 'Eliminar pacientes' :
+                   bulkActionType === 'activate' ? 'Activar pacientes' : 'Desactivar pacientes'}
+                </h2>
+              </div>
+              <div className="p-6">
+                <p className="mb-4">
+                  {bulkActionType === 'delete' ?
+                    `¿Está seguro de que desea eliminar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.` :
+                    bulkActionType === 'activate' ?
+                    `¿Está seguro de que desea activar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?` :
+                    `¿Está seguro de que desea desactivar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?`}
+                </p>
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsConfirmDialogOpen(false);
+                      setBulkActionType(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant={bulkActionType === 'delete' ? 'destructive' : 'default'}
+                    onClick={executeBulkAction}
+                    disabled={isBulkActionLoading}
+                  >
+                    {isBulkActionLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Procesando...
+                      </>
+                    ) : 'Confirmar'}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

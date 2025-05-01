@@ -5,8 +5,9 @@ import { ReportFieldsProps } from './ReportFieldsInterface';
 import FieldTextarea from '@/components/shared/FieldTextarea'; // Reusable molecule for text fields – HopeAI: Efficiency
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Brain, Stethoscope, ClipboardList, ListChecks, ChevronRight } from 'lucide-react';
+import { FileText, Brain, Stethoscope, ClipboardList, ListChecks, ChevronRight, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { psychologicalEvaluationExample } from '../patient/ClinicalInfoForm';
 
 // Propiedades específicas para la evaluación psicológica
 interface PsychologicalEvaluationFieldsProps extends ReportFieldsProps {
@@ -217,9 +218,26 @@ export default function PsychologicalEvaluationFields({
           showError={submitAttempted && isFieldEmpty(recomendaciones)}
         />
 
-        {/* Botón de acción – Disabled unless form valid, TFF-style */}
+        {/* Botones de acción */}
         {/* HopeAI: Simplicity, Efficiency, Clinical Enhancement */}
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-between mt-6">
+          <Button
+            type="button"
+            onClick={() => {
+              // Cargar datos de ejemplo
+              onMotivoConsultaChange(psychologicalEvaluationExample.motivoConsulta);
+              onAntecedentesChange(psychologicalEvaluationExample.antecedentes);
+              onTestsPsicometricosChange(psychologicalEvaluationExample.testsPsicometricos);
+              setSelectedTests(psychologicalEvaluationExample.testsPsicometricos);
+              onResultadosPruebasChange(psychologicalEvaluationExample.resultadosPruebas);
+              onDiagnosticoPresuntivoChange(psychologicalEvaluationExample.diagnosticoPresuntivo);
+              onRecomendacionesChange(psychologicalEvaluationExample.recomendaciones);
+            }}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors flex items-center gap-2"
+          >
+            <Lightbulb className="h-4 w-4" />
+            Cargar Ejemplo
+          </Button>
           <Button
             type="button"
             onClick={handleSubmit}

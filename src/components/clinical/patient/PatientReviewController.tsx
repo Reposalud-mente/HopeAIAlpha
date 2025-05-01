@@ -545,9 +545,9 @@ ${draftText}
               <div className="p-6">
                 <AIAnalysisProcess
                   onAnalysisComplete={handleAnalysisComplete}
-                  areasEvaluacion={[]}
-                  criteriosCIE={[]}
-                  motivosConsulta={[]}
+                  areasEvaluacion={['cognitiva', 'emocional', 'conductual']}
+                  criteriosCIE={['F41.1 Trastorno de ansiedad generalizada']}
+                  motivosConsulta={['Ansiedad', 'Dificultades para dormir']}
                   assessmentId={formState.assessmentId}
                 />
               </div>

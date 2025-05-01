@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import PatientSessions from '@/components/clinical/session/PatientSessions';
 import { SessionWithRelations } from '@/components/clinical/session/types';
-import SessionEditor from '@/components/clinical/session/SessionEditor';
-import SessionTransfer from '@/components/clinical/session/SessionTransfer';
-import SessionExportImport from '@/components/clinical/session/SessionExportImport';
+import SessionDetails from '@/components/clinical/session/SessionDetails';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useParams, useRouter } from 'next/navigation';
 import { usePatient, Patient } from '@/contexts/PatientContext';
 import { Button } from '@/components/ui/button';
@@ -31,7 +30,9 @@ import {
   Loader2,
   AlertCircle,
   FileText,
-  Plus
+  Plus,
+  Download,
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import PatientForm from '@/components/clinical/patient/PatientForm';
@@ -43,6 +44,7 @@ import { formatPatientName, calculateAge } from '@/lib/patient-utils';
 
 export default function PatientDetailPage() {
   const [selectedSession, setSelectedSession] = useState<SessionWithRelations | null>(null);
+  const [showSessionDetails, setShowSessionDetails] = useState(false);
   const params = useParams();
   const router = useRouter();
   const patientId = params.id as string;
@@ -234,7 +236,7 @@ export default function PatientDetailPage() {
                     </p>
                   </div>
                   <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => {}}>Cancelar</Button>
+                    <Button variant="outline" onClick={() => document.querySelector('[data-state="open"]')?.dispatchEvent(new Event('close', { bubbles: true }))}>Cancelar</Button>
                     <Button
                       variant="destructive"
                       onClick={handleDeletePatient}
@@ -309,30 +311,48 @@ export default function PatientDetailPage() {
           </div>
         </div>
 
-        {/* Tabs for additional sections - Redesigned for better cohesion */}
+        {/* Tabs for additional sections - Updated with platform design */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-          <TabsList className="mb-4 p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm">
-            <TabsTrigger value="info" className="data-[state=active]:font-medium data-[state=active]:text-blue-700 hover:bg-blue-50 hover:border-b-2 hover:border-blue-300 transition-colors duration-200 rounded-md px-4 py-2">
-              <UserCircle className="h-4 w-4 mr-2" />
-              Información Personal
+          <TabsList className="mb-6 p-1 bg-white border border-gray-100 rounded-lg shadow-sm w-full flex justify-start gap-1">
+            <TabsTrigger
+              value="info"
+              className="flex items-center gap-2 px-5 py-2.5 font-medium text-sm transition-all duration-200 rounded-md
+                       data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm
+                       data-[state=active]:font-semibold
+                       hover:bg-gray-50 hover:text-primary/80"
+            >
+              <UserCircle className="h-4 w-4" />
+              <span>Información Personal</span>
             </TabsTrigger>
-            <TabsTrigger value="assessments" className="data-[state=active]:font-medium data-[state=active]:text-blue-700 hover:bg-blue-50 hover:border-b-2 hover:border-blue-300 transition-colors duration-200 rounded-md px-4 py-2">
-              <FileText className="h-4 w-4 mr-2" />
-              Informes
+            <TabsTrigger
+              value="assessments"
+              className="flex items-center gap-2 px-5 py-2.5 font-medium text-sm transition-all duration-200 rounded-md
+                       data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm
+                       data-[state=active]:font-semibold
+                       hover:bg-gray-50 hover:text-primary/80"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Informes</span>
             </TabsTrigger>
-            <TabsTrigger value="sessions" className="data-[state=active]:font-medium data-[state=active]:text-blue-700 hover:bg-blue-50 hover:border-b-2 hover:border-blue-300 transition-colors duration-200 rounded-md px-4 py-2">
-              <Calendar className="h-4 w-4 mr-2" />
-              Sesiones
+            <TabsTrigger
+              value="sessions"
+              className="flex items-center gap-2 px-5 py-2.5 font-medium text-sm transition-all duration-200 rounded-md
+                       data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm
+                       data-[state=active]:font-semibold
+                       hover:bg-gray-50 hover:text-primary/80"
+            >
+              <Calendar className="h-4 w-4" />
+              <span>Sesiones</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
             <div className="space-y-6">
               {/* Datos Personales y Profesionales - Simplificado */}
-              <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-slate-50 border-b border-gray-100 py-4">
+              <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100 py-4">
                   <CardTitle className="text-lg flex items-center">
-                    <UserCircle className="h-5 w-5 text-blue-600 mr-2" />
+                    <UserCircle className="h-5 w-5 text-primary mr-2" />
                     Datos Personales
                   </CardTitle>
                 </CardHeader>
@@ -511,41 +531,73 @@ export default function PatientDetailPage() {
           </TabsContent>
 
           <TabsContent value="assessments">
-            <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white">
-              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-slate-50 border-b border-gray-100">
+            <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100">
                 <CardTitle className="text-lg flex items-center">
-                  <FileText className="h-5 w-5 text-blue-600 mr-2" />
+                  <FileText className="h-5 w-5 text-primary mr-2" />
                   Informes
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-5">
-                {patient.assessments && patient.assessments.length > 0 ? (
+                {patient.assessments && patient.assessments.some((assessment: any) => assessment.reports && assessment.reports.length > 0) ? (
                   <div className="divide-y divide-gray-100">
-                    {patient.assessments.map((assessment: any) => (
-                      <div key={assessment.id} className="py-4 flex justify-between items-center hover:bg-gray-50 px-3 rounded-md transition-colors">
-                        <div>
-                          <p className="font-medium text-gray-800">Evaluación del {format(new Date(assessment.assessmentDate), 'dd/MM/yyyy')}</p>
-                          <p className="text-sm text-gray-600 flex items-center mt-1">
-                            <span className={`inline-block w-2 h-2 rounded-full mr-2 ${assessment.status === 'COMPLETED' ? 'bg-green-500' : assessment.status === 'IN_PROGRESS' ? 'bg-amber-500' : 'bg-gray-400'}`}></span>
-                            Estado: {assessment.status === 'DRAFT' ? 'Borrador' :
-                                    assessment.status === 'IN_PROGRESS' ? 'En Progreso' :
-                                    assessment.status === 'COMPLETED' ? 'Completada' : 'Archivada'}
-                          </p>
+                    {patient.assessments
+                      .filter((assessment: any) => assessment.reports && assessment.reports.length > 0)
+                      .map((assessment: any) => (
+                        <div key={assessment.id} className="py-4 hover:bg-gray-50 px-3 rounded-md transition-colors">
+                          <div className="flex justify-between items-center mb-2">
+                            <div>
+                              <p className="font-medium text-gray-800">Evaluación del {format(new Date(assessment.assessmentDate), 'dd/MM/yyyy')}</p>
+                              <p className="text-sm text-gray-600 flex items-center mt-1">
+                                <span className={`inline-block w-2 h-2 rounded-full mr-2 ${assessment.status === 'COMPLETED' ? 'bg-green-500' : assessment.status === 'IN_PROGRESS' ? 'bg-amber-500' : 'bg-gray-400'}`}></span>
+                                Estado: {assessment.status === 'DRAFT' ? 'Borrador' :
+                                        assessment.status === 'IN_PROGRESS' ? 'En Progreso' :
+                                        assessment.status === 'COMPLETED' ? 'Completada' : 'Archivada'}
+                              </p>
+                            </div>
+                            <Button variant="outline" size="sm" asChild className="hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                              <Link href={`/assessments/${assessment.id}`}>
+                                Ver Detalles
+                              </Link>
+                            </Button>
+                          </div>
+
+                          {/* Reports for this assessment */}
+                          <div className="mt-3 pl-2 border-l-2 border-primary/20">
+                            <p className="text-sm font-medium text-gray-700 mb-2">Informes:</p>
+                            {assessment.reports.map((report: any) => (
+                              <div key={report.id} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-md mb-2 hover:bg-gray-100 transition-colors">
+                                <div className="flex items-center">
+                                  <FileText className="h-4 w-4 text-primary mr-2" />
+                                  <div>
+                                    <p className="text-sm font-medium">Informe {report.version > 1 ? `v${report.version}` : ''}</p>
+                                    <p className="text-xs text-gray-500">{format(new Date(report.createdAt), 'dd/MM/yyyy, HH:mm')}</p>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50">
+                                    <Link href={`/api/reports/${report.id}/pdf`} target="_blank">
+                                      <Download className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                  <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50">
+                                    <Link href={`/reports?reportId=${report.id}`}>
+                                      <Eye className="h-4 w-4" />
+                                    </Link>
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <Button variant="outline" size="sm" asChild className="hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                          <Link href={`/assessments/${assessment.id}`}>
-                            Ver Detalles
-                          </Link>
-                        </Button>
-                      </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 bg-gray-50/50 rounded-lg border border-dashed border-gray-200">
+                  <div className="text-center py-10 bg-gray-50/30 rounded-lg border border-dashed border-gray-200">
                     <FileText className="h-14 w-14 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium mb-2 text-gray-800">No hay informes</h3>
                     <p className="text-gray-500 mb-6">Este paciente aún no tiene informes registrados.</p>
-                    <Button asChild className="bg-blue-600 hover:bg-blue-700 transition-colors">
+                    <Button asChild className="bg-primary hover:bg-primary/90 transition-all">
                       <Link href={`/reports?patientId=${patient.id}`}>
                         <Plus className="h-4 w-4 mr-2" />
                         Crear Informe
@@ -560,10 +612,10 @@ export default function PatientDetailPage() {
           <TabsContent value="sessions">
             {/* Session Management (Unified Clinical Sessions) */}
             <div className="space-y-6">
-              <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-slate-50 border-b border-gray-100">
+              <Card className="border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b border-gray-100">
                   <CardTitle className="text-lg flex items-center">
-                    <Calendar className="h-5 w-5 text-blue-600 mr-2" />
+                    <Calendar className="h-5 w-5 text-primary mr-2" />
                     Sesiones Clínicas
                   </CardTitle>
                 </CardHeader>
@@ -572,25 +624,35 @@ export default function PatientDetailPage() {
                     <PatientSessions
                       patientId={patientId}
                       patientName={formatPatientName(patient)}
-                      onSelectSession={setSelectedSession}
+                      onSelectSession={(session) => {
+                        setSelectedSession(session);
+                        setShowSessionDetails(true);
+                      }}
                     />
                   </div>
                 </CardContent>
               </Card>
 
-              {selectedSession && (
-                <div className="space-y-4 mt-6 bg-gray-50/50 p-5 rounded-lg border border-gray-100">
-                  <h3 className="text-lg font-medium text-gray-800 flex items-center">
-                    <FileText className="h-5 w-5 text-blue-600 mr-2" />
-                    Detalles de la Sesión
-                  </h3>
-                  <div className="space-y-4">
-                    <SessionEditor sessionId={selectedSession.id} />
-                    <SessionTransfer sessionId={selectedSession.id} />
-                    <SessionExportImport sessionId={selectedSession.id} />
-                  </div>
-                </div>
-              )}
+              {/* Session Details Sheet */}
+              <Sheet open={showSessionDetails} onOpenChange={setShowSessionDetails}>
+                <SheetContent className="sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl overflow-y-auto" side="right">
+                  {selectedSession && (
+                    <SessionDetails
+                      sessionId={selectedSession.id}
+                      onEdit={() => {
+                        // Handle edit functionality if needed
+                        console.log('Edit session:', selectedSession.id);
+                      }}
+                      onBack={() => setShowSessionDetails(false)}
+                      onDelete={() => {
+                        setShowSessionDetails(false);
+                        setSelectedSession(null);
+                        // Refresh sessions list if needed
+                      }}
+                    />
+                  )}
+                </SheetContent>
+              </Sheet>
             </div>
           </TabsContent>
 

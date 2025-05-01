@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
-import { AIReportAgent, ReportGenerationRequest } from '@/lib/ai-report-generator/ai-report-agent';
+import { ReportGeneratorService } from '@/lib/ai-report-generator/report-generator-service';
 import { trackEvent, EventType } from '@/lib/monitoring';
 
 /**
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get the current user session
     const session = await getServerSession(authOptions);
-    
+
     // Check if the user is authenticated
     if (!session?.user) {
       return NextResponse.json(
@@ -19,10 +19,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
+
     // Parse the request body
     const body = await request.json();
-    
+
     // Validate required fields
     if (!body.assessmentId) {
       return NextResponse.json(
@@ -30,40 +30,37 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // Create the report generation request
-    const reportRequest: ReportGenerationRequest = {
-      assessmentId: body.assessmentId,
-      userId: session.user.id,
+
+    // Create the options for report generation
+    const options = {
       language: body.language || 'es',
       includeRecommendations: body.includeRecommendations !== false, // Default to true
       includeTreatmentPlan: body.includeTreatmentPlan !== false, // Default to true
       reportStyle: body.reportStyle || 'clinical',
     };
-    
-    // Initialize the AI report agent
-    const aiReportAgent = new AIReportAgent();
-    
+
+    // Initialize the report generator service
+    const reportGeneratorService = new ReportGeneratorService(process.env.NEXT_PUBLIC_GEMINI_API_KEY || '');
+
     // Generate the report
-    const result = await aiReportAgent.generateReport(reportRequest);
-    
+    const result = await reportGeneratorService.generateReport(body.assessmentId, options);
+
     // Track the event
     trackEvent({
       type: EventType.USER_ACTION,
-      name: result.success ? 'report_generated' : 'report_generation_failed',
+      name: 'reportText' in result ? 'report_generated' : 'report_generation_failed',
       data: {
         userId: session.user.id,
         assessmentId: body.assessmentId,
-        success: result.success,
-        error: result.error,
+        success: 'reportText' in result,
+        error: 'error' in result ? result.error : undefined,
       },
     });
-    
+
     // Return the result
-    if (result.success) {
+    if ('reportText' in result) {
       return NextResponse.json({
         success: true,
-        reportId: result.reportId,
         reportText: result.reportText,
       }, { status: 200 });
     } else {
@@ -74,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('Error generating report:', error);
-    
+
     // Track the error
     trackEvent({
       type: EventType.ERROR,
@@ -83,7 +80,7 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     });
-    
+
     // Return error response
     return NextResponse.json(
       { error: 'Failed to generate report' },
