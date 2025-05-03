@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
     // Initialize the DSM-5 retriever
     const retriever = new DSM5Retriever(
       process.env.NEXT_PUBLIC_DSM5_DRIVE_FOLDER_ID || '',
-      process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY || ''
+      process.env.NEXT_PUBLIC_GOOGLE_DRIVE_API_KEY || '',
+      process.env.NEXT_PUBLIC_GEMINI_API_KEY || '' // Pass the Gemini API key for embeddings
     );
 
     // Retrieve DSM-5 content

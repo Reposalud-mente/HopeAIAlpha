@@ -16,15 +16,15 @@ import { Loader2 } from 'lucide-react';
 
 export default function RagReportDemo() {
   // State for form inputs
-  const [patientName, setPatientName] = useState('Juan Pérez');
-  const [patientAge, setPatientAge] = useState('35');
-  const [patientGender, setPatientGender] = useState('Masculino');
-  const [clinicianName, setClinicianName] = useState('Dra. María González');
-  const [clinicName, setClinicName] = useState('Centro de Psicología Clínica');
+  const [patientName, setPatientName] = useState('Elena Sánchez Martín');
+  const [patientAge, setPatientAge] = useState('28');
+  const [patientGender, setPatientGender] = useState('Femenino');
+  const [clinicianName, setClinicianName] = useState('Dra. Lucía Fernández Vega');
+  const [clinicName, setClinicName] = useState('Centro de Psicología Clínica y Neuropsicología');
   const [reportType, setReportType] = useState<WizardReportData['reportType']>('evaluacion-psicologica');
-  const [consultationReasons, setConsultationReasons] = useState('Ansiedad, Problemas de sueño, Estrés laboral');
-  const [evaluationAreas, setEvaluationAreas] = useState('Estado de ánimo, Ansiedad, Funcionamiento cognitivo');
-  const [icdCriteria, setIcdCriteria] = useState('Trastorno de ansiedad generalizada (F41.1), Insomnio (F51.0)');
+  const [consultationReasons, setConsultationReasons] = useState('Paciente acude a consulta por presentar desde hace aproximadamente 8 meses episodios de angustia intensa con crisis de pánico (3-4 por semana), acompañados de taquicardia, sensación de ahogo, temblores y miedo a perder el control. Refiere evitación de situaciones sociales por temor a experimentar estos episodios en público. Presenta alteraciones del sueño con dificultad para conciliar (latencia >60 min) y despertares frecuentes. Reporta disminución del rendimiento laboral y conflictos en relaciones interpersonales.');
+  const [evaluationAreas, setEvaluationAreas] = useState('Evaluación de sintomatología ansiosa mediante entrevista clínica estructurada SCID-5 y escalas BAI, STAI, Escala de Pánico y Agorafobia de Bandelow. Exploración de patrones de pensamiento con registro de pensamientos automáticos. Evaluación de calidad del sueño mediante Índice de Calidad del Sueño de Pittsburgh. Valoración del impacto funcional con Escala de Discapacidad de Sheehan. Cribado de comorbilidades con SCL-90-R.');
+  const [icdCriteria, setIcdCriteria] = useState('F41.0 Trastorno de pánico [episodios de ansiedad paroxística] - Cumple criterios A ( ataques recurrentes e inesperados ), B1 ( preocupación persistente por nuevos ataques ), B2 ( preocupación por implicaciones ), C ( cambios desadaptativos en comportamiento ) y D ( no debido a sustancias/condición médica ). F41.1 Trastorno de ansiedad generalizada - Cumple criterios A, B ( dificultad para controlar preocupación ), C1, C2, C3, C5, C6 ( más de 3 síntomas requeridos ). F51.01 Insomnio primario - Criterios A-F cumplidos, con predominio de dificultad para iniciar el sueño.');
   const [includeRecommendations, setIncludeRecommendations] = useState(true);
   const [includeTreatmentPlan, setIncludeTreatmentPlan] = useState(true);
 
@@ -197,32 +197,35 @@ export default function RagReportDemo() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="consultationReasons">Motivos de Consulta (separados por comas)</Label>
+                <Label htmlFor="consultationReasons">Motivos de Consulta</Label>
                 <Textarea
                   id="consultationReasons"
                   value={consultationReasons}
                   onChange={(e) => setConsultationReasons(e.target.value)}
-                  rows={2}
+                  placeholder="Describa la sintomatología presentada, incluyendo: inicio y evolución, frecuencia e intensidad, factores desencadenantes, manifestaciones somáticas, cognitivas y conductuales, e impacto funcional"
+                  rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="evaluationAreas">Áreas Evaluadas (separadas por comas)</Label>
+                <Label htmlFor="evaluationAreas">Metodología de Evaluación</Label>
                 <Textarea
                   id="evaluationAreas"
                   value={evaluationAreas}
                   onChange={(e) => setEvaluationAreas(e.target.value)}
-                  rows={2}
+                  placeholder="Detalle instrumentos de evaluación utilizados (entrevistas estructuradas, escalas, cuestionarios, registros), dominios psicológicos explorados y procedimientos específicos empleados"
+                  rows={4}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="icdCriteria">Criterios Diagnósticos (separados por comas)</Label>
+                <Label htmlFor="icdCriteria">Impresión Diagnóstica</Label>
                 <Textarea
                   id="icdCriteria"
                   value={icdCriteria}
                   onChange={(e) => setIcdCriteria(e.target.value)}
-                  rows={2}
+                  placeholder="Especifique diagnósticos según CIE-10/DSM-5 con códigos alfanuméricos, detallando criterios específicos cumplidos y justificación clínica. Indique diagnóstico principal y comorbilidades si existen"
+                  rows={4}
                 />
               </div>
 
