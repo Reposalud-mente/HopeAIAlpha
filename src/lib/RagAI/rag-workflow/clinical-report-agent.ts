@@ -56,7 +56,8 @@ export class ClinicalReportAgent {
     if (this.config.driveFolderId && this.config.driveApiKey) {
       this.dsm5Retriever = new DSM5Retriever(
         this.config.driveFolderId,
-        this.config.driveApiKey
+        this.config.driveApiKey,
+        this.config.apiKey // Pass the Gemini API key for embeddings
       );
     }
   }
@@ -88,29 +89,78 @@ export class ClinicalReportAgent {
       const diagnosticCodes = [];
       if (wizardData.icdCriteria && wizardData.icdCriteria.length > 0) {
         for (const criteria of wizardData.icdCriteria) {
-          // Extract codes like F41.1, F32.0, etc.
-          const codeMatch = criteria.match(/[A-Z]\d+(\.\d+)?/i);
-          if (codeMatch) {
-            diagnosticCodes.push(codeMatch[0]);
+          try {
+            // Extract codes like F41.1, F32.0, etc.
+            const codeMatch = criteria.match(/[A-Z]\d+(\.\d+)?/i);
+            if (codeMatch) {
+              diagnosticCodes.push(codeMatch[0]);
+            }
+          } catch (error) {
+            console.warn(`Error extracting diagnostic code from criteria: '${criteria}'`, error);
+            // Try a simpler approach - look for patterns like F41.1
+            const simpleMatch = criteria.split(/\s+/).find(word => /^[A-Z]\d+(\.\d+)?$/i.test(word));
+            if (simpleMatch) {
+              diagnosticCodes.push(simpleMatch);
+            }
           }
         }
       }
 
-      // Add specific terms to target diagnostic criteria sections
-      const criteriaTerms = 'criterios diagnósticos criterio A criterio B criterio C criterio D';
+      // Create a more intelligent and flexible query construction
+      // Extract key diagnostic terms and codes
+      const diagnosticTerms = diagnosticCodes.length > 0
+        ? diagnosticCodes.map(code => {
+            try {
+              // Extract the main disorder name from the code (e.g., "Trastorno de ansiedad generalizada" from "Trastorno de ansiedad generalizada (F41.1)")
+              const match = code.match(/(.+?)\s*\([^)]+\)/);
+              return match ? match[1].trim() : code;
+            } catch (error) {
+              console.warn(`Error extracting disorder name from code: '${code}'`, error);
+              return code;
+            }
+          })
+        : [];
 
-      // Combine into a query
-      let query = `${diagnosisPart} ${reasonsPart} ${areasPart}`.trim();
+      // Add common diagnostic criteria terms in Spanish
+      const criteriaTerms = [
+        'criterios diagnósticos',
+        'criterio A', 'criterio B', 'criterio C', 'criterio D',
+        'diagnóstico diferencial',
+        'características diagnósticas',
+        'síntomas', 'signos',
+        'trastorno', 'condición',
+        'manual diagnóstico'
+      ];
 
-      // Add diagnostic codes and criteria terms for more targeted retrieval
+      // Combine base query components
+      let baseQuery = `${diagnosisPart} ${reasonsPart} ${areasPart}`.trim();
+
+      // Create a more targeted query for the specific diagnoses
+      let specificQuery = '';
       if (diagnosticCodes.length > 0) {
-        query = `${query} ${diagnosticCodes.join(' ')} ${criteriaTerms}`;
-      } else {
-        query = `${query} ${criteriaTerms}`;
+        // Include both the full codes and extracted terms
+        specificQuery = `${diagnosticCodes.join(' ')} ${diagnosticTerms.join(' ')}`;
       }
 
-      // If the query is empty, use a default query
-      const finalQuery = query || 'evaluación psicológica general criterios diagnósticos';
+      // Combine everything into a final query
+      // If we have specific diagnoses, prioritize those with criteria terms
+      let query = '';
+      if (specificQuery) {
+        // Create a query focused on the specific diagnoses and their criteria
+        query = `${specificQuery} ${criteriaTerms.join(' ')}`;
+        // Add the base query components as secondary focus
+        if (baseQuery) {
+          query = `${query} ${baseQuery}`;
+        }
+      } else {
+        // No specific diagnoses, use the base query with general criteria terms
+        query = `${baseQuery} ${criteriaTerms.join(' ')}`;
+      }
+
+      // If the query is still empty, use a default query
+      const finalQuery = query.trim() || 'evaluación psicológica general criterios diagnósticos';
+
+      console.log('Generated query for retrieval:', finalQuery);
 
       // 2. Retrieve context
       console.log('Retrieving context...');
@@ -219,7 +269,18 @@ export class ClinicalReportAgent {
 
       // 4. Generate the report
       console.log('Generating report...');
-      const reportText = await this.geminiClient.generateText(prompt);
+      let reportText = '';
+
+      // Check if streaming is enabled
+      if (this.config.streamResponse) {
+        // Use streaming to handle longer outputs
+        await this.geminiClient.streamText(prompt, (chunk) => {
+          reportText += chunk;
+        });
+      } else {
+        // Use regular text generation
+        reportText = await this.geminiClient.generateText(prompt);
+      }
 
       // Calculate the total time
       const endTime = Date.now();
