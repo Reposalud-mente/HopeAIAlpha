@@ -1,8 +1,6 @@
 {
-  "/api/patients/route": "app/api/patients/route.js",
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
-  "/api/patients/[id]/route": "app/api/patients/[id]/route.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/reports/page": "app/reports/page.js",
-  "/login/page": "app/login/page.js"
+  "/api/rag-report/route": "app/api/rag-report/route.js",
+  "/api/patients/route": "app/api/patients/route.js",
+  "/rag-report-demo/page": "app/rag-report-demo/page.js"
 }
