@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { Loader2, Check, AlertCircle, Sparkles, BrainCircuit, FileText } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
 import { usePatient } from '@/contexts/PatientContext';
 import { useAIReportGeneration } from '@/hooks/useAIReportGeneration';
+import { WizardReportData } from '@/lib/RagAI';
 
 // AI analysis process that generates a psychological report using the AI agent
 interface AIAnalysisProcessProps {
@@ -51,7 +53,7 @@ export function AIAnalysisProcess({
       const tempAssessmentId = assessmentId || `temp-${Date.now()}`;
 
       // Prepare the wizard data for the AI report generation
-      const wizardData = {
+      const wizardData: WizardReportData = {
         patientId: currentPatient?.id || 'unknown',
         patientName: currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente',
         patientAge: currentPatient?.dateOfBirth ? Math.floor((new Date().getTime() - new Date(currentPatient.dateOfBirth).getTime()) / 31557600000) : undefined,
@@ -80,6 +82,16 @@ export function AIAnalysisProcess({
 
       // If successful, pass the report text to the parent component
       if (result.reportText) {
+        // Log metadata if available (for debugging)
+        if (result.metadata) {
+          console.log('RAG Report Metadata:', result.metadata);
+
+          // Log DSM-5 usage if available
+          if (result.metadata.usingDSM5) {
+            console.log('Report generated using DSM-5 content');
+          }
+        }
+
         onAnalysisComplete(result.reportText);
       } else if (result.error) {
         setError(`Error al generar el informe: ${result.error}`);
@@ -90,7 +102,9 @@ export function AIAnalysisProcess({
     }
   };
 
-  // Handle mock report generation for backward compatibility
+  // Mock report generation is no longer used as we're using the RAG pipeline
+  // This function is kept for reference but not used
+  /*
   const handleMockReportGeneration = () => {
     // Phases of the mock analysis process
     const phases = [
@@ -128,8 +142,11 @@ export function AIAnalysisProcess({
 
     return () => clearInterval(processInterval);
   };
+  */
 
-  // Generate a mock psychological report based on the provided data
+  // Mock report generation is no longer used as we're using the RAG pipeline
+  // This function is kept for reference but not used
+  /*
   const generateMockReport = () => {
     // Mock report template - this is used when no assessmentId is provided
     const patientName = currentPatient ? `${currentPatient.firstName} ${currentPatient.lastName}` : 'Paciente';
@@ -187,6 +204,7 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
     // Pass the generated report to the parent component
     onAnalysisComplete(reportDraft);
   };
+  */
 
   if (error) {
     return (
@@ -343,6 +361,9 @@ Este informe es de carácter confidencial y debe ser utilizado sólo por profesi
                 <li>Motivos de consulta: {motivosConsulta.join(', ')}</li>
                 <li>Áreas evaluadas: {areasEvaluacion.join(', ')}</li>
                 <li>Criterios diagnósticos: {criteriosCIE.join(', ')}</li>
+                {result?.metadata?.usingDSM5 && (
+                  <li className="font-medium text-blue-700">Criterios DSM-5 aplicados</li>
+                )}
               </ul>
             </div>
 

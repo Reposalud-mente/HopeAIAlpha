@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { ReportGeneratorService } from '@/lib/ai-report-generator/report-generator-service';
+import { WizardReportData, ReportGenerationOptions } from '@/lib/RagAI';
 
-interface AIReportGenerationOptions {
+interface AIReportGenerationOptions extends Partial<ReportGenerationOptions> {
   language?: 'es' | 'en';
   includeRecommendations?: boolean;
   includeTreatmentPlan?: boolean;
   reportStyle?: 'clinical' | 'educational' | 'concise';
-  wizardData?: any; // Optional wizard data for direct AI report generation
+  wizardData?: WizardReportData; // Optional wizard data for direct AI report generation
 }
 
 interface AIReportGenerationResult {
   reportId?: string;
   reportText?: string;
   error?: string;
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -26,11 +27,7 @@ export function useAIReportGeneration() {
   const [result, setResult] = useState<AIReportGenerationResult | null>(null);
   const { toast } = useToast();
 
-  // Get the API key from environment variables
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || '';
-
-  // Create an instance of the report generator service with the API key
-  const reportGeneratorService = new ReportGeneratorService(apiKey);
+  // API key is handled by the RAG API route
 
   /**
    * Generates a report using the AI agent
@@ -95,14 +92,31 @@ export function useAIReportGeneration() {
         setCurrentPhase(phases[currentPhaseIndex]);
         setProgress(Math.floor((currentPhaseIndex / (totalPhases - 1)) * 100));
 
-        if (options.wizardData) {
-          // If wizard data is provided, use it directly with the AI report generator
-          const { generateClinicalReport } = await import('@/lib/ai-report-generator/ai-report-generating');
-          const reportText = await generateClinicalReport(options.wizardData, apiKey);
-          generationResult = { reportText };
+        // Make the API request to the RAG pipeline
+        const response = await fetch('/api/rag-report', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            wizardData: options.wizardData,
+            language: options.language || 'es',
+            includeRecommendations: options.includeRecommendations !== false, // Default to true
+            includeTreatmentPlan: options.includeTreatmentPlan !== false, // Default to true
+            reportStyle: options.reportStyle || 'clinical',
+          }),
+        });
+
+        // Parse the response
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          generationResult = {
+            reportText: data.reportText,
+            metadata: data.metadata
+          };
         } else {
-          // Otherwise, use the report generator service
-          generationResult = await reportGeneratorService.generateReport(assessmentId, options);
+          throw new Error(data.error || 'Failed to generate report');
         }
 
         // AI generation is complete, move to the next phase
@@ -160,6 +174,7 @@ export function useAIReportGeneration() {
       const result = {
         reportId: data.id,
         reportText: generationResult.reportText,
+        metadata: generationResult.metadata
       };
 
       setResult(result);
