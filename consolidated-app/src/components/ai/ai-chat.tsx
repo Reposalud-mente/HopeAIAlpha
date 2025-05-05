@@ -1,23 +1,34 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react";
-import { Bot, X, Loader, Send } from "lucide-react";
+import { Bot, X, Loader, Send, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AIAssistantProps {
   isOpen: boolean;
   onClose: () => void;
+  currentSection?: string;
+  currentPage?: string;
+  patientId?: string;
 }
 
-export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
+export function AIAssistant({ 
+  isOpen, 
+  onClose, 
+  currentSection, 
+  currentPage, 
+  patientId 
+}: AIAssistantProps) {
   const [messages, setMessages] = useState([
     { id: "1", role: "assistant", content: "¡Hola! Soy HopeAI, tu asistente clínico. ¿En qué puedo ayudarte hoy?" },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUsingContext, setIsUsingContext] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -41,21 +52,54 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
     setInput("");
     setIsLoading(true);
     
-    // Simulate AI response
-    setTimeout(() => {
-      let response = "Estoy aquí para ayudarte con tus tareas clínicas. ¿Necesitas ayuda con informes, evaluaciones o gestión de pacientes?";
+    try {
+      // Call the API endpoint with context information
+      const response = await fetch('/api/consultas-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: text,
+          currentSection,
+          currentPage,
+          patientId
+        }),
+      });
       
-      if (text.toLowerCase().includes("informe")) {
-        response = "Puedo ayudarte a estructurar informes clínicos. ¿Qué tipo de informe necesitas crear?";
-      } else if (text.toLowerCase().includes("paciente")) {
-        response = "Para gestionar información de pacientes, puedes usar la sección de Pacientes en el menú principal. ¿Necesitas ayuda con algo específico?";
-      } else if (text.toLowerCase().includes("evaluación") || text.toLowerCase().includes("evaluacion")) {
-        response = "Contamos con herramientas para evaluaciones psicológicas estandarizadas. ¿Qué área específica necesitas evaluar?";
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
       }
       
-      setMessages(prev => [...prev, { id: String(Date.now()), role: 'assistant', content: response }]);
+      const data = await response.json();
+      
+      // Get the AI response (last message in the array)
+      const aiResponse = data.messages[data.messages.length - 1];
+      
+      // Check if context was used (this could be indicated in the response)
+      setIsUsingContext(
+        currentSection !== undefined || 
+        currentPage !== undefined || 
+        patientId !== undefined
+      );
+      
+      // Add AI response
+      setMessages(prev => [...prev, { 
+        id: String(Date.now()), 
+        role: 'assistant', 
+        content: aiResponse.content 
+      }]);
+    } catch (error) {
+      console.error('Error getting AI response:', error);
+      // Show error message
+      setMessages(prev => [...prev, { 
+        id: String(Date.now()), 
+        role: 'assistant', 
+        content: "Lo siento, ha ocurrido un error al procesar tu consulta. Por favor, intenta de nuevo más tarde." 
+      }]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const onSubmit = (e: React.FormEvent) => {
@@ -71,6 +115,20 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
         <h3 className="font-medium flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" /> 
           Asistente AI
+          {isUsingContext && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="inline-flex items-center">
+                    <Info className="h-4 w-4 text-blue-500 cursor-help ml-1" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">Usando contexto de la plataforma para respuestas personalizadas</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </h3>
         <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
           <X className="h-4 w-4" />
@@ -122,6 +180,11 @@ export function AIAssistant({ isOpen, onClose }: AIAssistantProps) {
             <Send className="h-4 w-4" />
           </Button>
         </div>
+        {currentSection && (
+          <div className="mt-2 text-xs text-muted-foreground">
+            Contexto: {currentSection} {currentPage ? `/ ${currentPage}` : ''}
+          </div>
+        )}
       </form>
     </div>
   );

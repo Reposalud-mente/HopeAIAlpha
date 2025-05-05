@@ -14,6 +14,24 @@ importers:
       '@auth/prisma-adapter':
         specifier: ^2.8.0
         version: 2.8.0(@prisma/client@6.6.0(prisma@6.6.0(typescript@5.8.3))(typescript@5.8.3))
+      '@fullcalendar/core':
+        specifier: ^6.1.11
+        version: 6.1.17
+      '@fullcalendar/daygrid':
+        specifier: ^6.1.11
+        version: 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/interaction':
+        specifier: ^6.1.11
+        version: 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/list':
+        specifier: ^6.1.11
+        version: 6.1.17(@fullcalendar/core@6.1.17)
+      '@fullcalendar/react':
+        specifier: ^6.1.11
+        version: 6.1.17(@fullcalendar/core@6.1.17)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@fullcalendar/timegrid':
+        specifier: ^6.1.11
+        version: 6.1.17(@fullcalendar/core@6.1.17)
       '@google/genai':
         specifier: ^0.12.0
         version: 0.12.0
@@ -86,6 +104,9 @@ importers:
       '@radix-ui/react-tooltip':
         specifier: ^1.2.3
         version: 1.2.3(@types/react-dom@19.1.2(@types/react@19.1.2))(@types/react@19.1.2)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@types/jsonwebtoken':
+        specifier: ^9.0.9
+        version: 9.0.9
       '@types/pdfkit':
         specifier: ^0.13.9
         version: 0.13.9
@@ -125,6 +146,9 @@ importers:
       framer-motion:
         specifier: ^12.4.7
         version: 12.7.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.2
       langbase:
         specifier: ^1.1.59
         version: 1.1.59(react@19.1.0)(ws@8.18.1)
@@ -515,6 +539,36 @@ packages:
 
   '@floating-ui/utils@0.2.9':
     resolution: {integrity: sha512-MDWhGtE+eHw5JW7lq4qhc5yRLS11ERl1c7Z6Xd0a58DozHES6EnNNwUWbMiG4J9Cgj053Bhk8zvlhFYKVhULwg==}
+
+  '@fullcalendar/core@6.1.17':
+    resolution: {integrity: sha512-0W7lnIrv18ruJ5zeWBeNZXO8qCWlzxDdp9COFEsZnyNjiEhUVnrW/dPbjRKYpL0edGG0/Lhs0ghp1z/5ekt8ZA==}
+
+  '@fullcalendar/daygrid@6.1.17':
+    resolution: {integrity: sha512-K7m+pd7oVJ9fW4h7CLDdDGJbc9szJ1xDU1DZ2ag+7oOo1aCNLv44CehzkkknM6r8EYlOOhgaelxQpKAI4glj7A==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+
+  '@fullcalendar/interaction@6.1.17':
+    resolution: {integrity: sha512-AudvQvgmJP2FU89wpSulUUjeWv24SuyCx8FzH2WIPVaYg+vDGGYarI7K6PcM3TH7B/CyaBjm5Rqw9lXgnwt5YA==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+
+  '@fullcalendar/list@6.1.17':
+    resolution: {integrity: sha512-fkyK49F9IxwlGUBVhJGsFpd/LTi/vRVERLIAe1HmBaGkjwpxnynm8TMLb9mZip97wvDk3CmZWduMe6PxscAlow==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+
+  '@fullcalendar/react@6.1.17':
+    resolution: {integrity: sha512-AA8soHhlfRH5dUeqHnfAtzDiXa2vrgWocJSK/F5qzw/pOxc9MqpuoS/nQBROWtHHg6yQUg3DoGqOOhi7dmylXQ==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
+      react: ^16.7.0 || ^17 || ^18 || ^19
+      react-dom: ^16.7.0 || ^17 || ^18 || ^19
+
+  '@fullcalendar/timegrid@6.1.17':
+    resolution: {integrity: sha512-K4PlA3L3lclLOs3IX8cvddeiJI9ZVMD7RA9IqaWwbvac771971foc9tFze9YY+Pqesf6S+vhS2dWtEVlERaGlQ==}
+    peerDependencies:
+      '@fullcalendar/core': ~6.1.17
 
   '@google/genai@0.12.0':
     resolution: {integrity: sha512-SJtCHac+HPgmwELpJpPKbaV4rk397bS2D42XgFR2NBEARDKd/79RcaRUFFd55pYUJ+gfaz9Bv6KYoiz/P6eZKA==}
@@ -1624,6 +1678,12 @@ packages:
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+
+  '@types/jsonwebtoken@9.0.9':
+    resolution: {integrity: sha512-uoe+GxEuHbvy12OUQct2X9JenKM3qAscquYymuQN4fMWG9DBQtykrQEFcAbVACF7qaLw9BePSodUL0kquqBJpQ==}
+
+  '@types/ms@2.1.0':
+    resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
   '@types/node-fetch@2.6.12':
     resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
@@ -3068,6 +3128,10 @@ packages:
   jsonify@0.0.1:
     resolution: {integrity: sha512-2/Ki0GcmuqSrgFyelQq9M05y7PS0mEwuIzrf3f1fPqkVDVRvZrPZtVSMHxdgo8Aq0sxAOb/cr2aqqA3LeWHVPg==}
 
+  jsonwebtoken@9.0.2:
+    resolution: {integrity: sha512-PRp66vJ865SSqOlgqS8hujT5U4AOgMfhrwYIuIhfKaoSCZcirrmASQr8CX7cUg+RMih+hgznrjp99o+W4pJLHQ==}
+    engines: {node: '>=12', npm: '>=6'}
+
   jspdf@3.0.1:
     resolution: {integrity: sha512-qaGIxqxetdoNnFQQXxTKUD9/Z7AloLaw94fFsOiJMxbfYdBbrBuhWmbzI8TVjrw7s3jBY1PFHofBKMV/wZPapg==}
 
@@ -3079,8 +3143,14 @@ packages:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
     engines: {node: '>=4.0'}
 
+  jwa@1.4.1:
+    resolution: {integrity: sha512-qiLX/xhEEFKUAJ6FiBMbes3w9ATzyk5W7Hvzpa/SLYdxNtng+gcurvrI7TbACjIXlsJyr05/S1oUhZrc63evQA==}
+
   jwa@2.0.0:
     resolution: {integrity: sha512-jrZ2Qx916EA+fq9cEAeCROWPTfCwi1IVHqT2tapuqLEVVDKFDENFw1oL+MwrTvH6msKxsd1YTDVw6uKEcsrLEA==}
+
+  jws@3.2.2:
+    resolution: {integrity: sha512-YHlZCB6lMTllWDtSPHz/ZXTsi8S00usEV6v1tjq8tOUZzw7DpSDWVXjXDre6ed1w/pd495ODpHZYSdkRTsa0HA==}
 
   jws@4.0.0:
     resolution: {integrity: sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==}
@@ -3138,8 +3208,29 @@ packages:
     resolution: {integrity: sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==}
     engines: {node: '>=10'}
 
+  lodash.includes@4.3.0:
+    resolution: {integrity: sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w==}
+
+  lodash.isboolean@3.0.3:
+    resolution: {integrity: sha512-Bz5mupy2SVbPHURB98VAcw+aHh4vRV5IPNhILUCsOzRmsTmSQ17jIuqopAentWoehktxGd9e/hbIXq980/1QJg==}
+
+  lodash.isinteger@4.0.4:
+    resolution: {integrity: sha512-DBwtEWN2caHQ9/imiNeEA5ys1JoRtRfY3d7V9wkqtbycnAmTvRRmbHKDV4a0EYc678/dia0jrte4tjYwVBaZUA==}
+
+  lodash.isnumber@3.0.3:
+    resolution: {integrity: sha512-QYqzpfwO3/CWf3XP+Z+tkQsfaLL/EnUlXWVkIk5FUPc4sBdTehEqZONuyRt2P67PXAk+NXmTBcc97zw9t1FQrw==}
+
+  lodash.isplainobject@4.0.6:
+    resolution: {integrity: sha512-oSXzaWypCMHkPC3NvBEaPHf0KsA5mvPrOPgQWDsbg8n7orZ290M0BmC/jgRZ4vcJ6DTAhjrsSYgdsW/F+MFOBA==}
+
+  lodash.isstring@4.0.1:
+    resolution: {integrity: sha512-0wJxfxH1wgO3GrbuP+dTTk7op+6L41QCXbGINEmD+ny/G/eCqGzxyCsh7159S+mgDDcoarnBw6PC1PS5+wUGgw==}
+
   lodash.merge@4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
+
+  lodash.once@4.1.1:
+    resolution: {integrity: sha512-Sb487aTOCr9drQVL8pIxOzVhafOjZN9UU54hiN8PU3uAiSV7lx1yYNpbNmex2PK6dSJoNTSJUUswT651yww3Mg==}
 
   lodash@2.4.2:
     resolution: {integrity: sha512-Kak1hi6/hYHGVPmdyiZijoQyz5x2iGVzs6w9GYB/HiXEtylY7tIoYEROMjvM1d9nXJqPOrG2MNPMn01bJ+S0Rw==}
@@ -3530,6 +3621,9 @@ packages:
     resolution: {integrity: sha512-ubnauqoGczeGISiOh6RjX0/cdaF8v/oDXIjO85XALCQjwQP+SB4RDXXtvZ6yTYSjG+PC1QRP2AhPgCEsM2EvUw==}
     peerDependencies:
       preact: '>=10'
+
+  preact@10.12.1:
+    resolution: {integrity: sha512-l8386ixSsBdbreOAkqtrwqHwdvR35ID8c3rKPa8lCWuO86dBi32QWHV4vfsZK1utLLFMvw+Z5Ad4XLkZzchscg==}
 
   preact@10.24.3:
     resolution: {integrity: sha512-Z2dPnBnMUfyQfSQ+GBdsGa16hz35YmLmtTLhM169uW944hYL6xzTYkJjC07j+Wosz733pMWx0fgON3JNw1jJQA==}
@@ -4532,6 +4626,33 @@ snapshots:
       react-dom: 19.1.0(react@19.1.0)
 
   '@floating-ui/utils@0.2.9': {}
+
+  '@fullcalendar/core@6.1.17':
+    dependencies:
+      preact: 10.12.1
+
+  '@fullcalendar/daygrid@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+
+  '@fullcalendar/interaction@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+
+  '@fullcalendar/list@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+
+  '@fullcalendar/react@6.1.17(@fullcalendar/core@6.1.17)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+      react: 19.1.0
+      react-dom: 19.1.0(react@19.1.0)
+
+  '@fullcalendar/timegrid@6.1.17(@fullcalendar/core@6.1.17)':
+    dependencies:
+      '@fullcalendar/core': 6.1.17
+      '@fullcalendar/daygrid': 6.1.17(@fullcalendar/core@6.1.17)
 
   '@google/genai@0.12.0':
     dependencies:
@@ -5590,6 +5711,13 @@ snapshots:
   '@types/json-schema@7.0.15': {}
 
   '@types/json5@0.0.29': {}
+
+  '@types/jsonwebtoken@9.0.9':
+    dependencies:
+      '@types/ms': 2.1.0
+      '@types/node': 20.17.30
+
+  '@types/ms@2.1.0': {}
 
   '@types/node-fetch@2.6.12':
     dependencies:
@@ -7281,6 +7409,19 @@ snapshots:
   jsonify@0.0.1:
     optional: true
 
+  jsonwebtoken@9.0.2:
+    dependencies:
+      jws: 3.2.2
+      lodash.includes: 4.3.0
+      lodash.isboolean: 3.0.3
+      lodash.isinteger: 4.0.4
+      lodash.isnumber: 3.0.3
+      lodash.isplainobject: 4.0.6
+      lodash.isstring: 4.0.1
+      lodash.once: 4.1.1
+      ms: 2.1.3
+      semver: 7.7.1
+
   jspdf@3.0.1:
     dependencies:
       '@babel/runtime': 7.27.0
@@ -7308,10 +7449,21 @@ snapshots:
       object.assign: 4.1.7
       object.values: 1.2.1
 
+  jwa@1.4.1:
+    dependencies:
+      buffer-equal-constant-time: 1.0.1
+      ecdsa-sig-formatter: 1.0.11
+      safe-buffer: 5.2.1
+
   jwa@2.0.0:
     dependencies:
       buffer-equal-constant-time: 1.0.1
       ecdsa-sig-formatter: 1.0.11
+      safe-buffer: 5.2.1
+
+  jws@3.2.2:
+    dependencies:
+      jwa: 1.4.1
       safe-buffer: 5.2.1
 
   jws@4.0.0:
@@ -7386,7 +7538,21 @@ snapshots:
     dependencies:
       p-locate: 5.0.0
 
+  lodash.includes@4.3.0: {}
+
+  lodash.isboolean@3.0.3: {}
+
+  lodash.isinteger@4.0.4: {}
+
+  lodash.isnumber@3.0.3: {}
+
+  lodash.isplainobject@4.0.6: {}
+
+  lodash.isstring@4.0.1: {}
+
   lodash.merge@4.6.2: {}
+
+  lodash.once@4.1.1: {}
 
   lodash@2.4.2: {}
 
@@ -7753,6 +7919,8 @@ snapshots:
   preact-render-to-string@6.5.11(preact@10.24.3):
     dependencies:
       preact: 10.24.3
+
+  preact@10.12.1: {}
 
   preact@10.24.3: {}
 

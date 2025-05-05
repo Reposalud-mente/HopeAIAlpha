@@ -30,14 +30,44 @@ async function main() {
       const count = await prisma.aIConsultation.count();
       console.log(`Number of AI consultations: ${count}`);
       
-      // Create a test consultation
+      // Create a test consultation with context information
       const testConsultation = await prisma.aIConsultation.create({
         data: {
           userId: '00000000-0000-0000-0000-000000000001', // Replace with a valid user ID
-          messages: []
+          messages: [],
+          metadata: {
+            // Include context information in the metadata
+            currentSection: "Test Section",
+            currentPage: "Test Page",
+            contextUsed: true
+          }
         }
       });
-      console.log('Created test consultation:', testConsultation);
+      console.log('Created test consultation with context information:', testConsultation);
+      
+      // Update the test consultation with a message
+      const updatedConsultation = await prisma.aIConsultation.update({
+        where: { id: testConsultation.id },
+        data: {
+          messages: [
+            {
+              id: 1,
+              content: "¿Cómo puedo crear un informe psicológico?",
+              sender: "user",
+              type: "text",
+              timestamp: new Date().toISOString()
+            },
+            {
+              id: 2,
+              content: "Para crear un informe psicológico en HopeAI, puedes utilizar las plantillas predefinidas en la sección de Documentación. Estas plantillas están diseñadas siguiendo las mejores prácticas clínicas y te permitirán estructurar la información de manera profesional y completa.",
+              sender: "ai",
+              type: "text",
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }
+      });
+      console.log('Updated test consultation with messages:', updatedConsultation);
       
       // Delete the test consultation
       await prisma.aIConsultation.delete({

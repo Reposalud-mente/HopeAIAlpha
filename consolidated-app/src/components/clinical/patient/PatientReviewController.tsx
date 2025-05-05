@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { usePatient } from '@/contexts/PatientContext';
 import { Button } from '@/components/ui/button';
-import { User, ClipboardList, Edit, Sparkles, FileText } from 'lucide-react';
+import { User, ClipboardList, Edit, Sparkles, FileText, HelpCircle, Save, AlertCircle, CheckCircle } from 'lucide-react';
 import PatientSelection from '@/components/clinical/patient/PatientSelection';
 import ClinicalInfoForm from '@/components/clinical/patient/ClinicalInfoForm';
 import ReportPreviewEditor from '@/components/clinical/patient/ReportPreviewEditor';
@@ -15,14 +15,45 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { ReportPreview } from '@/components/clinical/reports/ReportPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-// import jsPDF from 'jspdf'; // Removed client-side PDF generation
+import { WizardProvider, useWizard } from '@/contexts/WizardContext';
+import WizardStepIndicator, { WizardStep } from '@/components/clinical/wizard/WizardStepIndicator';
+import WizardHelp from '@/components/clinical/wizard/WizardHelp';
+import WizardSummary from '@/components/clinical/wizard/WizardSummary';
+import SaveProgressModal from '@/components/clinical/wizard/SaveProgressModal';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
-// Define the steps of the workflow
-const WORKFLOW_STEPS = [
-  { id: 'patient-selection', label: 'Selección de Paciente', icon: <User className="w-5 h-5 text-blue-500" /> },
-  { id: 'clinical-info', label: 'Tipo de Informe', icon: <ClipboardList className="w-5 h-5 text-blue-500" /> },
-  { id: 'report-preview', label: 'Previsualización y Edición', icon: <Edit className="w-5 h-5 text-blue-500" /> },
-  { id: 'report-generation', label: 'Redacción Final', icon: <Sparkles className="w-5 h-5 text-blue-500" /> }
+// Define the steps of the workflow with enhanced descriptions
+const WORKFLOW_STEPS: WizardStep[] = [
+  { 
+    id: 'patient-selection', 
+    label: 'Selección de Paciente', 
+    icon: <User className="w-5 h-5 text-blue-500" />,
+    description: 'Selecciona el paciente para el cual deseas generar un informe psicológico.'
+  },
+  { 
+    id: 'clinical-info', 
+    label: 'Tipo de Informe', 
+    icon: <ClipboardList className="w-5 h-5 text-blue-500" />,
+    description: 'Elige el tipo de informe y completa la información clínica necesaria.'
+  },
+  { 
+    id: 'summary', 
+    label: 'Resumen', 
+    icon: <FileText className="w-5 h-5 text-blue-500" />,
+    description: 'Revisa un resumen de toda la información antes de generar el informe.'
+  },
+  { 
+    id: 'report-preview', 
+    label: 'Previsualización', 
+    icon: <Edit className="w-5 h-5 text-blue-500" />,
+    description: 'Previsualiza y edita el borrador del informe generado por la IA.'
+  },
+  { 
+    id: 'report-generation', 
+    label: 'Redacción Final', 
+    icon: <Sparkles className="w-5 h-5 text-blue-500" />,
+    description: 'Finaliza y exporta el informe psicológico.'
+  }
 ];
 
 interface FormState {
@@ -41,6 +72,10 @@ interface FormState {
 
   // Nuevo campo para el tipo de informe
   tipoInforme: string;
+  
+  // Campos para el paciente
+  patientId?: string;
+  patientName?: string;
 }
 
 interface PatientReviewControllerProps {
@@ -54,6 +89,13 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
   // Use patient context
   const { currentPatient, getPatient, setCurrentPatient } = usePatient();
   const { toast } = useToast();
+
+  // New state variables for enhanced UX
+  const [showHelp, setShowHelp] = useState<boolean>(false);
+  const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
+  const [saveMode, setSaveMode] = useState<'save' | 'resume'>('save');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [isFormValid, setIsFormValid] = useState<boolean>(true);
 
   // Handlers for report actions will be defined below
 
@@ -73,17 +115,35 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
     derivacion: '',
 
     // Valor inicial para el tipo de informe
-    tipoInforme: ''
+    tipoInforme: '',
+    
+    // Campos para el paciente
+    patientId: undefined,
+    patientName: undefined
   });
 
   // Current step index for the wizard - using activeTab instead
 
   // Step navigation handlers
   const handleNextStep = () => {
-    const currentIndex = WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab);
-    if (currentIndex < WORKFLOW_STEPS.length - 1) {
-      const nextStep = WORKFLOW_STEPS[currentIndex + 1];
-      updateFormState(prev => ({ ...prev, activeTab: nextStep.id }));
+    // Validate current step before proceeding
+    if (validateCurrentStep()) {
+      const currentIndex = WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab);
+      if (currentIndex < WORKFLOW_STEPS.length - 1) {
+        const nextStep = WORKFLOW_STEPS[currentIndex + 1];
+        updateFormState(prev => ({ ...prev, activeTab: nextStep.id }));
+        
+        // Announce step change for screen readers
+        announceStepChange(nextStep.label);
+      }
+    } else {
+      // Show validation errors toast
+      toast({
+        title: "Hay campos con errores",
+        description: "Por favor, corrige los errores antes de continuar.",
+        variant: "destructive",
+        duration: 5000,
+      });
     }
   };
 
@@ -99,18 +159,111 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
       }
 
       updateFormState(prev => ({ ...prev, activeTab: prevStep.id }));
+      
+      // Announce step change for screen readers
+      announceStepChange(prevStep.label);
     }
   };
 
   // Handle step completion
   const handleStepComplete = () => {
-    handleNextStep();
+    if (validateCurrentStep()) {
+      handleNextStep();
+    }
+  };
+  
+  // Validate the current step
+  const validateCurrentStep = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    let isValid = true;
+    
+    switch (formState.activeTab) {
+      case 'patient-selection':
+        if (!currentPatient) {
+          newErrors.patientId = 'Debes seleccionar un paciente';
+          isValid = false;
+        }
+        break;
+        
+      case 'clinical-info':
+        if (!formState.clinica) {
+          newErrors.clinica = 'La clínica es requerida';
+          isValid = false;
+        }
+        if (!formState.psicologo) {
+          newErrors.psicologo = 'El psicólogo es requerido';
+          isValid = false;
+        }
+        if (!formState.fecha) {
+          newErrors.fecha = 'La fecha es requerida';
+          isValid = false;
+        }
+        if (!formState.tipoInforme) {
+          newErrors.tipoInforme = 'El tipo de informe es requerido';
+          isValid = false;
+        }
+        break;
+        
+      case 'summary':
+        // Summary validation is a combination of previous steps
+        if (!currentPatient) {
+          newErrors.patientId = 'Debes seleccionar un paciente';
+          isValid = false;
+        }
+        if (!formState.clinica) {
+          newErrors.clinica = 'La clínica es requerida';
+          isValid = false;
+        }
+        if (!formState.psicologo) {
+          newErrors.psicologo = 'El psicólogo es requerido';
+          isValid = false;
+        }
+        if (!formState.fecha) {
+          newErrors.fecha = 'La fecha es requerida';
+          isValid = false;
+        }
+        if (!formState.tipoInforme) {
+          newErrors.tipoInforme = 'El tipo de informe es requerido';
+          isValid = false;
+        }
+        break;
+        
+      case 'report-preview':
+        // No specific validation for preview step
+        break;
+        
+      case 'report-generation':
+        // No specific validation for generation step
+        break;
+    }
+    
+    setValidationErrors(newErrors);
+    setIsFormValid(isValid);
+    return isValid;
+  };
+  
+  // Announce step change for screen readers
+  const announceStepChange = (stepLabel: string) => {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', 'assertive');
+    announcement.setAttribute('role', 'status');
+    announcement.className = 'sr-only';
+    announcement.textContent = `Paso actual: ${stepLabel}`;
+    document.body.appendChild(announcement);
+    
+    // Remove after announcement
+    setTimeout(() => {
+      document.body.removeChild(announcement);
+    }, 1000);
   };
 
   // Inicializar datos necesarios al montar el componente
   useEffect(() => {
     // Podemos mantener esta lógica para compatibilidad con versiones anteriores
     // o para futuras mejoras, pero no es necesaria para el flujo simplificado
+    
+    // Validate initial step
+    validateCurrentStep();
   }, []);
 
   // Load the selected patient if selectedPatientId is provided
@@ -120,11 +273,29 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
         const patient = await getPatient(selectedPatientId);
         if (patient) {
           setCurrentPatient(patient);
+          
+          // Update form state with patient info
+          updateFormState(prev => ({ 
+            ...prev, 
+            patientId: patient.id,
+            patientName: `${patient.firstName} ${patient.lastName}`
+          }));
         }
       };
       loadPatient();
     }
-  }, [selectedPatientId, currentPatient, getPatient, setCurrentPatient]); // Eliminamos formState de las dependencias
+  }, [selectedPatientId, currentPatient, getPatient, setCurrentPatient]);
+  
+  // Update form state when patient changes
+  useEffect(() => {
+    if (currentPatient) {
+      updateFormState(prev => ({ 
+        ...prev, 
+        patientId: currentPatient.id,
+        patientName: `${currentPatient.firstName} ${currentPatient.lastName}`
+      }));
+    }
+  }, [currentPatient]);
 
   // Analysis state
   const [analysisPhase, setAnalysisPhase] = useState<'pending' | 'analyzing' | 'complete'>('pending');
@@ -138,6 +309,30 @@ export default function PatientReviewController({ selectedPatientId }: PatientRe
 
   // New state to track if the PDF has been generated
   const [isPdfGenerated, setIsPdfGenerated] = useState(false);
+  
+  // New handlers for enhanced features
+  const toggleHelp = () => {
+    setShowHelp(prev => !prev);
+  };
+  
+  const handleSaveProgress = () => {
+    setSaveMode('save');
+    setShowSaveModal(true);
+  };
+  
+  const handleResumeSession = () => {
+    setSaveMode('resume');
+    setShowSaveModal(true);
+  };
+  
+  // Map step IDs to validation fields for the step indicator
+  const stepValidationMap: Record<string, string[]> = {
+    'patient-selection': ['patientId'],
+    'clinical-info': ['clinica', 'psicologo', 'fecha', 'tipoInforme'],
+    'summary': ['patientId', 'clinica', 'psicologo', 'fecha', 'tipoInforme'],
+    'report-preview': [],
+    'report-generation': []
+  };
 
   // Helper function to update form state
   const updateForm = (updates: Partial<FormState>) => {
@@ -435,46 +630,79 @@ ${draftText}
     <div className="w-full space-y-8">
       {/* This header is now handled by the parent component */}
 
-      {/* Horizontal step indicator - redesigned for better clarity */}
-      <div className="mb-8 bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 overflow-hidden">
-        {/* Steps container with connecting line */}
-        <div className="relative flex items-center justify-between">
-          {/* Line connecting steps */}
-          <div className="absolute h-0.5 bg-gradient-to-r from-blue-100 via-gray-200 to-blue-100 left-8 right-8 top-1/2 transform -translate-y-1/2 z-0" />
-
-          {/* Steps */}
-          <div className="flex justify-between w-full relative z-10">
-            {WORKFLOW_STEPS.map((step, index) => {
-              const status = getStepStatus(index);
-              const isActive = status === 'current';
-              const isCompleted = status === 'complete';
-
-              return (
-                <div
-                  key={step.id}
-                  className="flex flex-col items-center cursor-pointer group"
-                  onClick={() => handleStepClick(index)}
-                >
-                  <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full text-white font-medium text-sm mb-3 transition-all shadow-sm ${isActive ? 'bg-blue-600 ring-4 ring-blue-100' : isCompleted ? 'bg-green-600' : 'bg-gray-300'} group-hover:scale-105`}
-                  >
-                    {isCompleted ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      index + 1
-                    )}
-                  </div>
-                  <span className={`text-xs font-medium ${isActive ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-gray-500'} transition-colors group-hover:font-semibold`}>
-                    {step.label}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {/* Enhanced step indicator with progress bar and tooltips */}
+      <WizardStepIndicator 
+        steps={WORKFLOW_STEPS}
+        currentStepIndex={WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab)}
+        onStepClick={handleStepClick}
+        validationErrors={validationErrors}
+        stepValidationMap={stepValidationMap}
+      />
+      
+      {/* Help and save buttons */}
+      <div className="flex justify-end gap-2 mb-4">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleResumeSession}
+                className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <FileText className="h-4 w-4" />
+                <span className="hidden sm:inline">Sesiones guardadas</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Retomar una sesión guardada</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSaveProgress}
+                className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <Save className="h-4 w-4" />
+                <span className="hidden sm:inline">Guardar progreso</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Guardar tu progreso para continuar más tarde</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={toggleHelp}
+                className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+              >
+                <HelpCircle className="h-4 w-4" />
+                <span className="hidden sm:inline">Ayuda</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Mostrar ayuda contextual</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
+      
+      {/* Contextual help panel */}
+      {showHelp && (
+        <WizardHelp step={formState.activeTab} />
+      )}
 
       {/* Content card */}
       <Card className="border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-300 bg-white overflow-hidden rounded-xl mb-8">
@@ -495,12 +723,11 @@ ${draftText}
               onComplete={handleStepComplete}
             />
           </div>
-        )},
+        )}
 
         {/* Clinical info step */}
         {formState.activeTab === 'clinical-info' && (
           <div>
-
             <ClinicalInfoForm
               clinica={formState.clinica}
               psicologo={formState.psicologo}
@@ -523,12 +750,24 @@ ${draftText}
               onComplete={handleStepComplete}
             />
           </div>
-        )},
+        )}
+        
+        {/* Summary step - NEW */}
+        {formState.activeTab === 'summary' && (
+          <div className="p-6">
+            <WizardSummary 
+              formData={formState}
+              onEditStep={(stepId) => updateFormState(prev => ({ ...prev, activeTab: stepId }))}
+              onConfirm={handleStepComplete}
+              isValid={isFormValid}
+              validationErrors={validationErrors}
+            />
+          </div>
+        )}
 
         {/* Report preview and edit step */}
         {formState.activeTab === 'report-preview' && (
           <div>
-
             {analysisPhase === 'pending' ? (
               <div className="p-6 text-center">
                 <Button
@@ -572,7 +811,7 @@ ${draftText}
               </div>
             )}
           </div>
-        )},
+        )}
 
         {/* Report generation step */}
         {formState.activeTab === 'report-generation' && (
@@ -667,6 +906,9 @@ ${draftText}
                 onClick={handleNextStep}
                 disabled={!canProceedToNextStep()}
                 className="flex items-center gap-2 text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition-all duration-200 px-4 py-2 rounded-md"
+                aria-label={`Continuar al siguiente paso: ${
+                  WORKFLOW_STEPS[WORKFLOW_STEPS.findIndex(step => step.id === formState.activeTab) + 1]?.label
+                }`}
               >
                 Siguiente
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -715,8 +957,13 @@ ${draftText}
           </div>
         </DialogContent>
       </Dialog>
-
-
+      
+      {/* Save/Resume Progress Modal */}
+      <SaveProgressModal 
+        open={showSaveModal} 
+        onOpenChange={setShowSaveModal} 
+        mode={saveMode} 
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, ReactNode } from 'react'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import { resetAllTypewriterAnimations } from '@/utils/typewriter-utils'
 
 type RegisterData = {
   email: string
@@ -39,6 +40,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const handleSignOut = async () => {
+    // Reset any typewriter animations when logging out
+    // This ensures animations will play again on next login
+    resetAllTypewriterAnimations();
+
     await signOut({ callbackUrl: '/login' })
   }
 

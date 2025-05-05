@@ -1,13 +1,17 @@
 "use client"
 
-// Floating AI Assistant for repetitive and bureaucratic tasks
-import { useState, useRef, useEffect } from "react";
-import { Bot, X, Loader } from "lucide-react";
+// Floating AI Assistant with Gemini integration
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Bot, X, Loader, Mic, MicOff, RefreshCw, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import styles from "./FloatingAIAssistant.module.css";
+import { AIAssistantProvider, useAIAssistant } from "@/contexts/ai-assistant-context";
+import { useDebounce } from "@/hooks/use-debounce";
+import { useVoiceInput } from "@/hooks/use-voice-input";
+import { Message } from "@/lib/ai-assistant/ai-assistant-service";
 
 interface FloatingAIAssistantProps {
   patientName?: string;
@@ -19,34 +23,70 @@ interface AIAssistanceCardProps {
   question?: string;
 }
 
-interface AIAssistantProps extends FloatingAIAssistantProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hola! 😊 Soy HopeAI. Pronto podré ayudarte a buscar información de pacientes, sesiones, notas clínicas y mucho más. ¿Qué necesitas hoy?" }: FloatingAIAssistantProps) {
+/**
+ * Floating AI Assistant component with Gemini integration
+ */
+export function FloatingAIAssistant({ 
+  patientName = '', 
+  initialQuestion = "¡Hola! 😊 Soy HopeAI. Puedo ayudarte a buscar información de pacientes, sesiones, notas clínicas y mucho más. ¿Qué necesitas hoy?" 
+}: FloatingAIAssistantProps) {
+  // State for the assistant UI
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { id: "1", role: "assistant", content: initialQuestion },
-  ]);
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const debouncedInput = useDebounce(input, 300); // Debounce input to reduce unnecessary renders
+  
+  // Refs for DOM elements
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  
+  // Get the AI Assistant context
+  const { 
+    messages, 
+    isLoading, 
+    error, 
+    sendMessage, 
+    streamMessage, 
+    clearError 
+  } = useAIAssistant();
+  
+  // Initialize voice input
+  const { 
+    isListening, 
+    transcript, 
+    error: voiceError, 
+    startListening, 
+    stopListening, 
+    resetTranscript,
+    supported: voiceSupported
+  } = useVoiceInput({
+    language: 'es-ES',
+    continuous: false,
+    interimResults: true
+  });
 
+  // Add initial message if messages is empty
+  useEffect(() => {
+    if (messages.length === 0) {
+      // Add the initial message
+      sendMessage(initialQuestion);
+    }
+  }, [messages.length, initialQuestion, sendMessage]);
+
+  // Focus the input field when the assistant is opened
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
     }
   }, [isOpen]);
 
+  // Scroll to the bottom when messages change
   useEffect(() => {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
 
+  // Close the assistant when Escape key is pressed
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -57,31 +97,43 @@ export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hol
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const handleSend = async (text: string = input) => {
-    if (!text.trim()) return;
-    setMessages(prev => [...prev, { id: String(Date.now()), role: 'user', content: text }]);
-    setInput("");
-    setIsLoading(true);
-    setError(null);
-    // Simulate AI response
-    setTimeout(() => {
-      let response = "Estoy aquí para apoyarte en lo que necesites, desde tareas administrativas hasta consultas sobre procesos. ¡Cuéntame cómo puedo facilitar tu día!";
-      if (text.toLowerCase().includes("proceso") || text.toLowerCase().includes("burocracia")) {
-        response = "¡Entiendo que los procesos pueden ser tediosos! 😊 Si necesitas automatizar reportes, gestionar formularios o simplificar trámites, estoy aquí para ayudarte paso a paso.";
-      } else if (text.toLowerCase().includes("informe")) {
-        response = "¡Claro! Para generar un informe, dime qué información tienes y qué necesitas lograr. Juntos podemos armar un documento claro y útil para ti y tus pacientes.";
-      } else if (text.toLowerCase().includes("hola") || text.toLowerCase().includes("buenos días") || text.toLowerCase().includes("buenas tardes")) {
-        response = "¡Hola! 😊 ¿En qué puedo ayudarte hoy? Recuerda que estoy aquí para hacer tu trabajo más sencillo y humano.";
-      }
-      setMessages(prev => [...prev, { id: String(Date.now()), role: 'assistant', content: response }]);
-      setIsLoading(false);
-    }, 1200);
-  };
+  // Update input field with voice transcript
+  useEffect(() => {
+    if (transcript) {
+      setInput(transcript);
+    }
+  }, [transcript]);
 
-  const onSubmit = (e: React.FormEvent) => {
+  // Handle sending a message
+  const handleSend = useCallback(async (text: string = input) => {
+    if (!text.trim()) return;
+    
+    // Clear the input field and reset voice transcript
+    setInput("");
+    resetTranscript();
+    
+    // Send the message
+    await streamMessage(text);
+  }, [input, resetTranscript, streamMessage]);
+
+  // Handle form submission
+  const onSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     handleSend();
-  };
+  }, [handleSend]);
+
+  // Handle voice input toggle
+  const toggleVoiceInput = useCallback(() => {
+    if (isListening) {
+      stopListening();
+      // If there's a transcript, send it
+      if (transcript) {
+        handleSend(transcript);
+      }
+    } else {
+      startListening();
+    }
+  }, [isListening, stopListening, transcript, handleSend, startListening]);
 
   return (
     <>
@@ -97,22 +149,47 @@ export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hol
           <Bot className="h-7 w-7" />
         </Button>
       </div>
+      
       {/* Floating Chat Modal */}
       {isOpen && (
-        <div className={styles.fabModal}>
+        <div 
+          className={styles.fabModal} 
+          role="dialog" 
+          aria-labelledby="ai-assistant-title"
+          aria-describedby="ai-assistant-description"
+        >
           <Card>
             <CardHeader className="flex flex-row items-center justify-between px-4 py-2 border-b">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle id="ai-assistant-title" className="text-lg flex items-center gap-2">
                 <Bot className="h-5 w-5 text-primary" /> HopeAI
               </CardTitle>
-              <Button size="icon" variant="ghost" onClick={() => setIsOpen(false)} aria-label="Cerrar">
-                <X className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {error && (
+                  <Button 
+                    size="icon" 
+                    variant="ghost" 
+                    onClick={clearError} 
+                    aria-label="Limpiar error"
+                    title="Limpiar error"
+                  >
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                  </Button>
+                )}
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={() => setIsOpen(false)} 
+                  aria-label="Cerrar"
+                  title="Cerrar asistente"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea style={{ height: 320 }} className="p-4">
                 <div className="flex flex-col gap-2">
-                  {messages.map((msg) => (
+                  {messages.map((msg: Message) => (
                     <div
                       key={msg.id}
                       className={cn(
@@ -125,18 +202,65 @@ export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hol
                       {msg.content}
                     </div>
                   ))}
+                  
+                  {/* Loading indicator */}
                   {isLoading && (
-                    <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                      <Loader className="animate-spin h-4 w-4" /> Pensando...
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs bg-muted self-start rounded-lg px-3 py-2">
+                      <Loader className="animate-spin h-4 w-4" /> 
+                      <span aria-live="polite">Pensando...</span>
                     </div>
                   )}
+                  
+                  {/* Error message */}
                   {error && (
-                    <div className="text-xs text-destructive">{error}</div>
+                    <div 
+                      className="text-xs text-destructive bg-destructive/10 p-2 rounded-lg"
+                      role="alert"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Error: {error}</span>
+                      </div>
+                      <div className="mt-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="text-xs h-6" 
+                          onClick={() => {
+                            clearError();
+                            // Retry the last message if there is one
+                            const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+                            if (lastUserMessage) {
+                              sendMessage(lastUserMessage.content);
+                            }
+                          }}
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" /> Reintentar
+                        </Button>
+                      </div>
+                    </div>
                   )}
+                  
+                  {/* Voice input error */}
+                  {voiceError && (
+                    <div 
+                      className="text-xs text-amber-600 bg-amber-50 p-2 rounded-lg"
+                      role="alert"
+                    >
+                      {voiceError}
+                    </div>
+                  )}
+                  
                   <div ref={bottomRef} />
                 </div>
               </ScrollArea>
-              <form onSubmit={onSubmit} className="flex items-center gap-2 border-t p-2">
+              
+              {/* Input form */}
+              <form 
+                onSubmit={onSubmit} 
+                className="flex items-center gap-2 border-t p-2"
+                aria-describedby="ai-assistant-description"
+              >
                 <input
                   ref={inputRef}
                   type="text"
@@ -146,11 +270,45 @@ export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hol
                   onChange={e => setInput(e.target.value)}
                   disabled={isLoading}
                   aria-label="Mensaje para AI"
+                  id="ai-assistant-input"
                 />
-                <Button type="submit" size="icon" disabled={isLoading || !input.trim()}>
+                
+                {/* Voice input button */}
+                {voiceSupported && (
+                  <Button 
+                    type="button" 
+                    size="icon" 
+                    variant={isListening ? "destructive" : "outline"}
+                    onClick={toggleVoiceInput}
+                    disabled={isLoading}
+                    aria-label={isListening ? "Detener grabación" : "Grabar mensaje de voz"}
+                    title={isListening ? "Detener grabación" : "Grabar mensaje de voz"}
+                  >
+                    {isListening ? (
+                      <MicOff className="h-5 w-5" />
+                    ) : (
+                      <Mic className="h-5 w-5" />
+                    )}
+                  </Button>
+                )}
+                
+                {/* Send button */}
+                <Button 
+                  type="submit" 
+                  size="icon" 
+                  disabled={isLoading || (!input.trim() && !transcript)}
+                  aria-label="Enviar mensaje"
+                  title="Enviar mensaje"
+                >
                   <Bot className="h-5 w-5" />
                 </Button>
               </form>
+              
+              {/* Screen reader description */}
+              <div id="ai-assistant-description" className="sr-only">
+                Asistente de inteligencia artificial para ayudarte con consultas y tareas. 
+                Puedes escribir mensajes o usar la entrada de voz si está disponible.
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -159,14 +317,37 @@ export function FloatingAIAssistant({ patientName = '', initialQuestion = "¡Hol
   );
 }
 
-// Usage: Import <FloatingAIAssistant /> in your global layout or _app file to enable across the platform.
+/**
+ * Wrapper component that provides the AI Assistant context
+ */
+export function FloatingAIAssistantWithProvider(props: FloatingAIAssistantProps) {
+  return (
+    <AIAssistantProvider>
+      <FloatingAIAssistant {...props} />
+    </AIAssistantProvider>
+  );
+}
 
+/**
+ * Card component that opens the AI Assistant when clicked
+ */
 export function AIAssistanceCard({ patientName, question = "¿Cómo puedo ayudarte?" }: AIAssistanceCardProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <div className="relative">
-      <Card className="cursor-pointer transition-colors hover:bg-muted/50" onClick={() => setIsOpen(true)}>
+      <Card 
+        className="cursor-pointer transition-colors hover:bg-muted/50" 
+        onClick={() => setIsOpen(true)}
+        tabIndex={0}
+        role="button"
+        aria-label="Abrir asistente AI"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            setIsOpen(true);
+          }
+        }}
+      >
         <CardContent className="flex items-start gap-4 p-6">
           <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Bot className="h-5 w-5" />
@@ -175,12 +356,13 @@ export function AIAssistanceCard({ patientName, question = "¿Cómo puedo ayudar
         </CardContent>
       </Card>
       {isOpen && (
-        <FloatingAIAssistant
-          patientName={patientName}
-          initialQuestion={question}
-        />
+        <AIAssistantProvider>
+          <FloatingAIAssistant
+            patientName={patientName}
+            initialQuestion={question}
+          />
+        </AIAssistantProvider>
       )}
     </div>
-  )
+  );
 }
-

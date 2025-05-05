@@ -376,7 +376,20 @@ function ConsultasAI({ className }: ConsultasAIProps) {
     setError(null);
 
     try {
-      // Call the API endpoint
+      // Determine the current section based on the query or UI state
+      const currentSection = "Consultas AI";
+      
+      // Determine if the query is related to a specific patient
+      // This is a simplified example - in a real implementation, you would
+      // have more sophisticated logic to determine the patient context
+      let patientId = undefined;
+      if (query.toLowerCase().includes("juan pérez") || query.toLowerCase().includes("juan perez")) {
+        patientId = "juan-perez-id"; // This would be a real patient ID in production
+      } else if (query.toLowerCase().includes("ana martínez") || query.toLowerCase().includes("ana martinez")) {
+        patientId = "ana-martinez-id"; // This would be a real patient ID in production
+      }
+
+      // Call the API endpoint with context information
       const response = await fetch('/api/consultas-ai', {
         method: 'POST',
         headers: {
@@ -384,7 +397,10 @@ function ConsultasAI({ className }: ConsultasAIProps) {
         },
         body: JSON.stringify({
           message: query,
-          consultationId: consultationId
+          consultationId: consultationId,
+          currentSection: currentSection,
+          currentPage: "Asistente Psicológico",
+          patientId: patientId
         }),
       });
 

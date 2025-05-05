@@ -1,0 +1,25 @@
+schemaVersion: 2.0.0
+metadata:
+  name: clinical-dashboard-app
+components:
+  - name: dev
+    container:
+      image: public.ecr.aws/aws-mde/universal-image:latest
+      memoryLimit: 4Gi
+      mountSources: true
+commands:
+  - id: install
+    exec:
+      component: dev
+      commandLine: "npm install -g pnpm@10.6.5 && pnpm install --frozen-lockfile"
+      workingDir: ${PROJECT_SOURCE}
+  - id: build
+    exec:
+      component: dev
+      commandLine: "pnpm build"
+      workingDir: ${PROJECT_SOURCE}
+  - id: test
+    exec:
+      component: dev
+      commandLine: "node test-db.js && node test-models.js && node test-ai-consultation.js && node test-pdf-parse.js"
+      workingDir: ${PROJECT_SOURCE}

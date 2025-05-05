@@ -78,7 +78,10 @@ export const AlternatingTypewriter: React.FC<AlternatingTypewriterProps> = ({
             if (elRef.current && isMounted.current) {
               try {
                 if (instance.current) {
-                  instance.current.destroy();
+                  // Check if the element still exists in the DOM before destroying
+                  if (elRef.current && document.body.contains(elRef.current)) {
+                    instance.current.destroy();
+                  }
                 }
                 // Create a new instance to restart the animation
                 const newInstance = new TypeIt(elRef.current, {
@@ -120,11 +123,15 @@ export const AlternatingTypewriter: React.FC<AlternatingTypewriterProps> = ({
 
       try {
         if (instance.current) {
-          instance.current.destroy();
+          // Check if the element still exists in the DOM before destroying
+          if (elRef.current && document.body.contains(elRef.current)) {
+            instance.current.destroy();
+          }
           instance.current = null;
         }
       } catch (error) {
         console.warn('Error during TypeIt cleanup:', error);
+        instance.current = null;
       }
     };
   }, [prefix, alternatingWords, postfix, speed, cursor, pauseTime]);

@@ -249,8 +249,9 @@ export default function PatientListPage() {
 
   // Handle status filter change
   const handleStatusFilterChange = (value: string) => {
+    // Just update the state, the useEffect will handle the filtering
     setStatusFilter(value as 'all' | 'active' | 'inactive');
-    loadPatients(searchTerm);
+    // No need to call loadPatients directly, as the useEffect will handle it
   };
 
   // Handle patient creation
@@ -355,31 +356,19 @@ export default function PatientListPage() {
             />
           </div>
 
-          {/* Filter dropdown */}
+          {/* Filter dropdown - Simplified to avoid nesting Radix UI components */}
           <div className="flex items-center">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Filter className="h-4 w-4" />
-                  <span>Filtros</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="p-2">
-                  <p className="text-sm font-medium mb-2">Estado</p>
-                  <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Seleccionar estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos</SelectItem>
-                      <SelectItem value="active">Activos</SelectItem>
-                      <SelectItem value="inactive">Inactivos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+              <SelectTrigger className="flex items-center gap-2 min-w-[140px]">
+                <Filter className="h-4 w-4" />
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Activos</SelectItem>
+                <SelectItem value="inactive">Inactivos</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* View toggle */}
@@ -673,72 +662,70 @@ export default function PatientListPage() {
           </div>
         )}
 
-        {/* Confirmation Dialog for Bulk Actions */}
-        {isConfirmDialogOpen && bulkActionType && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
-              <div className="p-4 border-b">
-                <h2 className="text-xl font-semibold">
-                  {bulkActionType === 'delete' ? 'Eliminar pacientes' :
-                   bulkActionType === 'activate' ? 'Activar pacientes' : 'Desactivar pacientes'}
-                </h2>
-              </div>
-              <div className="p-6">
-                <p className="mb-4">
-                  {bulkActionType === 'delete' ?
-                    `¿Está seguro de que desea eliminar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.` :
-                    bulkActionType === 'activate' ?
-                    `¿Está seguro de que desea activar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?` :
-                    `¿Está seguro de que desea desactivar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?`}
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIsConfirmDialogOpen(false);
-                      setBulkActionType(null);
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    variant={bulkActionType === 'delete' ? 'destructive' : 'default'}
-                    onClick={executeBulkAction}
-                    disabled={isBulkActionLoading}
-                  >
-                    {isBulkActionLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Procesando...
-                      </>
-                    ) : 'Confirmar'}
-                  </Button>
-                </div>
-              </div>
+        {/* Confirmation Dialog for Bulk Actions - Using Radix UI Dialog */}
+        <Dialog open={isConfirmDialogOpen} onOpenChange={(open) => {
+          setIsConfirmDialogOpen(open);
+          if (!open) setBulkActionType(null);
+        }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {bulkActionType === 'delete' ? 'Eliminar pacientes' :
+                 bulkActionType === 'activate' ? 'Activar pacientes' : 'Desactivar pacientes'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-gray-700">
+                {bulkActionType === 'delete' ?
+                  `¿Está seguro de que desea eliminar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.` :
+                  bulkActionType === 'activate' ?
+                  `¿Está seguro de que desea activar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?` :
+                  `¿Está seguro de que desea desactivar ${selectedPatients.length} paciente${selectedPatients.length !== 1 ? 's' : ''}?`}
+              </p>
             </div>
-          </div>
-        )}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsConfirmDialogOpen(false);
+                  setBulkActionType(null);
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant={bulkActionType === 'delete' ? 'destructive' : 'default'}
+                onClick={executeBulkAction}
+                disabled={isBulkActionLoading}
+              >
+                {isBulkActionLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Procesando...
+                  </>
+                ) : 'Confirmar'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-        {/* Create Patient Modal */}
-        {isCreating && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Nuevo Paciente</h2>
-                <Button variant="ghost" size="sm" onClick={() => setIsCreating(false)}>
-                  ×
-                </Button>
-              </div>
-              <ScrollArea className="p-6 max-h-[calc(90vh-80px)]">
+        {/* Create Patient Modal - Using Radix UI Dialog */}
+        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+            <DialogHeader>
+              <DialogTitle>Nuevo Paciente</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="max-h-[calc(90vh-150px)]">
+              <div className="p-4">
                 <PatientForm
                   onSubmit={handleCreatePatient}
                   onCancel={() => setIsCreating(false)}
                   isEditing={false}
                 />
-              </ScrollArea>
-            </div>
-          </div>
-        )}
+              </div>
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
