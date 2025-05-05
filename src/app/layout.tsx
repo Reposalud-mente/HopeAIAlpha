@@ -4,13 +4,20 @@ import '@/app/globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { DebugErrorBoundary } from '@/components/monitoring/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { FloatingAIAssistant } from '@/components/ai/ai-assistance-card';
+import { FloatingAIAssistantWithProvider } from '@/components/ai/ai-assistance-card';
 
 
 
 export const metadata = {
   title: 'HopeAI - Plataforma de Psicología Clínica',
   description: 'Plataforma de gestión para profesionales de la psicología clínica',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({
@@ -27,8 +34,8 @@ export default function RootLayout({
           </DebugErrorBoundary>
           {/* Feedback widget will only show when the feature flag is enabled */}
           <FeedbackWidget />
-          {/* Global floating AI assistant for repetitive/bureaucratic tasks */}
-          <FloatingAIAssistant />
+          {/* Global floating AI assistant with Gemini integration */}
+          <FloatingAIAssistantWithProvider />
         </Providers>
         <Toaster />
       </body>

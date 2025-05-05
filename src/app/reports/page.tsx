@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import PatientReviewController from '@/components/clinical/patient/PatientReviewController';
 import { PatientProvider } from '@/contexts/PatientContext';
+import { WizardProvider } from '@/contexts/WizardContext';
 import AppLayout from '@/components/layout/app-layout';
 import { FileText, Loader2 } from 'lucide-react';
 
@@ -16,10 +17,12 @@ const ReportsContent = () => {
 
   return (
     <PatientProvider>
-      {/* Main workflow controller - pass patientId if available */}
-      <div>
-        <PatientReviewController selectedPatientId={patientId || undefined} />
-      </div>
+      <WizardProvider>
+        {/* Main workflow controller - pass patientId if available */}
+        <div>
+          <PatientReviewController selectedPatientId={patientId || undefined} />
+        </div>
+      </WizardProvider>
     </PatientProvider>
   );
 };

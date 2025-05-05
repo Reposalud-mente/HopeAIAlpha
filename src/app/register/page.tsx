@@ -122,7 +122,7 @@ export default function RegisterPage() {
         </Link>
       </div>
 
-      <Card className="w-full max-w-md shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl">
+      <Card className="w-full max-w-[95%] md:max-w-md shadow-lg border border-gray-200 overflow-hidden transition-all duration-300 hover:shadow-xl my-16">
         <div className="h-1.5 w-full bg-gradient-to-r from-secondary via-secondary/90 to-primary"></div>
         <CardHeader className="space-y-4 text-center pt-8">
           <div className="mx-auto w-16 h-16 bg-secondary rounded-xl flex items-center justify-center text-white text-xl font-bold mb-2 shadow-md transition-transform duration-300 hover:scale-105">
@@ -135,7 +135,7 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="text-sm font-montserrat-medium text-gray-700">Nombre <span className="text-red-500">*</span></Label>
                 <Input
@@ -144,7 +144,7 @@ export default function RegisterPage() {
                   value={formData.firstName}
                   onChange={handleChange}
                   required
-                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
                 />
               </div>
               <div className="space-y-2">
@@ -155,7 +155,7 @@ export default function RegisterPage() {
                   value={formData.lastName}
                   onChange={handleChange}
                   required
-                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                  className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
                 />
               </div>
             </div>
@@ -166,11 +166,12 @@ export default function RegisterPage() {
                 id="email"
                 name="email"
                 type="email"
+                inputMode="email"
                 placeholder="correo@ejemplo.com"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
               />
             </div>
 
@@ -184,7 +185,7 @@ export default function RegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
               />
               <p className="text-xs text-gray-500 mt-1 font-montserrat-regular">Mínimo 8 caracteres</p>
             </div>
@@ -199,7 +200,7 @@ export default function RegisterPage() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
               />
             </div>
 
@@ -210,7 +211,7 @@ export default function RegisterPage() {
                 name="licenseNumber"
                 value={formData.licenseNumber}
                 onChange={handleChange}
-                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
               />
             </div>
 
@@ -221,7 +222,7 @@ export default function RegisterPage() {
                 name="specialty"
                 value={formData.specialty}
                 onChange={handleChange}
-                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular"
+                className="w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12"
               />
             </div>
 
@@ -229,7 +230,7 @@ export default function RegisterPage() {
 
             <Button
               type="submit"
-              className="w-full bg-secondary hover:bg-secondary/90 text-white py-2.5 font-montserrat-medium tracking-wide transition-all duration-300 btn-hover-effect mt-2"
+              className="w-full bg-secondary hover:bg-secondary/90 text-white py-3 font-montserrat-medium tracking-wide transition-all duration-300 btn-hover-effect mt-2 h-12 text-base md:text-lg"
               disabled={isLoading}
             >
               {isLoading ? 'Registrando...' : 'Registrarse'}

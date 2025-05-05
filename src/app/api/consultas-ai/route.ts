@@ -4,44 +4,9 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
 import { google } from '@ai-sdk/google';
 import { streamText, type Message } from 'ai';
-
-// System prompt for HopeAI's clinical psychology assistant
-const CLINICAL_ASSISTANT_SYSTEM_PROMPT = `
-Eres un asistente experto en psicología clínica de HopeAI, diseñado específicamente para apoyar a profesionales de la salud mental.
-
-# Personalidad y Valores de HopeAI
-
-Representas la marca HopeAI, cuya misión es "Psicología clínica simplificada - Herramientas inteligentes que te ayudan a centrarte en lo que realmente importa: tus pacientes."
-
-Tus principios fundamentales son:
-1. Reducir la carga administrativa para los profesionales de la salud mental
-2. Mejorar los resultados clínicos mediante herramientas inteligentes
-3. Simplificar la psicología clínica para que los profesionales puedan centrarse en sus pacientes
-
-Tu tono es profesional, empático, y basado en evidencia científica. Eres conciso pero completo, evitando jerga innecesaria mientras mantienes la precisión clínica.
-
-# Áreas de Experiencia
-
-Tienes conocimiento profundo en:
-- Evaluación y diagnóstico psicológico (DSM-5-TR, CIE-11)
-- Terapias basadas en evidencia (TCC, ACT, DBT, EMDR, etc.)
-- Instrumentos de evaluación psicológica estandarizados
-- Redacción de informes clínicos y documentación
-- Planificación de tratamientos
-- Seguimiento terapéutico y evaluación de resultados
-- Consideraciones éticas y mejores prácticas en psicología clínica
-
-# Enfoque de Asistencia
-
-Cuando interactúas con profesionales de la salud mental:
-1. Prioriza información basada en evidencia científica actualizada
-2. Ofrece respuestas prácticas y aplicables al contexto clínico
-3. Reconoce los límites de tu conocimiento y evita dar consejos fuera de tu ámbito
-4. Respeta la autonomía profesional del psicólogo
-5. Mantén la confidencialidad y privacidad de la información compartida
-
-Recuerda que eres una herramienta de apoyo, no un reemplazo del juicio clínico profesional.
-`;
+import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
+import { getAIContext } from '@/lib/ai-assistant/context-gatherer';
+import { getEnhancedAIAssistantService } from '@/lib/ai-assistant/enhanced-ai-assistant-service';
 
 // POST /api/consultas-ai - Process a chat message and return AI response
 export async function POST(request: NextRequest) {
@@ -58,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse the request body
-    const { message, consultationId } = await request.json();
+    const { message, consultationId, currentSection, currentPage, patientId } = await request.json();
 
     // Validate required fields
     if (!message) {
@@ -112,34 +77,60 @@ export async function POST(request: NextRequest) {
       console.log('Calling Google AI with API key:', apiKey ? 'API key exists' : 'API key missing');
 
       if (apiKey) {
-        // Call the real Google AI API
-        console.log('[ConsultasAI] About to call Google AI');
-        const model = google('gemini-2.5-pro-exp-03-25');
-        // Use SDK-native abortSignal for timeout (60s)
-        const TIMEOUT_MS = 60000;
-        console.log('[ConsultasAI] Using SDK-native AbortSignal for timeout');
-        const geminiMessages: Omit<Message, 'id'>[] = currentMessages.map((m: any) => ({
+        // Get platform context
+        console.log('[ConsultasAI] Gathering platform context...');
+        const context = await getAIContext(currentSection, currentPage, patientId);
+        
+        // Convert messages to the format expected by the AI service
+        const formattedMessages = currentMessages.map((m: any) => ({
+          id: String(m.id),
           role: m.sender === 'user' ? 'user' : 'assistant',
           content: String(m.content)
         }));
-        const result = await streamText({
-          model,
-          system: CLINICAL_ASSISTANT_SYSTEM_PROMPT,
-          messages: geminiMessages,
-          abortSignal: AbortSignal.timeout(TIMEOUT_MS),
-          onError({ error }) {
-            console.error('[ConsultasAI] AI SDK error:', error);
-          }
-        });
-        console.log('[ConsultasAI] Using HopeAI clinical assistant system prompt');
-        console.log('[ConsultasAI] streamText call completed, reading textStream...');
-        const textParts: string[] = [];
-        for await (const part of result.textStream) {
-          textParts.push(part);
+        
+        // Remove the last message (user message) as we'll send it separately
+        const conversationHistory = formattedMessages.slice(0, -1);
+        const userMessage = message;
+        
+        console.log('[ConsultasAI] About to call Enhanced AI Assistant Service');
+        
+        // Use the enhanced AI assistant service
+        const enhancedAIService = getEnhancedAIAssistantService();
+        
+        // Use SDK-native abortSignal for timeout (60s)
+        const TIMEOUT_MS = 60000;
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), TIMEOUT_MS);
+        
+        try {
+          // Use streaming for better user experience
+          const textParts: string[] = [];
+          
+          await enhancedAIService.streamMessage(
+            userMessage,
+            conversationHistory,
+            (chunk) => {
+              textParts.push(chunk);
+            },
+            { currentSection, currentPage, patientId }
+          );
+          
+          aiResponseContent = textParts.join('');
+          console.log('[ConsultasAI] Received AI response');
+          console.log('Using enhanced AI assistant service');
+        } catch (streamError) {
+          console.error('[ConsultasAI] Error streaming response:', streamError);
+          
+          // Fallback to non-streaming response
+          console.log('[ConsultasAI] Falling back to non-streaming response');
+          aiResponseContent = await enhancedAIService.sendMessage(
+            userMessage,
+            conversationHistory,
+            { currentSection, currentPage, patientId }
+          );
+        } finally {
+          clearTimeout(timeoutId);
         }
-        aiResponseContent = textParts.join('');
-        console.log('[ConsultasAI] Received AI response:', aiResponseContent);
-        console.log('Using real AI response');
       } else {
         // Use mock response if API key is missing
         const mockResponse = 'Esta es una respuesta simulada del asistente AI. En un entorno de producción, esto sería reemplazado por la respuesta real del modelo de Google AI.';
