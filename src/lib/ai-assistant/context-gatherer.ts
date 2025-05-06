@@ -8,6 +8,7 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
+import { headers } from 'next/headers';
 
 /**
  * Types for context objects
@@ -50,11 +51,27 @@ export interface PlatformContext {
 export class ContextGatherer {
   /**
    * Get user context based on the current session
+   * @param providedSession Optional session object to use instead of fetching from request context
    * @returns Promise resolving to user context or null if not authenticated
    */
-  static async getUserContext(): Promise<UserContext | null> {
+  static async getUserContext(providedSession?: any): Promise<UserContext | null> {
     try {
-      const session = await getServerSession(authOptions);
+      let session = providedSession;
+      
+      // Only try to get server session if we're in a request context and no session was provided
+      if (!session) {
+        try {
+          // Check if we're in a request context by trying to access headers
+          // This will throw an error if we're not in a request context
+          headers();
+          // If we get here, we're in a request context and can safely call getServerSession
+          session = await getServerSession(authOptions);
+        } catch (e) {
+          // We're not in a request context, so we can't get the session
+          console.log("Not in a request context, can't get session");
+          return null;
+        }
+      }
       
       if (!session?.user) {
         return null;
@@ -212,15 +229,17 @@ export class ContextGatherer {
    * @param currentSection Optional current section name
    * @param currentPage Optional current page name
    * @param patientId Optional patient ID to include patient context
+   * @param session Optional session object to use instead of fetching from request context
    * @returns Promise resolving to platform context
    */
   static async getPlatformContext(
     currentSection?: string,
     currentPage?: string,
-    patientId?: string
+    patientId?: string,
+    session?: any
   ): Promise<PlatformContext> {
     // Get user context
-    const userContext = await this.getUserContext();
+    const userContext = await this.getUserContext(session);
     
     // Get application context
     const applicationContext = this.getApplicationContext(currentSection, currentPage);
@@ -286,17 +305,20 @@ export class ContextGatherer {
  * @param currentSection Optional current section name
  * @param currentPage Optional current page name
  * @param patientId Optional patient ID to include patient context
+ * @param session Optional session object to use instead of fetching from request context
  * @returns Promise resolving to formatted context for AI prompts
  */
 export async function getAIContext(
   currentSection?: string,
   currentPage?: string,
-  patientId?: string
+  patientId?: string,
+  session?: any
 ): Promise<Record<string, any>> {
   const platformContext = await ContextGatherer.getPlatformContext(
     currentSection,
     currentPage,
-    patientId
+    patientId,
+    session
   );
   
   return ContextGatherer.formatContextForPrompt(platformContext);
