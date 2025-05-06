@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAIAssistant } from "@/contexts/ai-assistant-context";
 
 interface AIAssistantProps {
   isOpen: boolean;
@@ -23,11 +24,14 @@ export function AIAssistant({
   currentPage, 
   patientId 
 }: AIAssistantProps) {
-  const [messages, setMessages] = useState([
-    { id: "1", role: "assistant", content: "¡Hola! Soy HopeAI, tu asistente clínico. ¿En qué puedo ayudarte hoy?" },
-  ]);
+  const {
+    messages,
+    isLoading,
+    streamMessage,
+    clearError,
+    error
+  } = useAIAssistant();
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isUsingContext, setIsUsingContext] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -46,60 +50,13 @@ export function AIAssistant({
 
   const handleSend = async (text: string = input) => {
     if (!text.trim()) return;
-    
-    // Add user message
-    setMessages(prev => [...prev, { id: String(Date.now()), role: 'user', content: text }]);
     setInput("");
-    setIsLoading(true);
-    
-    try {
-      // Call the API endpoint with context information
-      const response = await fetch('/api/consultas-ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: text,
-          currentSection,
-          currentPage,
-          patientId
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-      
-      const data = await response.json();
-      
-      // Get the AI response (last message in the array)
-      const aiResponse = data.messages[data.messages.length - 1];
-      
-      // Check if context was used (this could be indicated in the response)
-      setIsUsingContext(
-        currentSection !== undefined || 
-        currentPage !== undefined || 
-        patientId !== undefined
-      );
-      
-      // Add AI response
-      setMessages(prev => [...prev, { 
-        id: String(Date.now()), 
-        role: 'assistant', 
-        content: aiResponse.content 
-      }]);
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      // Show error message
-      setMessages(prev => [...prev, { 
-        id: String(Date.now()), 
-        role: 'assistant', 
-        content: "Lo siento, ha ocurrido un error al procesar tu consulta. Por favor, intenta de nuevo más tarde." 
-      }]);
-    } finally {
-      setIsLoading(false);
-    }
+    setIsUsingContext(
+      currentSection !== undefined || 
+      currentPage !== undefined || 
+      patientId !== undefined
+    );
+    await streamMessage(text, { currentSection, currentPage, patientId });
   };
 
   const onSubmit = (e: React.FormEvent) => {

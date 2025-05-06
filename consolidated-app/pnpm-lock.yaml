@@ -144,7 +144,7 @@ importers:
         specifier: ^0.25.2
         version: 0.25.2
       framer-motion:
-        specifier: ^12.4.7
+        specifier: ^12.7.2
         version: 12.7.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       jsonwebtoken:
         specifier: ^9.0.2
