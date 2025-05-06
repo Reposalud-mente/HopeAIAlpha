@@ -17,6 +17,7 @@
     "prisma:studio": "prisma studio",
     "ai:report": "node scripts/generate-report.js",
     "test:webrtc": "node test-webrtc.js",
+    "signaling": "node src/lib/webrtc/socket-server.mjs",
     "mcp:magic": "npx -y @21st-dev/magic@latest API_KEY=\"7cd127496282f9d6c3cddc13e2b3ce602d589cfde4f5d4d3eafaf1a9c31ff331\""
   },
   "prisma": {

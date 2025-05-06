@@ -1,6 +1,6 @@
 {
   "/api/auth/[...nextauth]/route": "app/api/auth/[...nextauth]/route.js",
   "/api/patients/route": "app/api/patients/route.js",
-  "/webrtc-test/page": "app/webrtc-test/page.js",
-  "/dashboard/page": "app/dashboard/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/webrtc-test/page": "app/webrtc-test/page.js"
 }
