@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, LayoutGroup } from "framer-motion"
-import { Clock, Users, AlertCircle, ArrowRight } from "lucide-react"
+import { Clock, Users, AlertCircle, ArrowRight, TrendingUp, TrendingDown } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -15,28 +15,29 @@ const containerVariants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.15,
       delayChildren: 0.1
     }
   }
 }
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 10 },
+  hidden: { opacity: 0, y: 15 },
   visible: {
     opacity: 1,
     y: 0,
     transition: {
       type: "spring",
-      stiffness: 300,
-      damping: 30
+      stiffness: 100,
+      damping: 20
     }
   },
   hover: {
-    y: -3,
+    y: -4,
+    boxShadow: "0 10px 30px -5px rgba(0,0,0,0.1)",
     transition: {
       type: "spring",
-      stiffness: 400,
+      stiffness: 300,
       damping: 25
     }
   }
@@ -113,26 +114,26 @@ export default function DailyPulse() {
   return (
     <LayoutGroup>
       <motion.div 
-        className="space-y-4"
+        className="space-y-6"
         initial="hidden"
         animate="visible"
         variants={containerVariants}
       >
         {/* Header Section */}
         <motion.div 
-          className="flex items-center justify-between mb-2"
+          className="flex items-center justify-between mb-4"
           variants={cardVariants}
         >
           <div>
             <motion.h2 
-              className="text-xl font-bold tracking-tight"
+              className="text-2xl font-medium tracking-tight text-gray-900"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
             >
               Daily Pulse
             </motion.h2>
             <motion.p 
-              className="text-sm text-muted-foreground"
+              className="text-sm text-gray-500 mt-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -144,7 +145,7 @@ export default function DailyPulse() {
 
         {/* Metrics Cards */}
         <motion.div 
-          className="grid gap-4 md:grid-cols-3"
+          className="grid gap-5 md:grid-cols-3"
           variants={containerVariants}
         >
           {metrics.map((metric, index) => (
@@ -154,33 +155,68 @@ export default function DailyPulse() {
               whileHover="hover"
               layout
             >
-              <Card className="rounded-lg shadow-sm hover:shadow transition-shadow">
+              <Card className="overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium text-gray-700">{metric.title}</CardTitle>
                   <motion.div
-                    whileHover={{ rotate: 15 }}
-                    className={cn("text-calm-primary", metric.color)}
+                    whileHover={{ rotate: 15, scale: 1.1 }}
+                    transition={{ type: "spring", stiffness: 400 }}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full",
+                      metric.color === "text-blue-500" ? "bg-blue-100" : "",
+                      metric.color === "text-amber-500" ? "bg-amber-100" : "",
+                      metric.color === "text-red-500" ? "bg-red-100" : ""
+                    )}
                   >
-                    {metric.icon}
+                    <div className={cn(metric.color)}>
+                      {metric.icon}
+                    </div>
                   </motion.div>
                 </CardHeader>
                 <CardContent>
-                  <motion.div
-                    initial={{ scale: 0.9 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", delay: index * 0.1 }}
-                    className="text-2xl font-bold"
-                  >
-                    {metric.value}
-                  </motion.div>
+                  <div className="flex items-baseline">
+                    <motion.div
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ 
+                        type: "spring", 
+                        delay: index * 0.15,
+                        stiffness: 100,
+                        damping: 20
+                      }}
+                      className="text-3xl font-bold text-gray-900"
+                    >
+                      {metric.value}
+                    </motion.div>
+                    
+                    {metric.change && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.2 + index * 0.15 }}
+                        className={cn(
+                          "ml-2 flex items-center text-xs",
+                          metric.change > 0 ? "text-green-600" : "text-red-600"
+                        )}
+                      >
+                        {metric.change > 0 ? (
+                          <TrendingUp className="h-3 w-3 mr-1" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 mr-1" />
+                        )}
+                        <span>{Math.abs(metric.change)}</span>
+                      </motion.div>
+                    )}
+                  </div>
+                  
                   {metric.change && (
                     <motion.p
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 + index * 0.1 }}
-                      className="text-xs text-muted-foreground"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 + index * 0.15 }}
+                      className="text-xs text-gray-500 mt-1"
                     >
-                      {metric.change > 0 ? '+' : ''}{metric.change} desde ayer
+                      Comparado con ayer
                     </motion.p>
                   )}
                 </CardContent>
@@ -190,7 +226,7 @@ export default function DailyPulse() {
         </motion.div>
 
         <motion.div 
-          className="grid gap-4 md:grid-cols-2"
+          className="grid gap-5 md:grid-cols-2"
           variants={containerVariants}
         >
           {/* Clinical Progress */}
@@ -198,25 +234,43 @@ export default function DailyPulse() {
             variants={cardVariants}
             whileHover="hover"
           >
-            <Card className="rounded-lg shadow-sm hover:shadow transition-shadow">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-base">Progreso Clínico</CardTitle>
-                <CardDescription className="text-xs">Seguimiento de evaluaciones y consultas</CardDescription>
+                <CardTitle className="text-base text-gray-900">Progreso Clínico</CardTitle>
+                <CardDescription>Seguimiento de evaluaciones y consultas</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-5">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground text-xs">Evaluaciones Completadas</span>
-                    <span className="font-medium text-xs">8/12</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Evaluaciones Completadas</span>
+                    <span className="font-medium text-sm">8/12</span>
                   </div>
-                  <Progress value={66} className="h-2" />
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 text-xs flex rounded-full bg-blue-100">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: "66%" }}
+                        transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground text-xs">Seguimientos Realizados</span>
-                    <span className="font-medium text-xs">15/20</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Seguimientos Realizados</span>
+                    <span className="font-medium text-sm">15/20</span>
                   </div>
-                  <Progress value={75} className="h-2" />
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 text-xs flex rounded-full bg-green-100">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: "75%" }}
+                        transition={{ duration: 1, delay: 0.7, ease: "easeOut" }}
+                        className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-green-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -227,17 +281,25 @@ export default function DailyPulse() {
             variants={cardVariants}
             whileHover="hover"
           >
-            <Card className="rounded-lg shadow-sm hover:shadow transition-shadow">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-base">Agenda de Hoy</CardTitle>
-                <CardDescription className="text-xs">Próximas consultas programadas</CardDescription>
+                <CardTitle className="text-base text-gray-900">Agenda de Hoy</CardTitle>
+                <CardDescription>Próximas consultas programadas</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {appointments.map((appointment) => (
-                    <div key={appointment.id} className="flex items-center rounded-lg bg-gray-50 p-2 hover:bg-gray-100 transition-colors">
-                      <Avatar className="h-8 w-8 mr-3">
-                        <AvatarFallback className="text-xs">
+                    <motion.div 
+                      key={appointment.id} 
+                      className="flex items-center p-3 rounded-lg bg-gradient-to-r from-gray-50 to-white border border-gray-100 hover:border-gray-200 transition-all duration-300"
+                      whileHover={{ 
+                        x: 3, 
+                        boxShadow: "0 4px 12px -2px rgba(0,0,0,0.05)",
+                        borderColor: "rgba(209, 213, 219, 0.8)"
+                      }}
+                    >
+                      <Avatar className="h-10 w-10 mr-3 border-2 border-white shadow-sm">
+                        <AvatarFallback className="text-xs bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                           {appointment.patientName
                             .split(" ")
                             .map((n) => n[0])
@@ -245,13 +307,28 @@ export default function DailyPulse() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{appointment.patientName}</p>
-                        <p className="text-xs text-muted-foreground">{appointment.time} - {appointment.type}</p>
+                        <p className="font-medium text-sm text-gray-900">{appointment.patientName}</p>
+                        <div className="flex items-center text-xs text-gray-500 mt-0.5">
+                          <Clock className="h-3 w-3 mr-1 text-gray-400" />
+                          <span>{appointment.time}</span>
+                          <span className="mx-1.5 h-1 w-1 rounded-full bg-gray-300" />
+                          <span>{appointment.type}</span>
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </CardContent>
+              <CardFooter className="pt-2 pb-4 px-6">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full text-sm border-gray-200 bg-white hover:bg-gray-50 text-gray-700 flex items-center justify-center gap-1"
+                >
+                  <span>Ver todas las citas</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </CardFooter>
             </Card>
           </motion.div>
         </motion.div>
@@ -259,5 +336,3 @@ export default function DailyPulse() {
     </LayoutGroup>
   )
 }
-
-

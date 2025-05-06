@@ -70,22 +70,28 @@ export const CustomizableSection: React.FC<CustomizableLayoutProps> = ({
     <motion.div
       layout
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 20 } }}
+      exit={{ opacity: 0, y: -20, transition: { duration: 0.5 } }}
       className={cn(
-        "bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden",
+        "rounded-xl border border-gray-100/80 bg-gradient-to-b from-white to-gray-50/30",
+        "shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]",
+        "backdrop-blur-[2px] backdrop-saturate-[1.8]",
+        "transition-all duration-500 ease-in-out",
+        "hover:shadow-[0_8px_30px_-4px_rgba(0,0,0,0.08)] hover:border-gray-200/80",
+        "overflow-hidden",
         className
       )}
+      whileHover={{ y: -2 }}
     >
       {/* Section Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-100">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-gray-50 to-gray-50/50 border-b border-gray-100/50">
+        <div className="flex items-center gap-3">
           {allowReorder && (
-            <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600">
+            <span className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 transition-colors duration-300">
               <Grip size={16} />
             </span>
           )}
-          <h3 className="font-medium text-gray-800">{title}</h3>
+          <h3 className="font-medium text-gray-800 tracking-tight">{title}</h3>
         </div>
 
         <div className="flex items-center gap-1">
@@ -143,11 +149,24 @@ export const CustomizableSection: React.FC<CustomizableLayoutProps> = ({
         {!isCollapsed && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            animate={{ 
+              height: "auto", 
+              opacity: 1,
+              transition: { 
+                height: { type: "spring", stiffness: 100, damping: 20, duration: 0.4 },
+                opacity: { duration: 0.5, delay: 0.1 }
+              }
+            }}
+            exit={{ 
+              height: 0, 
+              opacity: 0,
+              transition: { 
+                height: { duration: 0.3 },
+                opacity: { duration: 0.2 }
+              }
+            }}
           >
-            <div className="p-4">{children}</div>
+            <div className="p-5">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -184,15 +203,22 @@ export const CustomizableLayoutContainer: React.FC<CustomizableLayoutContainerPr
   };
 
   return (
-    <div className={cn("space-y-6", className)}>
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-800">Dashboard</h2>
+    <div className={cn("space-y-8", className)}>
+      <div className="flex justify-between items-center mb-2">
+        <div>
+          <h2 className="text-2xl font-medium text-gray-900 tracking-tight">Dashboard</h2>
+          <p className="text-sm text-gray-500 mt-1">Gestiona tu espacio de trabajo clínico</p>
+        </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm">
-              <Settings className="mr-2 h-4 w-4" />
-              Customize Dashboard
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="border-gray-200 bg-white hover:bg-gray-50 transition-colors duration-300 flex items-center gap-2 shadow-sm"
+            >
+              <Settings className="h-4 w-4 text-gray-500" />
+              <span>Personalizar</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -218,7 +244,7 @@ export const CustomizableLayoutContainer: React.FC<CustomizableLayoutContainerPr
         axis="y"
         values={orderedSections}
         onReorder={handleReorder}
-        className="space-y-6"
+        className="space-y-8"
       >
         {orderedSections
           .filter((section) => section.visible)
@@ -227,6 +253,15 @@ export const CustomizableLayoutContainer: React.FC<CustomizableLayoutContainerPr
               key={section.id}
               value={section}
               className="cursor-grab active:cursor-grabbing"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 100, 
+                damping: 20, 
+                duration: 0.4 
+              }}
             >
               {/* This is where you would render your CustomizableSection components */}
               {/* We'll just pass the children directly */}
