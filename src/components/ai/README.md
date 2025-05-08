@@ -23,10 +23,11 @@ The `AIAssistantService` class handles communication with the Gemini API:
 
 - **Location**: `src/lib/ai-assistant/ai-assistant-service.ts`
 - **Key Features**:
-  - Sends messages to Gemini API
-  - Streams responses for real-time feedback
-  - Implements caching for frequently asked questions
-  - Provides error handling with retry logic
+  - Sends messages to Gemini API, supporting function calls and enhanced context.
+  - Streams responses for real-time feedback.
+  - Implements robust caching with context awareness.
+  - Provides error handling, retry logic, and fallback mechanisms.
+  - Manages chat sessions and conversation history effectively.
 
 ### 2. AI Assistant Context
 

@@ -24,7 +24,7 @@ export class GeminiClient {
    */
   constructor(
     apiKey: string,
-    modelName: string = 'gemini-2.0-flash-001',
+    modelName: string = 'gemini-2.5-flash-preview-04-17',
     temperature: number = 0.7,
     maxTokens: number = 4096,
     topK: number = 3

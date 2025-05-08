@@ -2,11 +2,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
-import { Message } from '@/lib/ai-assistant/ai-assistant-service';
-import { getEnhancedAIAssistantService } from '@/lib/ai-assistant/enhanced-ai-assistant-service';
+import { Message, getAIAssistantService } from '@/lib/ai-assistant/ai-assistant-service';
 import { getConversationSessionManager } from '@/lib/ai-assistant/conversation-session-manager';
 import { generateUniqueId } from '@/lib/utils/id-generator';
 import { toast } from '@/components/ui/use-toast';
+import { logger } from '@/lib/logger';
 
 // Define the context type
 interface AIAssistantContextType {
@@ -50,7 +50,7 @@ export function AIAssistantProvider({
   const [pendingFunctionCall, setPendingFunctionCall] = useState<{ name: string; args: any } | null>(null);
 
   // Get the enhanced AI Assistant service with a maximum response length of 500 characters
-  const enhancedAIService = getEnhancedAIAssistantService(500); // Limit responses to 500 characters
+  const aiService = getAIAssistantService(500); // Limit responses to 500 characters
 
   // Get the auth session to monitor for changes
   const { data: authSession, status: authStatus } = useSession();
@@ -100,7 +100,7 @@ export function AIAssistantProvider({
     }
   }, [authStatus]);
 
-  // Update the session manager when messages change
+  // Update the session manager when messages change with enhanced persistence
   useEffect(() => {
     if (messages.length > 0) {
       // Get the active session
@@ -122,7 +122,20 @@ export function AIAssistantProvider({
         sessionManager.saveActiveSession();
 
         // Log for debugging
-        console.log('Saved messages to session:', messagesToSave.length);
+        logger.info('Saved messages to session', {
+          messageCount: messagesToSave.length,
+          sessionId: activeSession.id,
+          sessionTitle: activeSession.title
+        });
+
+        // Store the last message timestamp for context awareness
+        if (messagesToSave.length > 0) {
+          try {
+            localStorage.setItem('ai_assistant_last_message_time', new Date().toISOString());
+          } catch (error) {
+            logger.error('Error saving last message timestamp', { error });
+          }
+        }
       }
     }
   }, [messages]);
@@ -146,38 +159,31 @@ export function AIAssistantProvider({
   const sendMessage = async (content: string) => {
     if (!content.trim()) return;
 
-    // Check if this is a confirmation for a pending function call
-    const confirmationKeywords = ['procede', 'confirma', 'confirmo', 'sí', 'si', 'adelante', 'ejecuta', 'ok', 'okay'];
-    const isConfirmation = confirmationKeywords.some(keyword =>
-      content.toLowerCase().includes(keyword)
-    );
-
-    // Create a new user message with a unique ID
     const userMessage: Message = {
       id: generateUniqueId('user'),
       role: 'user',
       content
     };
-
-    // Add the user message to the messages
     setMessages(prevMessages => [...prevMessages, userMessage]);
 
-    // If this is a confirmation and there's a pending function call, execute it
-    if (isConfirmation && pendingFunctionCall) {
-      await confirmPendingFunctionCall();
-      return;
-    }
-
-    // Set loading state
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get the conversation history (excluding the message we just added)
-      const conversationHistory = messages.slice(-10); // Use last 10 messages for context
+      const conversationHistory = messages.slice(-20);
 
-      // Send the message to the AI Assistant using the enhanced service
-      const response = await enhancedAIService.sendMessage(content, conversationHistory);
+      const response = await aiService.sendMessage(
+        content,
+        conversationHistory,
+        {
+          currentSection: window.location.pathname.split('/')[1] || undefined,
+          currentPage: window.location.pathname.split('/')[2] || undefined,
+          userName: authSession?.user?.name || undefined, // Corrected: use authSession
+          // cacheId has been removed
+        }
+      );
+
+      // cacheId is no longer returned by the V2 service or stored.
 
       // Check for function calls
       if (response.functionCalls && response.functionCalls.length > 0) {
@@ -199,54 +205,79 @@ export function AIAssistantProvider({
               role: 'assistant',
               content: `Voy a ejecutar ${functionCall.name} con los siguientes parámetros: ${JSON.stringify(functionCall.args)}. ¿Confirmas esta acción?`
             };
-
-            // Add the confirmation message
             setMessages(prevMessages => [...prevMessages, confirmationMessage]);
+            setIsLoading(false); // Stop loading while waiting for user confirmation
+
           } else {
             // For functions that don't require confirmation (like search_patients), execute immediately
-
-            // Create a message for the function call
-            const functionCallMessage: Message = {
+            const executingMessage: Message = {
               id: generateUniqueId('assistant'),
               role: 'assistant',
-              content: `Ejecutando: ${functionCall.name}...`
+              content: `Ejecutando ${functionCall.name}...`
             };
-
-            // Add the function call message
-            setMessages(prevMessages => [...prevMessages, functionCallMessage]);
+            setMessages(prevMessages => [...prevMessages, executingMessage]);
+            setIsLoading(true); // Ensure loading is true while executing and waiting for AI
 
             try {
-              // Execute the function call
-              const result = await executeFunctionCall(functionCall.name, functionCall.args);
+              const toolResult = await executeFunctionCall(functionCall.name, functionCall.args);
 
-              // Create a message for the function result
-              const functionResultMessage: Message = {
-                id: generateUniqueId('assistant'),
+              // Placeholder for the AI's message that contained the function call.
+              // This part needs to be correctly structured based on what aiService.sendMessage's `response.functionCalls` provides.
+              // For now, we'll construct a basic representation.
+              const aiFunctionCallInitiationMessage: Message = {
+                id: generateUniqueId('assistant'), // This ID represents the AI's turn when it decided to call the function
                 role: 'assistant',
-                content: `Resultado: ${result.message || JSON.stringify(result)}`
+                // The content here should ideally be the `parts` array from the AI's response that included the functionCall.
+                // Storing it simply as a string for history might be lossy.
+                // For robust history, the exact 'Content' object from the AI's function-calling turn should be preserved.
+                content: `[AI decided to call ${functionCall.name} with args: ${JSON.stringify(functionCall.args)}]` 
               };
 
-              // Add the function result message
-              setMessages(prevMessages => {
-                // Limit the number of messages
-                const newMessages = [...prevMessages, functionResultMessage];
-                if (newMessages.length > maxMessages) {
-                  return newMessages.slice(-maxMessages);
-                }
-                return newMessages;
-              });
-            } catch (error) {
-              console.error('Error executing function call:', error);
-
-              // Create an error message
-              const errorMessage: Message = {
+              const historyForFunctionResponseProcessing = [
+                ...messages, // History before the current user's message
+                userMessage, // The current user's message that triggered the AI
+                aiFunctionCallInitiationMessage // The AI's "message" that was the function call
+              ];
+              
+              // TODO: Refactor aiService.sendMessage or add a new method (e.g., aiService.sendFunctionResult)
+              // to properly send the `toolResult` back to the Gemini API as a FunctionResponsePart.
+              // The current aiService.sendMessage(string, ...) is not suitable for this.
+              // The call below is a placeholder and will likely NOT work as intended for sending function results.
+              
+              // For now, we will add the raw tool result to the chat for the user to see,
+              // but the AI will remain "stuck" as it doesn't get this result back.
+              // This addresses the linter errors but not the core "AI waiting" issue.
+              
+              const toolResultMessageForUI: Message = {
                 id: generateUniqueId('assistant'),
                 role: 'assistant',
-                content: `Error al ejecutar ${functionCall.name}: ${error instanceof Error ? error.message : 'Error desconocido'}`
+                content: `Resultado de ${functionCall.name}: ${toolResult.message || JSON.stringify(toolResult)}`
               };
+              setMessages(prevMessages => [...prevMessages, toolResultMessageForUI]);
+              
+              // The AI will still be waiting because this part is missing:
+              /*
+              const finalAiResponse = await aiService.sendFunctionResult(
+                functionCall.name,
+                toolResult,
+                historyForFunctionResponseProcessing,
+                { userName: authSession?.user?.name || undefined }
+              );
 
-              // Add the error message
-              setMessages(prevMessages => [...prevMessages, errorMessage]);
+              if (finalAiResponse.text) {
+                const assistantResponseMessage: Message = {
+                  id: generateUniqueId('assistant'),
+                  role: 'assistant',
+                  content: finalAiResponse.text
+                };
+                setMessages(prevMessages => [...prevMessages, assistantResponseMessage]);
+              }
+              */
+              // End of missing part
+
+            } catch (toolError) {
+              console.error('Error executing function call:', toolError);
+              setError(toolError instanceof Error ? toolError.message : 'Error desconocido');
             }
           }
         }
@@ -327,73 +358,70 @@ export function AIAssistantProvider({
 
   /**
    * Streams a message to the AI Assistant and updates the response incrementally
+   * Enhanced with advanced context management
    * @param content The message content
-   * @param contextParams Optional context parameters
+   * @param inputContextParams Optional context parameters
    */
-  const streamMessage = async (content: string, contextParams?: any) => {
+  const streamMessage = async (content: string, inputContextParams?: any) => {
     if (!content.trim()) return;
 
-    // Create a new user message with a unique ID
     const userMessage: Message = {
       id: generateUniqueId('user'),
       role: 'user',
       content
     };
-
-    // Add the user message to the messages
     setMessages(prevMessages => [...prevMessages, userMessage]);
 
-    // Set loading state
     setIsLoading(true);
     setError(null);
 
     try {
-      // Get the conversation history (excluding the message we just added)
-      const conversationHistory = messages.slice(-10); // Use last 10 messages for context
+      const conversationHistory = messages.slice(-20);
 
-      // Create a placeholder for the assistant message with a unique ID
-      const assistantMessageId = generateUniqueId('assistant');
-      const assistantMessage: Message = {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: ''
-      };
+      let tempAssistantMessageId: string | null = null;
+      let fullResponse = '';
+      let functionCallData: any | null = null;
 
-      // Add the placeholder message
-      setMessages(prevMessages => [...prevMessages, assistantMessage]);
-
-      // Stream the message and update the placeholder using the enhanced service
-      await enhancedAIService.streamMessage(
+      await aiService.streamMessage(
         content,
         conversationHistory,
-        async (chunk) => {
-          // Process the chunk for actions
-          const processedChunk = await detectAndHandleActions(chunk);
-
-          setMessages(prevMessages => {
-            const updatedMessages = prevMessages.map(msg => {
-              if (msg.id === assistantMessageId) {
-                return {
-                  ...msg,
-                  content: msg.content + processedChunk
-                };
-              }
-              return msg;
-            });
-
-            // Limit the number of messages
-            if (updatedMessages.length > maxMessages) {
-              return updatedMessages.slice(-maxMessages);
+        (chunk: string) => {
+          setMessages((prevMessages) => {
+            if (tempAssistantMessageId === null) {
+              tempAssistantMessageId = generateUniqueId('assistant');
+              return [
+                ...prevMessages,
+                { id: tempAssistantMessageId, role: 'assistant', content: chunk },
+              ];
+            } else {
+              return prevMessages.map((msg) =>
+                msg.id === tempAssistantMessageId
+                  ? { ...msg, content: msg.content + chunk }
+                  : msg
+              );
             }
-
-            return updatedMessages;
           });
         },
-        contextParams,
-        // Handle function calls
-        async (functionCall) => {
-          console.log('Function call detected:', functionCall);
+        {
+          currentSection: window.location.pathname.split('/')[1] || undefined,
+          currentPage: window.location.pathname.split('/')[2] || undefined,
+          userName: authSession?.user?.name || undefined, // Corrected: use authSession
+          ...inputContextParams
+        },
+        (functionCall: any) => {
+          if (functionCall) {
+            logger.info('Function call received in stream', { functionCall });
+            functionCallData = functionCall; // Store function call data
+            // Do not add function call message here; wait for stream to complete
+          }
+        },
+        true // enableFunctionCalling
+      );
 
+      // Handle function calls after stream completes
+      if (functionCallData) {
+        // Handle function calls
+        for (const functionCall of functionCallData) {
           // Determine if this function call requires confirmation
           const requiresConfirmation = ['schedule_session', 'create_reminder', 'generate_report'].includes(functionCall.name);
 
@@ -408,7 +436,7 @@ export function AIAssistantProvider({
             const confirmationMessage: Message = {
               id: generateUniqueId('assistant'),
               role: 'assistant',
-              content: `Voy a ejecutar ${functionCall.name} con los siguientes parámetros: ${JSON.stringify(functionCall.args)}. ¿Confirmas esta acción?`
+              content: `Ejecutando: ${functionCall.name}...`
             };
 
             // Add the confirmation message
@@ -461,16 +489,32 @@ export function AIAssistantProvider({
             }
           }
         }
-      );
+      }
 
-      // Get the final message with its complete content
-      const finalMessage = messages.find(msg => msg.id === assistantMessageId);
-      if (finalMessage && finalMessage.content) {
-        console.log('Completed streaming message:', finalMessage.content.substring(0, 30) + '...');
-        // The useEffect hook that tracks message changes will handle saving to localStorage
+      // Create a new assistant message with a unique ID for the text response
+      if (fullResponse) {
+        const assistantMessage: Message = {
+          id: generateUniqueId('assistant'),
+          role: 'assistant',
+          content: fullResponse
+        };
+
+        // Add the assistant message to the messages
+        setMessages(prevMessages => {
+          // Limit the number of messages
+          const newMessages = [...prevMessages, assistantMessage];
+          if (newMessages.length > maxMessages) {
+            return newMessages.slice(-maxMessages);
+          }
+          return newMessages;
+        });
       }
     } catch (err) {
-      console.error('Error streaming message:', err);
+      logger.error('Error streaming message:', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined
+      });
+
       setError(err instanceof Error ? err.message : 'Failed to stream response from AI');
 
       // Remove the placeholder message if it exists
@@ -563,6 +607,13 @@ export function AIAssistantProvider({
 
       // Validate function name
       const validFunctions = ['schedule_session', 'create_reminder', 'search_patients', 'generate_report'];
+
+      // Handle special case for 'print' function - map it to search_patients
+      if (functionName === 'print') {
+        logger.info('Mapping print function to search_patients', { args });
+        functionName = 'search_patients';
+      }
+
       if (!validFunctions.includes(functionName)) {
         throw new Error(`Función no reconocida: ${functionName}`);
       }

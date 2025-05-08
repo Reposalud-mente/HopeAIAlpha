@@ -4,42 +4,39 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DATABASE_URL")
 }
 
 model User {
-  id                 String           @id @default(uuid()) @db.Uuid
-  email              String           @unique
-  passwordHash       String
-  firstName          String
-  lastName           String
-  role               Role
-  licenseNumber      String?
-  specialty          String?
-  clinicId           String?          @db.Uuid
-  profileImageUrl    String?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  lastLoginAt        DateTime?
-  isActive           Boolean          @default(true)
-  aiConsultations    AIConsultation[]
-  appointments       Appointment[]
-  assessments        Assessment[]
-  attachments        Attachment[]
-  auditLogs          AuditLog[]
-  clinicalNotes      ClinicalNote[]
-  connectionQualities ConnectionQuality[]
-  feedback           Feedback[]
-  messages           Message[]
-  patients           Patient[]        @relation("CreatedByUser")
-  reports            Report[]
-  sessions           Session[]        @relation("ClinicianSessions")
-  treatmentPlans     TreatmentPlan[]
-  videoSessions      VideoSession[]   @relation("TherapistVideoSessions")
-  webrtcAuditLogs    WebRTCAuditLog[]
-  clinic             Clinic?          @relation(fields: [clinicId], references: [id])
+  id              String           @id @default(uuid()) @db.Uuid
+  email           String           @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  role            Role
+  licenseNumber   String?
+  specialty       String?
+  clinicId        String?          @db.Uuid
+  profileImageUrl String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  lastLoginAt     DateTime?
+  isActive        Boolean          @default(true)
+  aiConsultations AIConsultation[]
+  appointments    Appointment[]
+  assessments     Assessment[]
+  attachments     Attachment[]
+  auditLogs       AuditLog[]
+  clinicalNotes   ClinicalNote[]
+  feedback        Feedback[]
+  messages        Message[]
+  patients        Patient[]        @relation("CreatedByUser")
+  reports         Report[]
+  sessions        Session[]        @relation("ClinicianSessions")
+  treatmentPlans  TreatmentPlan[]
+  clinic          Clinic?          @relation(fields: [clinicId], references: [id])
 }
 
 model Clinic {
@@ -83,7 +80,6 @@ model Patient {
   messages              Message[]
   createdBy             User          @relation("CreatedByUser", fields: [createdById], references: [id])
   sessions              Session[]
-  videoSessions         VideoSession[]
 }
 
 model Assessment {
@@ -139,30 +135,29 @@ model AssessmentEvaluationArea {
 }
 
 model Appointment {
-  id                   String            @id @default(uuid()) @db.Uuid
-  patientId            String            @db.Uuid
-  userId               String            @db.Uuid
-  title                String            @default("Consulta")
-  date                 DateTime
-  endTime              DateTime
-  duration             Int               @default(60) // Duration in minutes
-  status               AppointmentStatus @default(SCHEDULED)
-  notes                String?
-  location             String?           // Physical location or virtual meeting link
-  isRecurring          Boolean           @default(false)
-  recurrencePattern    String?           // weekly, monthly, etc.
-  recurrenceEndDate    DateTime?
-  parentAppointmentId  String?           @db.Uuid
-  reminderSent         Boolean           @default(false)
-  notificationPreference String?         // email, in-app, both, none
-  colorCode            String?           // For color-coding in the calendar view
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  patient              Patient           @relation(fields: [patientId], references: [id])
-  user                 User              @relation(fields: [userId], references: [id])
-  parentAppointment    Appointment?      @relation("RecurringAppointments", fields: [parentAppointmentId], references: [id])
-  recurringAppointments Appointment[]    @relation("RecurringAppointments")
-  videoSessions        VideoSession[]
+  id                     String            @id @default(uuid()) @db.Uuid
+  patientId              String            @db.Uuid
+  userId                 String            @db.Uuid
+  date                   DateTime
+  status                 AppointmentStatus @default(SCHEDULED)
+  notes                  String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  title                  String            @default("Consulta")
+  endTime                DateTime
+  duration               Int               @default(60)
+  location               String?
+  isRecurring            Boolean           @default(false)
+  recurrencePattern      String?
+  recurrenceEndDate      DateTime?
+  parentAppointmentId    String?           @db.Uuid
+  reminderSent           Boolean           @default(false)
+  notificationPreference String?
+  colorCode              String?
+  parentAppointment      Appointment?      @relation("RecurringAppointments", fields: [parentAppointmentId], references: [id])
+  recurringAppointments  Appointment[]     @relation("RecurringAppointments")
+  patient                Patient           @relation(fields: [patientId], references: [id])
+  user                   User              @relation(fields: [userId], references: [id])
 }
 
 model Message {
@@ -191,7 +186,6 @@ model Session {
   status        SessionStatus @default(DRAFT)
   clinician     User          @relation("ClinicianSessions", fields: [clinicianId], references: [id])
   patient       Patient       @relation(fields: [patientId], references: [id])
-  videoSessions VideoSession[]
 }
 
 model ICDCriteria {
@@ -334,77 +328,10 @@ model AIConsultation {
   user      User     @relation(fields: [userId], references: [id])
 }
 
-model VideoSession {
-  id                String               @id @default(uuid()) @db.Uuid
-  appointmentId     String?              @db.Uuid
-  sessionId         String?              @db.Uuid
-  patientId         String               @db.Uuid
-  therapistId       String               @db.Uuid
-  status            VideoSessionStatus   @default(WAITING_ROOM)
-  startTime         DateTime?
-  endTime           DateTime?
-  duration          Int?                 // Duration in seconds
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  connectionQuality ConnectionQuality[]
-  webrtcAuditLogs   WebRTCAuditLog[]
-  patient           Patient              @relation(fields: [patientId], references: [id])
-  therapist         User                 @relation("TherapistVideoSessions", fields: [therapistId], references: [id])
-  appointment       Appointment?         @relation(fields: [appointmentId], references: [id])
-  session           Session?             @relation(fields: [sessionId], references: [id])
-}
-
-model ConnectionQuality {
-  id            String      @id @default(uuid()) @db.Uuid
-  videoSessionId String      @db.Uuid
-  userId        String      @db.Uuid
-  timestamp     DateTime    @default(now())
-  bandwidth     Int         // in kbps
-  latency       Int         // in ms
-  packetLoss    Float       // percentage
-  jitter        Float       // in ms
-  videoWidth    Int?
-  videoHeight   Int?
-  frameRate     Float?
-  qualityLevel  QualityLevel
-  videoSession  VideoSession @relation(fields: [videoSessionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
-}
-
-model WebRTCAuditLog {
-  id            String      @id @default(uuid()) @db.Uuid
-  videoSessionId String      @db.Uuid
-  userId        String      @db.Uuid
-  eventType     String      // connection.started, connection.ended, etc.
-  timestamp     DateTime    @default(now())
-  details       Json?
-  ipAddress     String?
-  userAgent     String?
-  videoSession  VideoSession @relation(fields: [videoSessionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
-}
-
 enum Role {
   PSYCHOLOGIST
   SUPERVISOR
   ADMIN
-}
-
-enum VideoSessionStatus {
-  WAITING_ROOM
-  CONNECTED
-  DISCONNECTED
-  COMPLETED
-  FAILED
-  CANCELLED
-}
-
-enum QualityLevel {
-  EXCELLENT
-  GOOD
-  FAIR
-  POOR
-  CRITICAL
 }
 
 enum AssessmentStatus {

@@ -9,10 +9,11 @@
 # next.js
 /.next/
 /out/
-/build
+/build/
+/.vercel/
 
 # production
-/dist
+/dist/
 
 # misc
 .DS_Store
@@ -33,10 +34,9 @@ pnpm-debug.log*
 
 # typescript
 *.tsbuildinfo
+tsconfig.tsbuildinfo
 next-env.d.ts
 
 # IDE
 .vscode
 .idea
-
-.vercel

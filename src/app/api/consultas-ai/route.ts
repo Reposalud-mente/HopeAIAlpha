@@ -3,10 +3,10 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
 import { google } from '@ai-sdk/google';
-import { streamText, type Message } from 'ai';
+import { streamText, type Message as VercelAIMessage } from 'ai';
 import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
 import { getAIContext } from '@/lib/ai-assistant/context-gatherer';
-import { getEnhancedAIAssistantService } from '@/lib/ai-assistant/enhanced-ai-assistant-service';
+import { getAIAssistantService, Message } from '@/lib/ai-assistant/ai-assistant-service';
 
 // POST /api/consultas-ai - Process a chat message and return AI response
 export async function POST(request: NextRequest) {
@@ -80,32 +80,32 @@ export async function POST(request: NextRequest) {
         // Get platform context
         console.log('[ConsultasAI] Gathering platform context...');
         const context = await getAIContext(currentSection, currentPage, patientId);
-        
-        // Convert messages to the format expected by the AI service
-        const formattedMessages = currentMessages.map((m: any) => ({
-          id: String(m.id),
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          content: String(m.content)
-        }));
-        
-        // Remove the last message (user message) as we'll send it separately
-        const conversationHistory = formattedMessages.slice(0, -1);
+
+        const formattedMessages: Message[] = currentMessages
+          .map((m: any) => ({
+            id: String(m.id),
+            role: m.sender === 'user' ? 'user' : (m.sender === 'ai' ? 'assistant' : undefined),
+            content: String(m.content)
+          }))
+          .filter(m => m.role === 'user' || m.role === 'assistant') as Message[];
+
+        const conversationHistory: Message[] = formattedMessages.slice(0, -1);
         const userMessage = message;
-        
+
         console.log('[ConsultasAI] About to call Enhanced AI Assistant Service');
-        
+
         // Use the enhanced AI assistant service
-        const enhancedAIService = getEnhancedAIAssistantService();
-        
+        const enhancedAIService = getAIAssistantService();
+
         // Use SDK-native abortSignal for timeout (60s)
         const TIMEOUT_MS = 60000;
         const abortController = new AbortController();
         const timeoutId = setTimeout(() => abortController.abort(), TIMEOUT_MS);
-        
+
         try {
           // Use streaming for better user experience
           const textParts: string[] = [];
-          
+
           await enhancedAIService.streamMessage(
             userMessage,
             conversationHistory,
@@ -114,20 +114,21 @@ export async function POST(request: NextRequest) {
             },
             { currentSection, currentPage, patientId }
           );
-          
+
           aiResponseContent = textParts.join('');
           console.log('[ConsultasAI] Received AI response');
           console.log('Using enhanced AI assistant service');
         } catch (streamError) {
           console.error('[ConsultasAI] Error streaming response:', streamError);
-          
+
           // Fallback to non-streaming response
           console.log('[ConsultasAI] Falling back to non-streaming response');
-          aiResponseContent = await enhancedAIService.sendMessage(
+          const nonStreamingResponse = await enhancedAIService.sendMessage(
             userMessage,
             conversationHistory,
             { currentSection, currentPage, patientId }
           );
+          aiResponseContent = nonStreamingResponse.text;
         } finally {
           clearTimeout(timeoutId);
         }
