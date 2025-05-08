@@ -39,6 +39,8 @@ import { DashboardFilters } from '@/components/dashboard/dashboard-filters';
 import { ExportData } from '@/components/dashboard/export-data';
 import { GuidedTour } from '@/components/dashboard/guided-tour';
 import { HelpSection } from '@/components/dashboard/help-section';
+import { EnhancedAISection } from '@/components/dashboard/enhanced-ai-section';
+import { ConditionalEnhancedAssistant } from '@/lib/testing-floating';
 
 // Lazy load non-critical components
 const ClinicalDashboard = lazy(() => import('@/components/clinical/dashboard/clinical-dashboard'));
@@ -167,6 +169,8 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
+      {/* Add the enhanced AI assistant */}
+      <ConditionalEnhancedAssistant />
       <TooltipProvider>
         <div className="container mx-auto px-6 py-8">
           {/* Header with title and actions */}
@@ -349,27 +353,34 @@ export default function DashboardPage() {
               title="IA Insights"
               data-tour="dashboard-ai"
             >
-              <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6">
-                <div className="flex items-start gap-4">
-                  <div className="bg-white p-3 rounded-full shadow-sm">
-                    <Video className="h-6 w-6 text-purple-500" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="bg-white p-3 rounded-full shadow-sm">
+                      <Video className="h-6 w-6 text-purple-500" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">
+                        Asistente Clínico IA
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        Tu apoyo inteligente para documentación y consultas clínicas.
+                        Obtén recomendaciones basadas en evidencia y genera informes
+                        automáticamente.
+                      </p>
+                      <Button
+                        onClick={() => router.push('/consultas-ai')}
+                        className="bg-gradient-to-r from-purple-500 to-blue-500 text-white"
+                      >
+                        Iniciar Consulta IA
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-medium mb-2">
-                      Asistente Clínico IA
-                    </h3>
-                    <p className="text-gray-600 mb-4">
-                      Tu apoyo inteligente para documentación y consultas clínicas.
-                      Obtén recomendaciones basadas en evidencia y genera informes
-                      automáticamente.
-                    </p>
-                    <Button
-                      onClick={() => router.push('/consultas-ai')}
-                      className="bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                    >
-                      Iniciar Consulta IA
-                    </Button>
-                  </div>
+                </div>
+
+                {/* Enhanced AI Assistant Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6">
+                  <EnhancedAISection />
                 </div>
               </div>
             </CustomizableSection>

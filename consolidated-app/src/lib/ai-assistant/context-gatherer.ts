@@ -9,41 +9,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
-
-/**
- * Types for context objects
- */
-export interface UserContext {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  preferences?: Record<string, any>;
-}
-
-export interface ApplicationContext {
-  currentSection?: string;
-  currentPage?: string;
-  availableFeatures: string[];
-  recentlyUsedFeatures?: string[];
-}
-
-export interface DataContext {
-  patientId?: string;
-  patientSummary?: any;
-  recentActivities?: Array<{
-    type: string;
-    description: string;
-    timestamp: Date;
-  }>;
-  upcomingAppointments?: any[];
-}
-
-export interface PlatformContext {
-  user: UserContext | null;
-  application: ApplicationContext;
-  data: DataContext | null;
-}
+import { 
+  ServerUserContext, 
+  ServerApplicationContext, 
+  ServerDataContext, 
+  ServerPlatformContext, 
+  AVAILABLE_FEATURES 
+} from './context-types';
+import { logger } from '@/lib/logger'; // Assuming logger is used or will be added for consistency
 
 /**
  * Main context gatherer class
@@ -54,54 +27,49 @@ export class ContextGatherer {
    * @param providedSession Optional session object to use instead of fetching from request context
    * @returns Promise resolving to user context or null if not authenticated
    */
-  static async getUserContext(providedSession?: any): Promise<UserContext | null> {
+  static async getUserContext(providedSession?: any): Promise<ServerUserContext | null> {
     try {
       let session = providedSession;
       
-      // Only try to get server session if we're in a request context and no session was provided
       if (!session) {
         try {
-          // Check if we're in a request context by trying to access headers
-          // This will throw an error if we're not in a request context
-          headers();
-          // If we get here, we're in a request context and can safely call getServerSession
+          headers(); 
           session = await getServerSession(authOptions);
         } catch (e) {
-          // We're not in a request context, so we can't get the session
-          console.log("Not in a request context, can't get session");
+          logger.info("Not in a request context, can't get session", { error: e instanceof Error ? e.message : String(e) });
           return null;
         }
       }
       
-      if (!session?.user) {
+      if (!session?.user?.id) { // Ensure user.id exists for prisma query
+        logger.warn('Session or session.user.id is missing');
         return null;
       }
       
-      // Get additional user information from the database
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: {
           id: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           email: true,
           role: true,
-          preferences: true
         }
       });
       
       if (!user) {
+        logger.warn('User not found in database', { userId: session.user.id });
         return null;
       }
       
       return {
         id: user.id,
-        name: user.name || 'Usuario',
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Usuario',
         email: user.email || '',
         role: user.role || 'Profesional',
-        preferences: user.preferences as Record<string, any> || {}
       };
     } catch (error) {
-      console.error('Error getting user context:', error);
+      logger.error('Error getting user context:', { errorMessage: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -112,24 +80,18 @@ export class ContextGatherer {
    * @param currentPage Optional current page name
    * @returns Application context object
    */
-  static getApplicationContext(currentSection?: string, currentPage?: string): ApplicationContext {
-    // Define available features based on the platform capabilities
-    const availableFeatures = [
-      'Gestión de pacientes',
-      'Evaluación psicológica',
-      'Documentación clínica',
-      'Planificación de tratamientos',
-      'Agenda y citas',
-      'Consultas AI'
-    ];
+  static getApplicationContext(currentSection?: string, currentPage?: string): ServerApplicationContext {
+    // Use the shared constant for available features
+    // const availableFeatures = [ <-- Remove this
+    //   'Gestión de pacientes',
+    //   ...
+    // ];
     
-    // Return the application context
     return {
       currentSection,
       currentPage,
-      availableFeatures,
-      // In a real implementation, this could be fetched from user analytics
-      recentlyUsedFeatures: []
+      availableFeatures: AVAILABLE_FEATURES, // Use imported constant
+      recentlyUsedFeatures: [] // Server-side might not track this in the same way or at all
     };
   }
   
@@ -139,12 +101,11 @@ export class ContextGatherer {
    * @param patientId Optional patient ID to include patient context
    * @returns Promise resolving to data context or null if not available
    */
-  static async getDataContext(userId: string, patientId?: string): Promise<DataContext | null> {
+  static async getDataContext(userId: string, patientId?: string): Promise<ServerDataContext | null> {
     try {
-      const dataContext: DataContext = {};
+      const dataContext: Partial<ServerDataContext> = {}; // Use Partial for building up the object
       
-      // Get recent activities for the user
-      const recentActivities = await prisma.auditLog.findMany({
+      const recentActivitiesDb = await prisma.auditLog.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
         take: 5,
@@ -155,8 +116,8 @@ export class ContextGatherer {
         }
       });
       
-      if (recentActivities.length > 0) {
-        dataContext.recentActivities = recentActivities.map(activity => ({
+      if (recentActivitiesDb.length > 0) {
+        dataContext.recentActivities = recentActivitiesDb.map(activity => ({
           type: activity.action,
           description: typeof activity.details === 'string' 
             ? activity.details 
@@ -165,61 +126,70 @@ export class ContextGatherer {
         }));
       }
       
-      // If patient ID is provided, get patient summary
       if (patientId) {
-        // Check if user has access to this patient
         const hasAccess = await prisma.patient.findFirst({
-          where: {
-            id: patientId,
-            userId
-          }
+          where: { id: patientId, createdById: userId }
         });
         
         if (hasAccess) {
-          const patient = await prisma.patient.findUnique({
+          const patientData = await prisma.patient.findUnique({
             where: { id: patientId },
             select: {
               id: true,
-              name: true,
-              age: true,
+              firstName: true,
+              lastName: true,
+              dateOfBirth: true,
               gender: true,
-              // Include only non-sensitive information for context
-              // Detailed clinical information should be accessed only when explicitly needed
             }
           });
           
-          if (patient) {
-            dataContext.patientId = patient.id;
-            dataContext.patientSummary = patient;
+          if (patientData) {
+            dataContext.patientId = patientData.id;
+            const age = patientData.dateOfBirth ? new Date().getFullYear() - new Date(patientData.dateOfBirth).getFullYear() : undefined;
+            dataContext.patientSummary = {
+                id: patientData.id,
+                name: `${patientData.firstName || ''} ${patientData.lastName || ''}`.trim(),
+                age: age,
+                gender: patientData.gender
+            };
           }
+        } else {
+            logger.warn('User does not have access to patient or patient not found', { userId, patientId });
         }
       }
       
-      // Get upcoming appointments
-      const upcomingAppointments = await prisma.appointment.findMany({
+      const upcomingAppointmentsDb = await prisma.appointment.findMany({
         where: {
           userId,
-          date: {
-            gte: new Date()
-          }
+          date: { gte: new Date() }
         },
         orderBy: { date: 'asc' },
         take: 3,
         select: {
           id: true,
           date: true,
-          patientName: true,
-          type: true
+          title: true,
+          patient: {
+            select: {
+              firstName: true,
+              lastName: true
+            }
+          }
         }
       });
       
-      if (upcomingAppointments.length > 0) {
-        dataContext.upcomingAppointments = upcomingAppointments;
+      if (upcomingAppointmentsDb.length > 0) {
+        dataContext.upcomingAppointments = upcomingAppointmentsDb.map(appt => ({
+            id: appt.id,
+            date: appt.date,
+            title: appt.title,
+            patientName: `${appt.patient.firstName || ''} ${appt.patient.lastName || ''}`.trim()
+        }));
       }
       
-      return Object.keys(dataContext).length > 0 ? dataContext : null;
+      return Object.keys(dataContext).length > 0 ? dataContext as ServerDataContext : null;
     } catch (error) {
-      console.error('Error getting data context:', error);
+      logger.error('Error getting data context:', { errorMessage: error instanceof Error ? error.message : String(error) });
       return null;
     }
   }
@@ -237,23 +207,16 @@ export class ContextGatherer {
     currentPage?: string,
     patientId?: string,
     session?: any
-  ): Promise<PlatformContext> {
-    // Get user context
-    const userContext = await this.getUserContext(session);
+  ): Promise<ServerPlatformContext> {
+    const user = await this.getUserContext(session);
+    const application = this.getApplicationContext(currentSection, currentPage);
+    const data = user && user.id ? await this.getDataContext(user.id, patientId) : null;
     
-    // Get application context
-    const applicationContext = this.getApplicationContext(currentSection, currentPage);
-    
-    // Get data context if user is authenticated
-    const dataContext = userContext 
-      ? await this.getDataContext(userContext.id, patientId)
-      : null;
-    
-    // Return the complete platform context
     return {
-      user: userContext,
-      application: applicationContext,
-      data: dataContext
+      user,
+      application,
+      data,
+      // sessionId and timestamp are more client-centric, omitted here unless specifically needed
     };
   }
   
@@ -262,7 +225,7 @@ export class ContextGatherer {
    * @param context Platform context object
    * @returns Formatted context object for AI prompts
    */
-  static formatContextForPrompt(context: PlatformContext): Record<string, any> {
+  static formatContextForPrompt(context: ServerPlatformContext): Record<string, any> {
     const formattedContext: Record<string, any> = {};
     
     // Format user context
@@ -320,6 +283,7 @@ export async function getAIContext(
     patientId,
     session
   );
-  
-  return ContextGatherer.formatContextForPrompt(platformContext);
+  // Assuming formatContextForPrompt exists and works with ServerPlatformContext
+  // This might need adjustment if formatContextForPrompt is significantly different
+  return ContextGatherer.formatContextForPrompt(platformContext); 
 }

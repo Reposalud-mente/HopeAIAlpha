@@ -213,7 +213,8 @@ export function FloatingAIAssistant({
         patientId: patientName ? 'mock-patient-id' : undefined,
         patientName,
         userName: firstName, // Pass the user's first name to the AI assistant
-        session: null // Pass null to indicate we're not in a request context
+        session: null, // Pass null to indicate we're not in a request context
+        userMessage: text // Pass the user's message to help with tool detection
       };
 
       // Use the streamMessage function from the AI assistant context
@@ -608,7 +609,7 @@ export function AIAssistanceCard({
   return (
     <div className="relative">
       <Card
-        className="cursor-pointer transition-all duration-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-gray-100/50 group"
+        className="cursor-pointer transition-colors hover:bg-muted/50"
         onClick={() => setIsOpen(true)}
         tabIndex={0}
         role="button"
@@ -620,15 +621,15 @@ export function AIAssistanceCard({
         }}
       >
         <CardContent className="flex items-start gap-4 p-6">
-          <div className="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md group-hover:shadow-lg transition-all duration-500 group-hover:scale-110">
+          <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-primary text-primary-foreground">
             <Bot className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-800 tracking-tight">{question}</p>
+            <p className="text-sm font-medium">{question}</p>
             {/* Show context indicator if context is available */}
             {(currentSection || currentPage) && (
-              <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1.5">
-                <Zap className="h-3 w-3 text-amber-500" />
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <Zap className="h-3 w-3" />
                 <span>Asistente contextual</span>
               </p>
             )}

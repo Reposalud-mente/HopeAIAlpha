@@ -8,7 +8,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { FeatureFlagProvider } from '@/contexts/FeatureFlagContext';
 import { initMonitoring } from '@/lib/monitoring';
 import { DrawerProvider } from '@/contexts/DrawerContext';
-import { WebRTCProvider } from '@/contexts/webrtc-context';
+
 
 export function Providers({ children }: { children: ReactNode }) {
   // Initialize monitoring on client-side
@@ -22,12 +22,7 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Define ICE servers for WebRTC
-  const iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    // In a production environment, you would add TURN servers here
-  ];
+
 
   return (
     <SessionProvider>
@@ -36,13 +31,7 @@ export function Providers({ children }: { children: ReactNode }) {
           <NavbarProvider>
             <PatientProvider>
               <DrawerProvider>
-                {/* 
-                  Note: We're not including WebRTCProvider at the global level
-                  because it's only needed for video call pages and would
-                  unnecessarily initialize WebRTC for all pages.
-                  
-                  Instead, we include it directly in the video call page component.
-                */}
+undefined
                 {children}
               </DrawerProvider>
             </PatientProvider>

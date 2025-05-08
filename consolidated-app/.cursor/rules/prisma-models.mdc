@@ -1,0 +1,38 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Prisma Models
+
+This project uses Prisma as its ORM. The database schema, including all models, relations, and enums, is defined in [src/prisma/schema.prisma](mdc:src/prisma/schema.prisma).
+
+Refer to this file to understand the data structure and relationships within the application's database.
+
+## Key Models:
+
+The schema defines several core models that are central to the application's functionality:
+
+*   `User`: Manages user accounts, including clinicians and potentially other roles.
+*   `Clinic`: Represents clinic information.
+*   `Patient`: Stores patient data and their relationships with users (clinicians).
+*   `Assessment`: Details about patient assessments, linking to patients, clinicians, and clinics. Includes various sub-components like `ConsultationReason`, `EvaluationArea`, `DSM5Criteria`, and `ICDCriteria`.
+*   `Appointment`: Manages appointment scheduling for patients and users.
+*   `Message`: Likely for communication between users and patients.
+*   `Session`: Represents clinical sessions, linking to patients and clinicians.
+*   `Report`: For generating and storing reports based on assessments.
+*   `ClinicalNote`: Allows clinicians to record notes related to assessments.
+*   `AuditLog`: Tracks actions performed within the system.
+
+## Enums:
+
+The schema utilizes several enums to manage predefined sets of values, such as:
+
+*   `Role`: Defines user roles (e.g., `ADMIN`, `CLINICIAN`).
+*   `AssessmentStatus`: Tracks the status of assessments (e.g., `DRAFT`, `COMPLETED`).
+*   `AppointmentStatus`: Manages the status of appointments (e.g., `SCHEDULED`, `CANCELLED`).
+*   `SessionStatus`: Indicates the current state of a session (e.g., `DRAFT`, `IN_PROGRESS`, `COMPLETED`).
+*   `AuditAction`: Specifies the type of action recorded in the audit log.
+
+Understanding these core models and enums is crucial for working with the application's data layer. The `schema.prisma` file provides the complete definition for these and other supporting models and their relationships.
+

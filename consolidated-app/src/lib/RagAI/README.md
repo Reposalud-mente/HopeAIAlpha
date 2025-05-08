@@ -106,14 +106,14 @@ function ReportGenerator() {
       <button onClick={handleGenerateReport} disabled={isGenerating}>
         Generate Report
       </button>
-      
+
       {isGenerating && (
         <div>
           <p>Generating report: {currentPhase}</p>
           <progress value={progress} max={100} />
         </div>
       )}
-      
+
       {result?.reportText && (
         <div>
           <h2>Generated Report</h2>
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
 The RAG workflow can be configured with the following options:
 
 - `apiKey`: Gemini API key (required)
-- `modelName`: Gemini model name (default: 'gemini-2.5-flash-preview-04-17')
+- `modelName`: Gemini model name (default: 'gemini-1.5-pro')
 - `driveFolderId`: Google Drive folder ID containing DSM-5 files
 - `driveApiKey`: Google Drive API key
 - `temperature`: Temperature for text generation (default: 0.7)

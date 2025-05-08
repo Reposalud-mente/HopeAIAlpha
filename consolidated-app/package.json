@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/copy-pdfkit-fonts.js",
-    "vercel-build": "node vercel-build.cjs && node scripts/copy-pdfkit-fonts.js",
     "start": "next start",
     "lint": "next lint",
     "prisma:seed": "ts-node --project tsconfig-seed.json -r dotenv/config src/prisma/seed.ts",
@@ -16,8 +15,6 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "ai:report": "node scripts/generate-report.js",
-    "test:webrtc": "node test-webrtc.js",
-    "signaling": "node src/lib/webrtc/socket-server.mjs",
     "mcp:magic": "npx -y @21st-dev/magic@latest API_KEY=\"7cd127496282f9d6c3cddc13e2b3ce602d589cfde4f5d4d3eafaf1a9c31ff331\""
   },
   "prisma": {
@@ -26,6 +23,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.13",
+    "@ai-sdk/react": "^1.2.11",
     "@auth/prisma-adapter": "^2.8.0",
     "@fullcalendar/core": "^6.1.11",
     "@fullcalendar/daygrid": "^6.1.11",
@@ -68,7 +66,6 @@
     "cmdk": "^1.0.4",
     "core-js": "^3.41.0",
     "date-fns": "^4.1.0",
-    "docker": "^1.0.0",
     "esbuild": "^0.25.2",
     "framer-motion": "^12.7.2",
     "jsonwebtoken": "^9.0.2",
@@ -82,7 +79,6 @@
     "react-day-picker": "^9.6.7",
     "react-dom": "^19.0.0",
     "sharp": "^0.34.1",
-    "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",

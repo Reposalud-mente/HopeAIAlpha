@@ -4,8 +4,7 @@ import '@/app/globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { DebugErrorBoundary } from '@/components/monitoring/ErrorBoundary';
 import { FeedbackWidget } from '@/components/feedback/FeedbackWidget';
-import { ConditionalAIAssistant } from '@/components/ai/conditional-ai-assistant';
-
+import { ConditionalEnhancedAssistant } from '@/lib/testing-floating';
 
 
 export const metadata = {
@@ -35,7 +34,7 @@ export default function RootLayout({
           {/* Feedback widget will only show when the feature flag is enabled */}
           <FeedbackWidget />
           {/* Global floating AI assistant with Gemini integration - only shows for authenticated users */}
-          <ConditionalAIAssistant />
+          <ConditionalEnhancedAssistant />
         </Providers>
         <Toaster />
       </body>

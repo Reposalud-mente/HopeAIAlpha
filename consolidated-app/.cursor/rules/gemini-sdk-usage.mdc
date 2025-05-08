@@ -1,0 +1,43 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Gemini SDK (GenAI for JavaScript/TypeScript) Usage Guidelines
+
+This document outlines the rules and best practices for using the Gemini SDK (`@google/genai`) within this project.
+
+## Core SDK Usage
+
+The primary SDK for interacting with Gemini models is `@google/genai`.
+
+- **Preferred Clients/Services**:
+    - When interacting with Gemini for RAG (Retrieval Augmented Generation) workflows, prefer using the `GeminiClient` located in `[src/lib/RagAI/generation/gemini-client.ts](mdc:src/lib/RagAI/generation/gemini-client.ts)`.
+    - For AI assistant features, use the `EnhancedAIAssistantService` provided in `[src/lib/ai-assistant/v2_assistant_service.ts](mdc:src/lib/ai-assistant/v2_assistant_service.ts)`. This service encapsulates logic for conversation management, function calling, and platform context.
+    - For generating embeddings, refer to the usage within `[DSM5Retriever](mdc:src/lib/RagAI/retrieval/dsm5-retriever.ts)`.
+
+- **Direct SDK Usage**:
+    - If the existing clients or services do not meet a specific need, direct usage of `@google/genai` is permissible.
+    - However, consider whether the functionality should be added to an existing service or a new reusable component.
+
+## Configuration
+
+- **API Keys**: The Gemini API key should be managed via environment variables (e.g., `GEMINI_API_KEY` or `NEXT_PUBLIC_GEMINI_API_KEY`). Do not hardcode API keys.
+- **Model Selection**: Choose models appropriate for the task (e.g., 'gemini-2.5-flash-preview-04-17', 'gemini-embedding-exp-03-07'). Model names are typically configured within the client or service constructors.
+
+## Best Practices
+
+- **Refer to Internal Documentation**: For detailed best practices on developing agents with the Gemini SDK, consult the `[Gemini Agent Development Best Practices_.md](mdc:doc_agents/Gemini%20Agent%20Development%20Best%20Practices_.md)` document.
+- **Error Handling**: Implement robust error handling for API calls and data processing.
+- **Asynchronous Operations**: Utilize asynchronous patterns (`async/await`) for all SDK interactions, as they are inherently asynchronous.
+- **Function Calling**: When implementing function calling (tool use), follow the patterns established in the `EnhancedAIAssistantService` (located in `[src/lib/ai-assistant/v2_assistant_service.ts](mdc:src/lib/ai-assistant/v2_assistant_service.ts)`) and refer to the guidelines in `[Gemini Agent Development Best Practices_.md](mdc:doc_agents/Gemini%20Agent%20Development%20Best%20Practices_.md)`. Remember that the JavaScript/TypeScript SDK requires manual orchestration of the function call lifecycle.
+- **Context Management**: For conversational AI, leverage the `ChatSession` capabilities of the SDK, as demonstrated in the AI assistant services.
+
+## SDK Version
+
+- Stay informed about updates to the `@google/genai` SDK, especially as it is in a "Preview" stage. Be prepared for potential API refinements.
+
+By adhering to these guidelines, we aim to ensure consistent, maintainable, and effective use of the Gemini SDK throughout the project.
+
+
+
