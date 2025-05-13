@@ -1,0 +1,729 @@
+  // This is the Prisma schema file for HopeAI Clinical Psychology Platform - Alpha Environment
+// HIPAA-compliant database schema optimized for AI-driven clinical workflows
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres", "multiSchema", "postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgcrypto, pg_trgm, btree_gin]
+  schemas    = ["hopeai_alpha"]
+}
+
+// ======== User Management & Authentication ========
+
+enum UserRole {
+  PSYCHOLOGIST
+  SUPERVISOR
+  ADMIN
+
+  @@schema("hopeai_alpha")
+}
+
+model User {
+  id                String           @id @default(uuid()) @db.Uuid
+  email             String           @unique
+  passwordHash      String           @db.Text // Hashed password
+  firstName         String
+  lastName          String
+  role              UserRole
+  licenseNumber     String?
+  specialty         String?
+  clinicId          String?          @db.Uuid
+  profileImageUrl   String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  lastLoginAt       DateTime?
+  isActive          Boolean          @default(true)
+  mfaEnabled        Boolean          @default(false)
+  mfaSecret         String?          @db.Text // Encrypted
+
+  // Relations
+  clinic            Clinic?          @relation(fields: [clinicId], references: [id])
+  patients          Patient[]        @relation("PrimaryProvider")
+  secondaryPatients Patient[]        @relation("SecondaryProviders")
+  appointments      Appointment[]
+  assessments       Assessment[]
+  clinicalNotes     ClinicalNote[]
+  reports           Report[]
+  sessions          Session[]
+  treatmentPlans    TreatmentPlan[]
+  aiConsultations   AIConsultation[]
+  auditLogs         AuditLog[]
+  feedbackGiven     AIFeedback[]
+
+  @@map("users")
+  @@index([email])
+  @@index([clinicId])
+  @@schema("hopeai_alpha")
+}
+
+model Clinic {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  address      String
+  city         String
+  state        String
+  zipCode      String
+  country      String
+  contactPhone String
+  contactEmail String?
+  website      String?
+  logoUrl      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  isActive     Boolean   @default(true)
+
+  // Relations
+  users        User[]
+  patients     Patient[]
+
+  @@map("clinics")
+  @@index([name])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Patient Management ========
+
+enum PatientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  TRANSFERRED
+
+  @@schema("hopeai_alpha")
+}
+
+model Patient {
+  id                    String            @id @default(uuid()) @db.Uuid
+  externalId            String?           @unique // For integration with external systems
+  firstName             String
+  lastName              String
+  dateOfBirth           DateTime
+  gender                String?
+  contactEmail          String?
+  contactPhone          String?
+  address               String?
+  city                  String?
+  state                 String?
+  zipCode               String?
+  country               String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  occupation            String?
+  maritalStatus         String?
+  insuranceProvider     String?
+  insuranceNumber       String?           @db.Text // Encrypted
+  educationLevel        String?
+  referralSource        String?
+  status                PatientStatus     @default(ACTIVE)
+  clinicId              String?           @db.Uuid
+  primaryProviderId     String            @db.Uuid
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  isDemo                Boolean           @default(false) // Flag for demo patients
+
+  // Relations
+  clinic                Clinic?           @relation(fields: [clinicId], references: [id])
+  primaryProvider       User              @relation("PrimaryProvider", fields: [primaryProviderId], references: [id])
+  secondaryProviders    User[]            @relation("SecondaryProviders")
+  appointments          Appointment[]
+  assessments           Assessment[]
+  clinicalNotes         ClinicalNote[]
+  sessions              Session[]
+  treatmentPlans        TreatmentPlan[]
+  medications           Medication[]
+  patientHistory        PatientHistory[]
+  reports               Report[]
+
+  @@map("patients")
+  @@index([primaryProviderId])
+  @@index([clinicId])
+  @@index([lastName, firstName])
+  @@index([dateOfBirth])
+  @@index([status])
+  @@schema("hopeai_alpha")
+}
+
+model PatientHistory {
+  id                String   @id @default(uuid()) @db.Uuid
+  patientId         String   @db.Uuid
+  historyType       String   // e.g., "medical", "family", "social", "substance_use"
+  details           Json
+  reportedAt        DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  patient           Patient  @relation(fields: [patientId], references: [id])
+
+  @@map("patient_history")
+  @@index([patientId])
+  @@index([historyType])
+  @@schema("hopeai_alpha")
+}
+
+model Medication {
+  id                String   @id @default(uuid()) @db.Uuid
+  patientId         String   @db.Uuid
+  name              String
+  dosage            String?
+  frequency         String?
+  startDate         DateTime
+  endDate           DateTime?
+  prescribedBy      String?
+  reason            String?
+  notes             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  patient           Patient  @relation(fields: [patientId], references: [id])
+
+  @@map("medications")
+  @@index([patientId])
+  @@index([name])
+  @@index([isActive])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Clinical Documentation ========
+
+enum AssessmentStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  ARCHIVED
+
+  @@schema("hopeai_alpha")
+}
+
+model Assessment {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  patientId           String                     @db.Uuid
+  clinicianId         String                     @db.Uuid
+  assessmentType      String                     // e.g., "initial", "follow_up", "specialized"
+  assessmentDate      DateTime                   @default(now())
+  status              AssessmentStatus           @default(DRAFT)
+  currentStep         String?                    // For multi-step assessments
+  completionDate      DateTime?
+  summary             String?                    @db.Text
+  recommendations     String?                    @db.Text
+  aiAssisted          Boolean                    @default(false)
+  aiModelVersion      String?                    // Version of AI model used
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  // Relations
+  patient             Patient                    @relation(fields: [patientId], references: [id])
+  clinician           User                       @relation(fields: [clinicianId], references: [id])
+  dsmCriteria         AssessmentDSM5Criteria[]
+  icdCriteria         AssessmentICDCriteria[]
+  evaluationAreas     AssessmentEvaluationArea[]
+  clinicalNotes       ClinicalNote[]
+  reports             Report[]
+  treatmentPlans      TreatmentPlan[]
+
+  @@map("assessments")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([status])
+  @@index([assessmentDate])
+  @@schema("hopeai_alpha")
+}
+
+model AssessmentEvaluationArea {
+  assessmentId        String                @db.Uuid
+  evaluationAreaId    String                @db.Uuid
+  score               Float?
+  notes               String?               @db.Text
+  createdAt           DateTime              @default(now())
+
+  // Relations
+  assessment          Assessment            @relation(fields: [assessmentId], references: [id])
+  evaluationArea      EvaluationArea        @relation(fields: [evaluationAreaId], references: [id])
+
+  @@id([assessmentId, evaluationAreaId])
+  @@map("assessment_evaluation_areas")
+  @@schema("hopeai_alpha")
+}
+
+model EvaluationArea {
+  id                  String                     @id @default(uuid()) @db.Uuid
+  name                String
+  description         String?                    @db.Text
+  category            String
+  isActive            Boolean                    @default(true)
+
+  // Relations
+  assessments         AssessmentEvaluationArea[]
+
+  @@map("evaluation_areas")
+  @@index([category])
+  @@index([isActive])
+  @@schema("hopeai_alpha")
+}
+
+model ClinicalNote {
+  id                  String      @id @default(uuid()) @db.Uuid
+  patientId           String      @db.Uuid
+  clinicianId         String      @db.Uuid
+  assessmentId        String?     @db.Uuid
+  sessionId           String?     @db.Uuid
+  noteType            String      // e.g., "SOAP", "progress", "intake"
+  content             String      @db.Text
+  isEncrypted         Boolean     @default(true)
+  aiSummary           String?     @db.Text
+  aiInsights          Json?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  // Relations
+  patient             Patient     @relation(fields: [patientId], references: [id])
+  clinician           User        @relation(fields: [clinicianId], references: [id])
+  assessment          Assessment? @relation(fields: [assessmentId], references: [id])
+  session             Session?    @relation(fields: [sessionId], references: [id])
+
+  @@map("clinical_notes")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([assessmentId])
+  @@index([sessionId])
+  @@index([noteType])
+  @@index([createdAt])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Diagnostic Criteria ========
+
+model DSM5Criteria {
+  code                String                     @id
+  name                String
+  description         String?                    @db.Text
+  category            String
+  icdEquivalent       String?
+  isActive            Boolean                    @default(true)
+
+  // Relations
+  assessments         AssessmentDSM5Criteria[]
+  icdCriteria         ICDCriteria?               @relation(fields: [icdEquivalent], references: [code])
+  knowledgeNodes      KnowledgeGraphNode[]
+
+  @@map("dsm5_criteria")
+  @@index([category])
+  @@index([isActive])
+  @@index([name])
+  @@schema("hopeai_alpha")
+}
+
+model AssessmentDSM5Criteria {
+  assessmentId        String       @db.Uuid
+  dsmCode             String
+  isPrimary           Boolean      @default(false)
+  certaintyLevel      Float?       // 0.0 to 1.0
+  notes               String?      @db.Text
+  createdAt           DateTime     @default(now())
+
+  // Relations
+  assessment          Assessment   @relation(fields: [assessmentId], references: [id])
+  criteria            DSM5Criteria @relation(fields: [dsmCode], references: [code])
+
+  @@id([assessmentId, dsmCode])
+  @@map("assessment_dsm5_criteria")
+  @@schema("hopeai_alpha")
+}
+
+model ICDCriteria {
+  code                String                    @id
+  name                String
+  description         String?                   @db.Text
+  category            String
+  isActive            Boolean                   @default(true)
+
+  // Relations
+  assessments         AssessmentICDCriteria[]
+  dsmCriteria         DSM5Criteria[]
+  knowledgeNodes      KnowledgeGraphNode[]
+
+  @@map("icd_criteria")
+  @@index([category])
+  @@index([isActive])
+  @@index([name])
+  @@schema("hopeai_alpha")
+}
+
+model AssessmentICDCriteria {
+  assessmentId        String      @db.Uuid
+  icdCode             String
+  isPrimary           Boolean     @default(false)
+  certaintyLevel      Float?      // 0.0 to 1.0
+  notes               String?     @db.Text
+  createdAt           DateTime    @default(now())
+
+  // Relations
+  assessment          Assessment  @relation(fields: [assessmentId], references: [id])
+  criteria            ICDCriteria @relation(fields: [icdCode], references: [code])
+
+  @@id([assessmentId, icdCode])
+  @@map("assessment_icd_criteria")
+  @@schema("hopeai_alpha")
+}
+
+// ======== Treatment Planning ========
+
+enum TreatmentPlanStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  DISCONTINUED
+
+  @@schema("hopeai_alpha")
+}
+
+model TreatmentPlan {
+  id                  String              @id @default(uuid()) @db.Uuid
+  patientId           String              @db.Uuid
+  clinicianId         String              @db.Uuid
+  assessmentId        String?             @db.Uuid
+  title               String
+  description         String              @db.Text
+  goals               Json                // Array of treatment goals
+  interventions       Json                // Array of interventions
+  startDate           DateTime
+  targetEndDate       DateTime?
+  actualEndDate       DateTime?
+  status              TreatmentPlanStatus @default(DRAFT)
+  progress            Float?              // 0.0 to 1.0
+  aiGenerated         Boolean             @default(false)
+  aiRecommendations   Json?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relations
+  patient             Patient             @relation(fields: [patientId], references: [id])
+  clinician           User                @relation(fields: [clinicianId], references: [id])
+  assessment          Assessment?         @relation(fields: [assessmentId], references: [id])
+  treatmentVersions   TreatmentPlanVersion[]
+
+  @@map("treatment_plans")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([assessmentId])
+  @@index([status])
+  @@schema("hopeai_alpha")
+}
+
+model TreatmentPlanVersion {
+  id                  String       @id @default(uuid()) @db.Uuid
+  treatmentPlanId     String       @db.Uuid
+  versionNumber       Int
+  changes             Json         // What changed from previous version
+  reason              String?      @db.Text
+  createdById         String       @db.Uuid // User who made the change
+  createdAt           DateTime     @default(now())
+
+  // Relations
+  treatmentPlan       TreatmentPlan @relation(fields: [treatmentPlanId], references: [id])
+
+  @@map("treatment_plan_versions")
+  @@index([treatmentPlanId])
+  @@index([versionNumber])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Session Management ========
+
+enum SessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+
+  @@schema("hopeai_alpha")
+}
+
+model Session {
+  id                  String        @id @default(uuid()) @db.Uuid
+  patientId           String        @db.Uuid
+  clinicianId         String        @db.Uuid
+  appointmentId       String?       @db.Uuid
+  sessionType         String        // e.g., "individual", "group", "family"
+  status              SessionStatus @default(SCHEDULED)
+  startTime           DateTime
+  endTime             DateTime?
+  duration            Int?          // In minutes
+  location            String?       // Physical location or "virtual"
+  virtualMeetingUrl   String?
+  objectives          Json?
+  summary             String?       @db.Text
+  progress            String?       @db.Text
+  nextSteps           String?       @db.Text
+  aiSuggestions       Json?
+  recordingUrl        String?       // Encrypted URL to session recording if applicable
+  transcriptUrl       String?       // Encrypted URL to session transcript if applicable
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  patient             Patient       @relation(fields: [patientId], references: [id])
+  clinician           User          @relation(fields: [clinicianId], references: [id])
+  appointment         Appointment?  @relation(fields: [appointmentId], references: [id])
+  clinicalNotes       ClinicalNote[]
+
+  @@map("sessions")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([appointmentId])
+  @@index([startTime])
+  @@index([status])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Appointment Management ========
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+
+  @@schema("hopeai_alpha")
+}
+
+model Appointment {
+  id                     String            @id @default(uuid()) @db.Uuid
+  patientId              String            @db.Uuid
+  clinicianId            String            @db.Uuid
+  title                  String            @default("Consultation")
+  date                   DateTime
+  endTime                DateTime
+  duration               Int               @default(60) // In minutes
+  status                 AppointmentStatus @default(SCHEDULED)
+  location               String?           // Physical location or "virtual"
+  virtualMeetingUrl      String?
+  notes                  String?           @db.Text
+  isRecurring            Boolean           @default(false)
+  recurrencePattern      String?           // e.g., "weekly", "biweekly", "monthly"
+  recurrenceEndDate      DateTime?
+  parentAppointmentId    String?           @db.Uuid
+  reminderSent           Boolean           @default(false)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  // Relations
+  patient                Patient           @relation(fields: [patientId], references: [id])
+  clinician              User              @relation(fields: [clinicianId], references: [id])
+  parentAppointment      Appointment?      @relation("RecurringAppointments", fields: [parentAppointmentId], references: [id])
+  childAppointments      Appointment[]     @relation("RecurringAppointments")
+  sessions               Session[]
+  reminders              Reminder[]
+
+  @@map("appointments")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([date])
+  @@index([status])
+  @@schema("hopeai_alpha")
+}
+
+model Reminder {
+  id                     String   @id @default(uuid()) @db.Uuid
+  appointmentId          String   @db.Uuid
+  scheduledFor           DateTime
+  sentAt                 DateTime?
+  status                 String   @default("pending") // "pending", "sent", "failed"
+  type                   String   // "email", "sms", "in_app"
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  appointment            Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("reminders")
+  @@index([appointmentId])
+  @@index([scheduledFor])
+  @@index([status])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Reports ========
+
+model Report {
+  id                     String   @id @default(uuid()) @db.Uuid
+  patientId              String   @db.Uuid
+  clinicianId            String   @db.Uuid
+  assessmentId           String   @db.Uuid
+  title                  String
+  reportText             String   @db.Text
+  version                Int      @default(1)
+  isFinal                Boolean  @default(false)
+  isEncrypted            Boolean  @default(true)
+  filename               String?
+  fileUrl                String?  // Encrypted URL to stored PDF
+  aiGenerated            Boolean  @default(false)
+  aiModelVersion         String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  patient                Patient    @relation(fields: [patientId], references: [id])
+  clinician              User       @relation(fields: [clinicianId], references: [id])
+  assessment             Assessment @relation(fields: [assessmentId], references: [id])
+
+  @@map("reports")
+  @@index([patientId])
+  @@index([clinicianId])
+  @@index([assessmentId])
+  @@index([createdAt])
+  @@schema("hopeai_alpha")
+}
+
+// ======== AI Integration ========
+
+model AIConsultation {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @db.Uuid
+  patientId              String?  @db.Uuid
+  query                  String   @db.Text
+  response               String   @db.Text
+  messages               Json     // Full conversation history
+  modelVersion           String
+  promptTemplate         String?
+  ragEnabled             Boolean  @default(false)
+  ragSources             Json?    // Sources used for RAG
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  user                   User     @relation(fields: [userId], references: [id])
+
+  @@map("ai_consultations")
+  @@index([userId])
+  @@index([patientId])
+  @@index([createdAt])
+  @@schema("hopeai_alpha")
+}
+
+model AIFeedback {
+  id                     String   @id @default(uuid()) @db.Uuid
+  userId                 String   @db.Uuid
+  consultationId         String?  @db.Uuid
+  responseId             String?  // ID of specific AI response
+  rating                 Int?     // 1-5 rating
+  feedback               String?  @db.Text
+  isHelpful              Boolean?
+  createdAt              DateTime @default(now())
+
+  // Relations
+  user                   User     @relation(fields: [userId], references: [id])
+
+  @@map("ai_feedback")
+  @@index([userId])
+  @@index([consultationId])
+  @@index([rating])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Knowledge Graph ========
+
+enum NodeType {
+  SYMPTOM
+  DIAGNOSIS
+  TREATMENT
+  MEDICATION
+  OUTCOME
+  ASSESSMENT_TOOL
+
+  @@schema("hopeai_alpha")
+}
+
+model KnowledgeGraphNode {
+  id                     String    @id @default(uuid()) @db.Uuid
+  type                   NodeType
+  name                   String
+  description            String?   @db.Text
+  source                 String?   // Source of information
+  metadata               Json?
+  dsmCode                String?
+  icdCode                String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  // Relations
+  dsm                    DSM5Criteria? @relation(fields: [dsmCode], references: [code])
+  icd                    ICDCriteria? @relation(fields: [icdCode], references: [code])
+  outgoingEdges          KnowledgeGraphEdge[] @relation("SourceNode")
+  incomingEdges          KnowledgeGraphEdge[] @relation("TargetNode")
+
+  @@map("knowledge_graph_nodes")
+  @@index([type])
+  @@index([name])
+  @@index([dsmCode])
+  @@index([icdCode])
+  @@schema("hopeai_alpha")
+}
+
+model KnowledgeGraphEdge {
+  id                     String   @id @default(uuid()) @db.Uuid
+  sourceNodeId           String   @db.Uuid
+  targetNodeId           String   @db.Uuid
+  relationship           String   // e.g., "causes", "treats", "indicates"
+  weight                 Float    @default(1.0) // Strength of relationship (0.0 to 1.0)
+  evidence               String?  @db.Text // Evidence supporting this relationship
+  source                 String?  // Source of information
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  sourceNode             KnowledgeGraphNode @relation("SourceNode", fields: [sourceNodeId], references: [id])
+  targetNode             KnowledgeGraphNode @relation("TargetNode", fields: [targetNodeId], references: [id])
+
+  @@map("knowledge_graph_edges")
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@index([relationship])
+  @@schema("hopeai_alpha")
+}
+
+// ======== Audit & Security ========
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  EXPORT
+  IMPORT
+  LOGIN
+  LOGOUT
+  ACCESS
+
+  @@schema("hopeai_alpha")
+}
+
+model AuditLog {
+  id                     String      @id @default(uuid()) @db.Uuid
+  userId                 String?     @db.Uuid
+  action                 AuditAction
+  entityType             String      // e.g., "Patient", "Assessment", "Report"
+  entityId               String      @db.Uuid
+  details                Json?
+  ipAddress              String?
+  userAgent              String?
+  createdAt              DateTime    @default(now())
+
+  // Relations
+  user                   User?       @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@schema("hopeai_alpha")
+}
