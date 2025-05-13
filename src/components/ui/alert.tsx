@@ -36,6 +36,22 @@ export function Alert({ children, className, variant = "default", ...props }: Al
   );
 }
 
+export function AlertTitle({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+  return (
+    <h5
+      className={cn("mb-1 font-medium leading-none tracking-tight", props.className)}
+      {...props}
+      style={{
+        marginBottom: "4px",
+        fontWeight: 500,
+        ...props.style
+      }}
+    >
+      {children}
+    </h5>
+  );
+}
+
 export function AlertDescription({ children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
     <p {...props} style={{ margin: 0, ...props.style }}>

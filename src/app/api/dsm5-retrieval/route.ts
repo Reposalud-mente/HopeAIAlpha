@@ -3,8 +3,8 @@
  * This is a server-side only route to ensure PDF parsing works correctly
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { getServerSession } from '@/lib/auth/session-adapter';
+import { authOptions } from '@/lib/auth/session-adapter';
 import { DSM5Retriever } from '@/lib/RagAI/retrieval';
 // Import monitoring if available
 let trackEvent: any;

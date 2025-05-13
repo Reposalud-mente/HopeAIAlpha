@@ -3,8 +3,8 @@
  * This is a server-side only route
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { getServerSession } from '@/lib/auth/session-adapter';
+import { authOptions } from '@/lib/auth/session-adapter';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { createRequire } from 'module';

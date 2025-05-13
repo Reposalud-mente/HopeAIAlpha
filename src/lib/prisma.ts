@@ -5,6 +5,19 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient()
+// Force a new instance of PrismaClient to ensure proper connection
+const prismaClientOptions = {
+  log: ['query', 'info', 'warn', 'error'],
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma 
+// Clear any existing instance and create a new one
+if (globalForPrisma.prisma) {
+  // @ts-ignore - Access private property to disconnect
+  if (globalForPrisma.prisma._engine) {
+    globalForPrisma.prisma.$disconnect();
+  }
+  globalForPrisma.prisma = undefined;
+}
+
+export const prisma = new PrismaClient(prismaClientOptions)
+globalForPrisma.prisma = prisma

@@ -1,150 +1,122 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, FormEvent } from 'react';
 import Link from 'next/link';
-import { signIn } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Shield, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { Shield, Loader2, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useExtendedAuth } from '@/contexts/extended-auth-context';
+import { Input } from '@/components/ui/input';
 
 // Component that uses searchParams - wrapped in Suspense
 function LoginForm() {
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState('');
   const { toast } = useToast();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { loginWithAuth0, error: authError } = useExtendedAuth();
 
-  // Check for error or success messages from URL parameters
+  // Check for error parameters in the URL
+  const errorParam = searchParams.get('error');
+  const errorDescription = searchParams.get('error_description');
+
+  // Display error toast if there's an error in the URL
   useEffect(() => {
-    const errorMessage = searchParams.get('error');
-    const successMessage = searchParams.get('success');
-
-    if (errorMessage) {
-      setError(decodeURIComponent(errorMessage));
+    if (errorParam) {
+      setIsLoading(false);
       toast({
-        title: 'Error al iniciar sesión',
-        description: decodeURIComponent(errorMessage),
+        title: 'Error de autenticación',
+        description: errorDescription || 'Hubo un problema al iniciar sesión. Por favor, intenta de nuevo.',
         variant: 'destructive',
       });
     }
+  }, [errorParam, errorDescription, toast]);
 
-    if (successMessage) {
-      toast({
-        title: 'Éxito',
-        description: decodeURIComponent(successMessage),
-        variant: 'default',
-      });
-    }
-  }, [searchParams, toast]);
-
-  // Validate email format
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const isValid = emailRegex.test(email);
-
-    if (!isValid && email) {
-      setEmailError('Por favor, ingresa un correo electrónico válido');
-    } else {
-      setEmailError('');
-    }
-
-    return isValid || !email;
-  };
-
-  // Validate password (not empty)
-  const validatePassword = (password: string): boolean => {
-    const isValid = password.length > 0;
-
-    if (!isValid && password) {
-      setPasswordError('La contraseña es requerida');
-    } else {
-      setPasswordError('');
-    }
-
-    return isValid || !password;
-  };
-
-  // Handle input changes with validation
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newEmail = e.target.value;
-    setEmail(newEmail);
-    validateEmail(newEmail);
-  };
-
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPassword = e.target.value;
-    setPassword(newPassword);
-    validatePassword(newPassword);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-
-    // Validate form before submission
-    const isEmailValid = validateEmail(email);
-    const isPasswordValid = validatePassword(password);
-
-    if (!isEmailValid || !isPasswordValid) {
+    setFormError('');
+    
+    // Basic validation
+    if (!email || !password) {
+      setFormError('Por favor, ingresa tu correo electrónico y contraseña');
       return;
     }
-
+    
     setIsLoading(true);
-    setError('');
 
     try {
-      const result = await signIn('credentials', {
-        redirect: false, // Changed to false to handle errors better
-        email,
-        password,
-        remember: rememberMe, // Pass the remember me state
+      // Show loading toast
+      toast({
+        title: 'Iniciando sesión...',
+        description: 'Verificando credenciales',
+        variant: 'default',
       });
 
-      if (result?.error) {
-        // More specific error messages based on error type
-        if (result.error === 'CredentialsSignin') {
-          setError('Credenciales inválidas. Por favor, verifica tu correo y contraseña.');
-        } else {
-          setError('Error al iniciar sesión. Por favor, intenta de nuevo.');
-        }
+      // Get the Auth0 login URL with credentials
+      const domain = 'https://hopeai.us.auth0.com';
+      const clientId = '6QHlKSDpNbbXK0dOkufSe5zWC3xnus6y';
+      const redirectUri = `${window.location.origin}/api/auth/callback`;
+      const state = JSON.stringify({ returnTo: '/dashboard' });
 
-        toast({
-          title: 'Error al iniciar sesión',
-          description: result.error === 'CredentialsSignin'
-            ? 'Credenciales inválidas. Por favor, verifica tu correo y contraseña.'
-            : 'Error al iniciar sesión. Por favor, intenta de nuevo.',
-          variant: 'destructive',
-        });
-      } else {
-        // Success toast before redirect
-        toast({
-          title: 'Inicio de sesión exitoso',
-          description: 'Redirigiendo al dashboard...',
-          variant: 'default',
-        });
+      // Redirect to Auth0 login page with credentials
+      // Note: Auth0 will handle the actual authentication with these credentials
+      const loginUrl = `${domain}/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&scope=openid%20profile%20email&state=${encodeURIComponent(state)}&username=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`;
 
-        // Redirect manually after showing the toast
-        router.push('/dashboard');
-      }
+      window.location.href = loginUrl;
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Ocurrió un error al iniciar sesión. Por favor, intenta de nuevo más tarde.');
+      console.error('Login redirect error:', err);
+      setIsLoading(false);
+
       toast({
-        title: 'Error al iniciar sesión',
-        description: 'Ocurrió un error al iniciar sesión. Por favor, intenta de nuevo más tarde.',
+        title: 'Error',
+        description: 'No se pudo iniciar el proceso de inicio de sesión',
         variant: 'destructive',
       });
-    } finally {
+    }
+  };
+
+  // Handle Auth0 login (legacy button - can be removed if not needed)
+  const handleAuth0Login = async () => {
+    setIsLoading(true);
+
+    try {
+      // Show loading toast
+      toast({
+        title: 'Redirigiendo...',
+        description: 'Preparando inicio de sesión seguro',
+        variant: 'default',
+      });
+
+      // Get the Auth0 login URL
+      const domain = 'https://hopeai.us.auth0.com';
+      const clientId = '6QHlKSDpNbbXK0dOkufSe5zWC3xnus6y';
+      const redirectUri = `${window.location.origin}/api/auth/callback`;
+      const state = JSON.stringify({ returnTo: '/dashboard' });
+
+      // Redirect to Auth0 login page
+      const loginUrl = `${domain}/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&scope=openid%20profile%20email&state=${encodeURIComponent(state)}`;
+
+      window.location.href = loginUrl;
+    } catch (err) {
+      console.error('Login redirect error:', err);
       setIsLoading(false);
+
+      toast({
+        title: 'Error',
+        description: 'No se pudo iniciar el proceso de inicio de sesión',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -152,7 +124,7 @@ function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Call the demo login API endpoint instead of exposing credentials
+      // Call the demo login API endpoint
       const response = await fetch('/api/auth/demo-login', {
         method: 'POST',
         headers: {
@@ -164,6 +136,8 @@ function LoginForm() {
         throw new Error('Error accessing demo account');
       }
 
+      const data = await response.json();
+
       // Success toast
       toast({
         title: 'Modo Demo',
@@ -171,11 +145,15 @@ function LoginForm() {
         variant: 'default',
       });
 
-      // Redirect to dashboard after demo login
-      router.push('/dashboard');
+      // Redirect to Auth0 login URL with demo credentials
+      if (data.loginUrl) {
+        window.location.href = data.loginUrl;
+      } else {
+        throw new Error('No login URL returned');
+      }
     } catch (err) {
       console.error('Demo login error:', err);
-      setError('Error al acceder a la cuenta de demostración');
+      console.error('Error al acceder a la cuenta de demostración');
       toast({
         title: 'Error',
         description: 'No se pudo acceder a la cuenta de demostración',
@@ -204,85 +182,59 @@ function LoginForm() {
             Accede a tu cuenta para gestionar pacientes y generar informes
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-4">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm md:text-base font-montserrat-medium text-gray-700 flex flex-wrap items-center">
-                Correo electrónico
-                {emailError && (
-                  <span className="ml-2 text-red-500 flex items-center text-xs md:text-sm">
-                    <AlertCircle className="h-4 w-4 mr-1" />
-                    {emailError}
-                  </span>
-                )}
-              </label>
-              <Input
-                id="email"
-                type="email"
-                inputMode="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={handleEmailChange}
-                required
-                className={`w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12 text-base ${
-                  emailError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''
-                }`}
-                aria-invalid={!!emailError}
-                aria-describedby={emailError ? "email-error" : undefined}
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <label htmlFor="password" className="text-sm md:text-base font-montserrat-medium text-gray-700 flex items-center">
-                  Contraseña
-                  {passwordError && (
-                    <span className="ml-2 text-red-500 flex items-center text-xs md:text-sm">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {passwordError}
-                    </span>
-                  )}
-                </label>
-                <Link href="/reset-password" className="text-sm md:text-base font-montserrat-medium text-primary hover:text-primary/80 transition-colors">
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </div>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={handlePasswordChange}
-                required
-                className={`w-full form-input-clinical transition-all duration-200 focus:border-primary focus:ring-1 focus:ring-primary/20 font-montserrat-regular h-12 text-base ${
-                  passwordError ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : ''
-                }`}
-                aria-invalid={!!passwordError}
-                aria-describedby={passwordError ? "password-error" : undefined}
-              />
-            </div>
-
-            <div className="flex items-center space-x-3">
-              <Checkbox
-                id="remember"
-                className="text-primary border-gray-300 h-5 w-5"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
-              />
-              <label
-                htmlFor="remember"
-                className="text-sm md:text-base font-montserrat-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-600"
-              >
-                Recordar mis datos
-              </label>
-            </div>
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-3 flex items-start space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                <p className="text-red-500 text-sm font-montserrat-medium">{error}</p>
+        <CardContent className="pt-4 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formError && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
+                {formError}
               </div>
             )}
-
+            
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  type="email"
+                  placeholder="Correo electrónico"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 h-12 text-base"
+                  disabled={isLoading}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <Lock className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10 h-12 text-base"
+                  disabled={isLoading}
+                  required
+                />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5 text-gray-400" />
+                  ) : (
+                    <Eye className="h-5 w-5 text-gray-400" />
+                  )}
+                </button>
+              </div>
+            </div>
+            
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90 text-white py-3 font-montserrat-medium tracking-wide transition-all duration-300 btn-hover-effect h-12 text-base md:text-lg"
@@ -294,12 +246,15 @@ function LoginForm() {
                   Iniciando sesión...
                 </span>
               ) : (
-                'Iniciar Sesión'
+                <span className="flex items-center justify-center">
+                  <Shield className="mr-2 h-5 w-5" />
+                  Iniciar Sesión
+                </span>
               )}
             </Button>
           </form>
 
-          <div className="mt-6 relative">
+          <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-200"></div>
             </div>
@@ -308,25 +263,23 @@ function LoginForm() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <Button
-              variant="outline"
-              className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 font-montserrat-medium tracking-wide transition-all duration-300 py-3 h-12 text-base md:text-lg"
-              onClick={handleDemoLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <span className="flex items-center justify-center">
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Accediendo...
-                </span>
-              ) : (
-                'Probar Demo'
-              )}
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            className="w-full border-gray-300 hover:bg-gray-50 text-gray-700 font-montserrat-medium tracking-wide transition-all duration-300 py-3 h-12 text-base md:text-lg"
+            onClick={handleDemoLogin}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Accediendo...
+              </span>
+            ) : (
+              'Probar Demo'
+            )}
+          </Button>
 
-          <div className="mt-6 flex items-center justify-center space-x-2 text-sm md:text-base text-black">
+          <div className="flex items-center justify-center space-x-2 text-sm md:text-base text-black">
             <Shield className="h-5 w-5 text-black" />
             <span className="font-montserrat-medium">Conexión segura y encriptada</span>
           </div>

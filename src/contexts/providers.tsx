@@ -3,12 +3,13 @@
 import { ReactNode, useEffect } from 'react';
 import { NavbarProvider } from '@/contexts/NavbarContext';
 import { PatientProvider } from '@/contexts/PatientContext';
-import { SessionProvider } from "next-auth/react"
-import { AuthProvider } from "@/contexts/auth-context"
+import { AuthProvider as Auth0ClientProvider } from '@/components/auth/AuthProvider';
+import { AuthProvider } from "@/contexts/auth-context";
+import { ExtendedAuthProvider } from "@/contexts/extended-auth-context";
 import { FeatureFlagProvider } from '@/contexts/FeatureFlagContext';
 import { initMonitoring } from '@/lib/monitoring';
 import { DrawerProvider } from '@/contexts/DrawerContext';
-
+import { SessionProvider } from 'next-auth/react';
 
 export function Providers({ children }: { children: ReactNode }) {
   // Initialize monitoring on client-side
@@ -22,22 +23,23 @@ export function Providers({ children }: { children: ReactNode }) {
     }
   }, []);
 
-
-
   return (
     <SessionProvider>
-      <AuthProvider>
-        <FeatureFlagProvider>
-          <NavbarProvider>
-            <PatientProvider>
-              <DrawerProvider>
-undefined
-                {children}
-              </DrawerProvider>
-            </PatientProvider>
-          </NavbarProvider>
-        </FeatureFlagProvider>
-      </AuthProvider>
+      <Auth0ClientProvider>
+        <AuthProvider>
+          <ExtendedAuthProvider>
+            <FeatureFlagProvider>
+              <NavbarProvider>
+                <PatientProvider>
+                  <DrawerProvider>
+                    {children}
+                  </DrawerProvider>
+                </PatientProvider>
+              </NavbarProvider>
+            </FeatureFlagProvider>
+          </ExtendedAuthProvider>
+        </AuthProvider>
+      </Auth0ClientProvider>
     </SessionProvider>
   );
 }

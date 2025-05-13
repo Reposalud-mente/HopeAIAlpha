@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { getServerSession } from '@/lib/auth/session-adapter';
+import { authOptions } from '@/lib/auth/session-adapter';
 import { logAuditEvent } from '@/lib/audit-log';
 import { SessionService, SessionValidationError } from '@/lib/services/session-service';
 import { ZodError } from 'zod';

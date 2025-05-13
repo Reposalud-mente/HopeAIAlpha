@@ -80,8 +80,27 @@ export function PatientProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadRecentPatients = async () => {
       try {
-        const response = await fetch('/api/patients?limit=5', { credentials: 'same-origin' });
-        if (!response.ok) throw new Error('Failed to load recent patients');
+        const response = await fetch('/api/patients?limit=5', {
+          credentials: 'same-origin',
+          // Add cache control to prevent stale responses
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+
+        // Handle authentication errors specifically
+        if (response.status === 401) {
+          console.log('Authentication required. User needs to log in.');
+          // Don't set error state for auth issues to avoid showing error on initial load
+          return;
+        }
+
+        if (!response.ok) {
+          console.error(`Failed to load recent patients: ${response.status} ${response.statusText}`);
+          return;
+        }
 
         const data = await response.json();
         if (data.items && Array.isArray(data.items)) {
@@ -467,7 +486,8 @@ export function PatientProvider({ children }: { children: ReactNode }) {
             console.error(`Failed to update patient ${id}:`, errorText);
           }
         } else {
-          const patient = await response.json();
+          // Successfully updated the patient
+          await response.json(); // Read the response but we don't need to use it
 
           // Update recent patients list if this patient is in it
           setRecentPatients(prev => {

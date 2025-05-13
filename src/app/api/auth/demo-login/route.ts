@@ -1,85 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { signJwtAccessToken } from '@/lib/jwt';
-import { prisma } from '@/lib/prisma';
-import { compare } from 'bcryptjs';
 import { trackEvent, EventType } from '@/lib/monitoring';
 
 // Demo account credentials - stored server-side
-const DEMO_EMAIL = 'psicologo@hopeai.com';
-const DEMO_PASSWORD = 'password123';
+// These should be stored in environment variables in production
+const DEMO_EMAIL = process.env.DEMO_USER_EMAIL || 'demo@hopeai.com';
+const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || 'Demo123!';
 
 export async function POST(request: NextRequest) {
   try {
-    // Find the demo user
-    const user = await prisma.user.findUnique({
-      where: { email: DEMO_EMAIL }
-    });
+    // Get the Auth0 domain and client ID from environment variables
+    const domain = process.env.AUTH0_ISSUER_BASE_URL || 'https://hopeai.us.auth0.com';
+    const clientId = process.env.AUTH0_CLIENT_ID || '6QHlKSDpNbbXK0dOkufSe5zWC3xnus6y';
 
-    if (!user) {
-      trackEvent({
-        type: EventType.ERROR,
-        name: 'demo_login_error',
-        data: {
-          error: 'Demo user not found',
-        },
-      });
-      
-      return NextResponse.json(
-        { error: 'Demo account not available' },
-        { status: 404 }
-      );
-    }
-
-    // Verify the demo password
-    const isPasswordValid = await compare(DEMO_PASSWORD, user.passwordHash);
-
-    if (!isPasswordValid) {
-      trackEvent({
-        type: EventType.ERROR,
-        name: 'demo_login_error',
-        data: {
-          error: 'Demo password invalid',
-        },
-      });
-      
-      return NextResponse.json(
-        { error: 'Demo account not available' },
-        { status: 401 }
-      );
-    }
-
-    // Create a token for the demo user
-    const token = signJwtAccessToken({
-      id: user.id,
-      email: user.email,
-      name: `${user.firstName} ${user.lastName}`,
-      role: user.role,
-      isDemoUser: true // Flag to indicate this is a demo user
-    });
-
-    // Track the demo login event
+    // Track the demo login attempt
     trackEvent({
       type: EventType.USER_ACTION,
-      name: 'demo_login',
+      name: 'demo_login_attempt',
       data: {
-        userId: user.id,
+        email: DEMO_EMAIL,
       },
     });
 
-    // Return the token and user info
+    // Create the Auth0 login URL with demo credentials
+    const redirectUri = `${process.env.AUTH0_BASE_URL || 'http://localhost:3000'}/api/auth/callback`;
+    const state = JSON.stringify({ returnTo: '/dashboard', isDemoUser: true });
+    const loginUrl = `${domain}/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&scope=openid%20profile%20email&login_hint=${encodeURIComponent(DEMO_EMAIL)}&state=${encodeURIComponent(state)}`;
+
+    // Return the login URL
     return NextResponse.json({
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
-        role: user.role,
-        isDemoUser: true
-      }
+      loginUrl,
+      redirectUri,
+      isDemoUser: true
     });
   } catch (error) {
     console.error('Demo login error:', error);
-    
+
     // Track the error
     trackEvent({
       type: EventType.ERROR,
@@ -88,7 +45,7 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     });
-    
+
     return NextResponse.json(
       { error: 'Failed to access demo account' },
       { status: 500 }

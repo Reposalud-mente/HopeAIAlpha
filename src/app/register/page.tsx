@@ -2,17 +2,19 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { useAuth } from '@/contexts/auth-context';
+import { useExtendedAuth } from '@/contexts/extended-auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { Label } from '@/components/ui/label';
-import { Shield, Users } from 'lucide-react';
+import { Shield, Users, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register } = useExtendedAuth();
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -73,33 +75,35 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      // Register the user using the auth context
-      const success = await register({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        licenseNumber: formData.licenseNumber || undefined,
-        specialty: formData.specialty || undefined,
+      // Call the registration API directly
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          licenseNumber: formData.licenseNumber || undefined,
+          specialty: formData.specialty || undefined,
+        }),
       });
 
-      if (!success) {
-        throw new Error('Error al registrar usuario');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Error al registrar usuario');
       }
 
       // Show success message
       toast({
         title: 'Registro exitoso',
-        description: 'Tu cuenta ha sido creada. Iniciando sesión...',
+        description: 'Tu cuenta ha sido creada. Redirigiendo al inicio de sesión...',
       });
 
-      // Automatically sign in the user
-      await signIn('credentials', {
-        redirect: true,
-        callbackUrl: '/dashboard',
-        email: formData.email,
-        password: formData.password,
-      });
+      // Redirect to login page
+      router.push('/login');
 
     } catch (err) {
       console.error('Registration error:', err);
@@ -233,7 +237,12 @@ export default function RegisterPage() {
               className="w-full bg-secondary hover:bg-secondary/90 text-white py-3 font-montserrat-medium tracking-wide transition-all duration-300 btn-hover-effect mt-2 h-12 text-base md:text-lg"
               disabled={isLoading}
             >
-              {isLoading ? 'Registrando...' : 'Registrarse'}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registrando...
+                </>
+              ) : 'Registrarse'}
             </Button>
 
             <div className="mt-8 flex items-center justify-center space-x-2 text-sm text-black">

@@ -5,8 +5,8 @@
  * to enhance the AI assistant's responses with contextual awareness.
  */
 
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { getServerSession } from '@/lib/auth/session-adapter';
+import { authOptions } from '@/lib/auth/session-adapter';
 import { prisma } from '@/lib/prisma';
 import { headers } from 'next/headers';
 import { 

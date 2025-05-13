@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions'
+import { getServerSession, authOptions } from '@/lib/auth/session-adapter'
 import { prisma } from '@/lib/prisma'
 import { trackEvent, EventType } from '@/lib/monitoring'
 
@@ -9,7 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     // Get the current user session
     const session = await getServerSession(authOptions)
-    
+
     // Check if the user is authenticated
     if (!session?.user) {
       return NextResponse.json(
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
-    
+
     // Get query parameters
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId');
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search') || ''
     const isActive = searchParams.get('isActive') !== 'false' // Default to active patients
-    
+
     // Build the query
     const query: any = {
       isActive
@@ -45,7 +44,7 @@ export async function GET(request: NextRequest) {
         { contactPhone: { contains: search, mode: 'insensitive' } }
       ]
     }
-    
+
     // Get the patients
     const fetchAll = Boolean(userId);
     const patients = await prisma.patient.findMany({
@@ -71,12 +70,12 @@ export async function GET(request: NextRequest) {
         },
       },
     })
-    
+
     // Get the total count
     const total = await prisma.patient.count({
       where: query,
     })
-    
+
     // Track the event
     trackEvent({
       type: EventType.USER_ACTION,
@@ -87,7 +86,7 @@ export async function GET(request: NextRequest) {
         total,
       },
     })
-    
+
     // Return the patients as a flat array for dashboard use if filtering by userId
     if (userId) {
       return NextResponse.json(patients);
@@ -101,7 +100,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching patients:', error)
-    
+
     // Track the error
     trackEvent({
       type: EventType.ERROR,
@@ -110,7 +109,7 @@ export async function GET(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     })
-    
+
     // Return error response
     return NextResponse.json(
       { error: 'Failed to fetch patients' },
@@ -124,7 +123,7 @@ export async function POST(request: NextRequest) {
   try {
     // Get the current user session
     const session = await getServerSession(authOptions)
-    
+
     // Check if the user is authenticated
     if (!session?.user) {
       return NextResponse.json(
@@ -132,10 +131,10 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
-    
+
     // Parse the request body
     const body = await request.json()
-    
+
     // Validate required fields
     if (!body.firstName || !body.lastName || !body.dateOfBirth || !body.contactEmail) {
       return NextResponse.json(
@@ -143,19 +142,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Check if a patient with the same email already exists
     const existingPatient = await prisma.patient.findUnique({
       where: { contactEmail: body.contactEmail },
     })
-    
+
     if (existingPatient) {
       return NextResponse.json(
         { error: 'A patient with this email already exists' },
         { status: 409 }
       )
     }
-    
+
     // Create the patient
     const patient = await prisma.patient.create({
       data: {
@@ -176,7 +175,7 @@ export async function POST(request: NextRequest) {
         createdById: session.user.id,
       },
     })
-    
+
     // Track the event
     trackEvent({
       type: EventType.USER_ACTION,
@@ -186,12 +185,12 @@ export async function POST(request: NextRequest) {
         patientId: patient.id,
       },
     })
-    
+
     // Return the created patient
     return NextResponse.json(patient, { status: 201 })
   } catch (error) {
     console.error('Error creating patient:', error)
-    
+
     // Track the error
     trackEvent({
       type: EventType.ERROR,
@@ -200,7 +199,7 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Unknown error',
       },
     })
-    
+
     // Return error response
     return NextResponse.json(
       { error: 'Failed to create patient' },

@@ -6,8 +6,8 @@
 
 import { FunctionDeclaration, Type } from '@google/genai';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { getServerSession } from '@/lib/auth/session-adapter';
+import { authOptions } from '@/lib/auth/session-adapter';
 import { z } from 'zod'; // Import zod for runtime validation
 import { logger } from '@/lib/logger'; // Import logger for better error tracking
 

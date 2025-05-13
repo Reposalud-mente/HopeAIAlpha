@@ -1,60 +1,77 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
+import prismaAlpha from '@/lib/prisma-alpha'; // Use the Alpha Prisma client
+import { safelyGetUUID } from '@/lib/auth/user-utils';
 
 // GET /api/appointments?userId=...&start=...&end=...&view=...
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const userId = searchParams.get('userId');
+  const auth0UserId = searchParams.get('userId');
   const startDate = searchParams.get('start');
   const endDate = searchParams.get('end');
   const view = searchParams.get('view') || 'month'; // day, week, month
   const patientId = searchParams.get('patientId');
 
-  if (!userId) {
+  if (!auth0UserId) {
     return NextResponse.json({ error: 'Missing userId param' }, { status: 400 });
   }
 
-  // Build the query
-  const query: any = { userId };
+  try {
+    // Convert Auth0 user ID to database UUID
+    const userId = await safelyGetUUID(auth0UserId);
 
-  // Add date range filter if provided
-  if (startDate && endDate) {
-    query.date = {
-      gte: new Date(startDate),
-      lte: new Date(endDate),
-    };
-  }
+    // If we couldn't get a valid UUID, return an error
+    if (!userId) {
+      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
+    }
 
-  // Add patient filter if provided
-  if (patientId) {
-    query.patientId = patientId;
-  }
+    // Build the query for the Alpha schema
+    // In the Alpha schema, the field is clinicianId instead of userId
+    const query: any = { clinicianId: userId };
 
-  // Fetch appointments with patient details
-  const appointments = await prisma.appointment.findMany({
-    where: query,
-    orderBy: { date: 'asc' },
-    include: {
-      patient: {
-        select: {
-          firstName: true,
-          lastName: true,
-          contactPhone: true,
-          contactEmail: true,
+    // Add date range filter if provided
+    if (startDate && endDate) {
+      query.date = {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      };
+    }
+
+    // Add patient filter if provided
+    if (patientId) {
+      query.patientId = patientId;
+    }
+
+    // Fetch appointments with patient details using the Alpha schema
+    const appointments = await prismaAlpha.appointment.findMany({
+      where: query,
+      orderBy: { date: 'asc' },
+      include: {
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            contactPhone: true,
+            contactEmail: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return NextResponse.json(appointments);
+    return NextResponse.json(appointments);
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch appointments' },
+      { status: 500 }
+    );
+  }
 }
 
 // POST /api/appointments
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    
+
     // Calculate endTime if not provided
     if (!data.endTime && data.date && data.duration) {
       const startDate = new Date(data.date);
@@ -64,11 +81,11 @@ export async function POST(req: NextRequest) {
 
     // Handle recurring appointments
     if (data.isRecurring && data.recurrencePattern && data.recurrenceEndDate) {
-      // Create the parent appointment first
-      const parentAppointment = await prisma.appointment.create({
+      // Create the parent appointment first using the Alpha schema
+      const parentAppointment = await prismaAlpha.appointment.create({
         data: {
           patientId: data.patientId,
-          userId: data.userId,
+          clinicianId: data.userId, // In Alpha schema, it's clinicianId instead of userId
           title: data.title || 'Consulta',
           date: new Date(data.date),
           endTime: new Date(data.endTime),
@@ -79,8 +96,9 @@ export async function POST(req: NextRequest) {
           isRecurring: true,
           recurrencePattern: data.recurrencePattern,
           recurrenceEndDate: new Date(data.recurrenceEndDate),
-          notificationPreference: data.notificationPreference,
-          colorCode: data.colorCode,
+          // These fields might not exist in the Alpha schema
+          // notificationPreference: data.notificationPreference,
+          // colorCode: data.colorCode,
         },
       });
 
@@ -91,20 +109,20 @@ export async function POST(req: NextRequest) {
         new Date(data.recurrenceEndDate)
       );
 
-      // Create all recurring appointments
+      // Create all recurring appointments using the Alpha schema
       if (recurringAppointments.length > 0) {
-        await prisma.appointment.createMany({
+        await prismaAlpha.appointment.createMany({
           data: recurringAppointments,
         });
       }
 
       return NextResponse.json(parentAppointment, { status: 201 });
     } else {
-      // Create a single appointment
-      const appointment = await prisma.appointment.create({
+      // Create a single appointment using the Alpha schema
+      const appointment = await prismaAlpha.appointment.create({
         data: {
           patientId: data.patientId,
-          userId: data.userId,
+          clinicianId: data.userId, // In Alpha schema, it's clinicianId instead of userId
           title: data.title || 'Consulta',
           date: new Date(data.date),
           endTime: new Date(data.endTime),
@@ -113,8 +131,9 @@ export async function POST(req: NextRequest) {
           notes: data.notes,
           location: data.location,
           isRecurring: false,
-          notificationPreference: data.notificationPreference,
-          colorCode: data.colorCode,
+          // These fields might not exist in the Alpha schema
+          // notificationPreference: data.notificationPreference,
+          // colorCode: data.colorCode,
         },
       });
 
@@ -149,18 +168,19 @@ export async function PUT(req: NextRequest) {
     if (appointmentData.endTime) appointmentData.endTime = new Date(appointmentData.endTime);
     if (appointmentData.recurrenceEndDate) appointmentData.recurrenceEndDate = new Date(appointmentData.recurrenceEndDate);
 
-    // Get the current appointment
-    const currentAppointment = await prisma.appointment.findUnique({
+    // Get the current appointment using the Alpha schema
+    // In Alpha schema, the relationship might be called childAppointments instead of recurringAppointments
+    const currentAppointment = await prismaAlpha.appointment.findUnique({
       where: { id },
-      include: { recurringAppointments: true }
+      include: { childAppointments: true }
     });
 
     if (!currentAppointment) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
     }
 
-    // Update the appointment
-    const appointment = await prisma.appointment.update({
+    // Update the appointment using the Alpha schema
+    const appointment = await prismaAlpha.appointment.update({
       where: { id },
       data: appointmentData,
     });
@@ -169,8 +189,8 @@ export async function PUT(req: NextRequest) {
     if (updateSeries && currentAppointment.isRecurring) {
       // If this is a parent appointment, update all children
       if (!currentAppointment.parentAppointmentId) {
-        // Update all future recurring appointments
-        await prisma.appointment.updateMany({
+        // Update all future recurring appointments using the Alpha schema
+        await prismaAlpha.appointment.updateMany({
           where: {
             parentAppointmentId: id,
             date: { gte: new Date() }
@@ -181,14 +201,15 @@ export async function PUT(req: NextRequest) {
             status: appointmentData.status,
             notes: appointmentData.notes,
             location: appointmentData.location,
-            notificationPreference: appointmentData.notificationPreference,
-            colorCode: appointmentData.colorCode,
+            // These fields might not exist in the Alpha schema
+            // notificationPreference: appointmentData.notificationPreference,
+            // colorCode: appointmentData.colorCode,
           }
         });
-      } 
+      }
       // If this is a child appointment, update it and detach from parent
       else {
-        await prisma.appointment.update({
+        await prismaAlpha.appointment.update({
           where: { id },
           data: {
             parentAppointmentId: null,
@@ -216,8 +237,8 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Missing appointment ID' }, { status: 400 });
     }
 
-    // Get the appointment to check if it's part of a series
-    const appointment = await prisma.appointment.findUnique({
+    // Get the appointment to check if it's part of a series using the Alpha schema
+    const appointment = await prismaAlpha.appointment.findUnique({
       where: { id },
     });
 
@@ -227,13 +248,13 @@ export async function DELETE(req: NextRequest) {
 
     // If it's a recurring appointment and we want to delete the series
     if (deleteSeries && appointment.isRecurring && !appointment.parentAppointmentId) {
-      // Delete all child appointments first
-      await prisma.appointment.deleteMany({
+      // Delete all child appointments first using the Alpha schema
+      await prismaAlpha.appointment.deleteMany({
         where: { parentAppointmentId: id },
       });
     } else if (deleteSeries && appointment.parentAppointmentId) {
-      // If it's a child appointment and we want to delete future occurrences
-      await prisma.appointment.deleteMany({
+      // If it's a child appointment and we want to delete future occurrences using the Alpha schema
+      await prismaAlpha.appointment.deleteMany({
         where: {
           parentAppointmentId: appointment.parentAppointmentId,
           date: { gte: appointment.date },
@@ -241,8 +262,8 @@ export async function DELETE(req: NextRequest) {
       });
     }
 
-    // Delete the appointment itself
-    await prisma.appointment.delete({
+    // Delete the appointment itself using the Alpha schema
+    await prismaAlpha.appointment.delete({
       where: { id },
     });
 

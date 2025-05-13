@@ -1,0 +1,16 @@
+/**
+ * Auth0 API Routes
+ *
+ * This file handles the Auth0 authentication routes using the official Auth0 Next.js SDK.
+ * Routes handled:
+ * - /api/auth/login: Redirects to Auth0 login page
+ * - /api/auth/logout: Logs out the user from Auth0
+ * - /api/auth/callback: Handles the Auth0 callback after login
+ * - /api/auth/profile: Returns the user profile
+ */
+import { auth0 } from '@/lib/auth/auth0';
+import { trackEvent, EventType } from '@/lib/monitoring';
+
+// Handle all Auth0 routes using the official SDK
+export const GET = auth0.handleAuth();
+export const POST = auth0.handleAuth();

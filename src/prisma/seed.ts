@@ -7,7 +7,7 @@ async function main() {
   // Generate password hash
   const password = "password123"
   const passwordHash = await bcrypt.hash(password, 10)
-  
+
   // Seed evaluation areas
   const evaluationAreas = [
     { id: 'cognitiva', name: 'Función Cognitiva', description: 'Evaluación de procesos cognitivos' },
@@ -20,7 +20,7 @@ async function main() {
     { id: 'estres', name: 'Estrés y Afrontamiento', description: 'Evaluación de niveles de estrés' },
     { id: 'familiar', name: 'Dinámica Familiar', description: 'Evaluación de relaciones familiares' }
   ]
-  
+
   // Seed ICD codes (just a few examples)
   const icdCodes = [
     { code: '6A00', name: 'Trastornos del desarrollo intelectual', category: 'Neurodevelopmental' },
@@ -32,7 +32,7 @@ async function main() {
     { code: '6B00', name: 'Trastorno de ansiedad generalizada', category: 'Anxiety' },
     { code: '6B01', name: 'Trastorno de pánico', category: 'Anxiety' }
   ]
-  
+
   // Create a demo clinic
   const clinic = await prisma.clinic.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
@@ -46,7 +46,7 @@ async function main() {
       website: 'https://hopeai.com'
     }
   })
-  
+
   // Create a demo admin user
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@hopeai.com' },
@@ -60,7 +60,7 @@ async function main() {
       clinicId: clinic.id
     }
   })
-  
+
   // Create a demo psychologist
   const psychologist = await prisma.user.upsert({
     where: { email: 'psicologo@hopeai.com' },
@@ -76,7 +76,7 @@ async function main() {
       specialty: 'Psicología Clínica'
     }
   })
-  
+
   // Seed evaluation areas as a batch operation
   await Promise.all(
     evaluationAreas.map(area =>
@@ -87,7 +87,7 @@ async function main() {
       })
     )
   )
-  
+
   // Seed ICD codes as a batch operation
   await Promise.all(
     icdCodes.map(code =>
@@ -222,13 +222,21 @@ const users = await prisma.user.findMany();
 if (patients.length > 0 && users.length > 0) {
   // Seed appointments (citas)
   for (const patient of patients) {
+    const appointmentDate = new Date(Date.now() + Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000); // Entre hoy y 7 días más
+    const appointmentEndTime = new Date(appointmentDate.getTime() + 60 * 60 * 1000); // 1 hour after start
+
     await prisma.appointment.create({
       data: {
         patientId: patient.id,
         userId: patient.createdById,
-        date: new Date(Date.now() + Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000), // Entre hoy y 7 días más
+        date: appointmentDate,
+        endTime: appointmentEndTime,
+        duration: 60, // 60 minutes
+        title: 'Consulta Regular',
         status: 'SCHEDULED',
         notes: `Consulta de seguimiento para ${patient.firstName}`,
+        isRecurring: false,
+        reminderSent: false,
       }
     });
   }
@@ -279,4 +287,4 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect()
-  }) 
+  })

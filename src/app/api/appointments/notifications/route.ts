@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prismaAlpha from '@/lib/prisma-alpha'; // Use the Alpha Prisma client
+import { safelyGetUUID } from '@/lib/auth/user-utils';
 
 // GET /api/appointments/notifications
 // Retrieves upcoming appointments that need notifications
@@ -8,9 +9,10 @@ export async function GET(req: NextRequest) {
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     // Find appointments that are scheduled for the next 24 hours and haven't had reminders sent
-    const upcomingAppointments = await prisma.appointment.findMany({
+    // In Alpha schema, the relationship is clinician instead of user
+    const upcomingAppointments = await prismaAlpha.appointment.findMany({
       where: {
         date: {
           gte: now,
@@ -28,7 +30,7 @@ export async function GET(req: NextRequest) {
             contactPhone: true,
           },
         },
-        user: {
+        clinician: {
           select: {
             firstName: true,
             lastName: true,
@@ -50,13 +52,13 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const { appointmentIds } = await req.json();
-    
+
     if (!appointmentIds || !Array.isArray(appointmentIds) || appointmentIds.length === 0) {
       return NextResponse.json({ error: 'Invalid appointmentIds' }, { status: 400 });
     }
 
-    // Update all the specified appointments to mark reminders as sent
-    const result = await prisma.appointment.updateMany({
+    // Update all the specified appointments to mark reminders as sent using the Alpha schema
+    const result = await prismaAlpha.appointment.updateMany({
       where: {
         id: {
           in: appointmentIds,
@@ -67,8 +69,8 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       count: result.count,
       message: `Successfully marked ${result.count} appointment(s) as notified`
     });

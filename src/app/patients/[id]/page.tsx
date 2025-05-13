@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
+import { DemoModeBanner } from '@/components/demo/demo-mode-banner';
+import { DemoBadge, isDemo } from '@/components/demo/demo-badge';
 import {
   UserCircle,
   Calendar,
@@ -203,6 +205,9 @@ export default function PatientDetailPage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-8">
+        {/* Demo Mode Banner */}
+        <DemoModeBanner className="mb-6" />
+
         {/* Back button and actions - Redesigned for better clarity */}
         <div className="border-b border-gray-200 pb-4 mb-6">
           <div className="flex justify-between items-center">
@@ -269,6 +274,7 @@ export default function PatientDetailPage() {
                 <div>
                   <h1 className="text-xl font-bold text-gray-800 flex items-center flex-wrap">
                     {formatPatientName(patient)}
+                    {isDemo(patient.firstName) && <DemoBadge className="ml-2" />}
                     <span className="text-sm font-medium text-blue-600 ml-2 bg-blue-50 px-2 py-0.5 rounded-md">
                       {calculateAge(patient.dateOfBirth)} años
                     </span>

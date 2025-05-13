@@ -58,6 +58,8 @@ import {
   UserCheck,
   UserX
 } from 'lucide-react';
+import { DemoModeBanner } from '@/components/demo/demo-mode-banner';
+import { DemoBadge, isDemo } from '@/components/demo/demo-badge';
 import Link from 'next/link';
 import PatientForm from '@/components/clinical/patient/PatientForm';
 import AppLayout from '@/components/layout/app-layout';
@@ -335,6 +337,9 @@ export default function PatientListPage() {
   return (
     <AppLayout>
       <div className="container mx-auto px-4 py-8">
+        {/* Demo Mode Banner */}
+        <DemoModeBanner className="mb-6" />
+
         {/* Header with title and create button */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Pacientes</h1>
@@ -494,7 +499,10 @@ export default function PatientListPage() {
                             </div>
                           </div>
                           <div className="flex flex-col flex-1 ml-3">
-                            <span className="font-semibold text-lg leading-tight truncate" title={formatPatientName(patient)}>{formatPatientName(patient)}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-lg leading-tight truncate" title={formatPatientName(patient)}>{formatPatientName(patient)}</span>
+                              {isDemo(patient.firstName) && <DemoBadge />}
+                            </div>
                             <span className={`mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor} w-max`} aria-label={patient.isActive ? 'Activo' : 'Inactivo'}>
                               {patient.isActive ? 'Activo' : 'Inactivo'}
                             </span>
@@ -569,7 +577,10 @@ export default function PatientListPage() {
                                   {initials}
                                 </div>
                                 <div>
-                                  <div className="font-medium">{formatPatientName(patient)}</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="font-medium">{formatPatientName(patient)}</div>
+                                    {isDemo(patient.firstName) && <DemoBadge />}
+                                  </div>
                                   <div className="text-sm text-muted-foreground">{patient.contactEmail}</div>
                                 </div>
                               </div>

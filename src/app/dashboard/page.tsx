@@ -28,6 +28,7 @@ import {
   RefreshCw,
   FileText
 } from 'lucide-react';
+import { DemoModeBanner } from '@/components/demo/demo-mode-banner';
 
 import AppLayout from '@/components/layout/app-layout';
 import { useDashboardStore } from '@/store/dashboard';
@@ -80,10 +81,44 @@ export default function DashboardPage() {
     getFilteredAppointments
   } = useDashboardStore();
 
+  // Check for needsDemoData query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const needsDemoData = searchParams.get('needsDemoData') === 'true';
+
+    if (needsDemoData) {
+      // Remove the query parameter from the URL without refreshing the page
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+
+      // Populate demo data
+      fetch('/api/demo/populate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Demo data populated:', data);
+          // Refresh the dashboard data
+          fetchDashboardSummary();
+          fetchPatients();
+          fetchAppointments();
+          fetchMessages();
+        })
+        .catch(error => {
+          console.error('Error populating demo data:', error);
+        });
+    }
+  }, [fetchDashboardSummary, fetchPatients, fetchAppointments, fetchMessages]);
+
   // Initialize data and connect socket for real-time updates
   useEffect(() => {
-    // Use the demo psychologist's real UUID from the seed script
-    setUserId('24312c0a-6317-4741-9330-ff581e2a24f3'); // admin@hopeai.com UUID
+    // Use the user's actual ID instead of a hardcoded one
+    if (user?.id) {
+      setUserId(user.id);
+    }
 
     // Fetch initial data
     fetchDashboardSummary();
@@ -99,6 +134,7 @@ export default function DashboardPage() {
       disconnectSocket();
     };
   }, [
+    user,
     setUserId,
     fetchDashboardSummary,
     fetchPatients,
@@ -173,6 +209,9 @@ export default function DashboardPage() {
       <ConditionalEnhancedAssistant />
       <TooltipProvider>
         <div className="container mx-auto px-6 py-8">
+          {/* Demo Mode Banner */}
+          <DemoModeBanner className="mb-6" />
+
           {/* Header with title and actions */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
