@@ -727,3 +727,27 @@ model AuditLog {
   @@index([createdAt])
   @@schema("hopeai_alpha")
 }
+
+// ======== Messaging ========
+
+model Message {
+  id                     String   @id @default(uuid()) @db.Uuid
+  patientId              String   @db.Uuid
+  userId                 String   @db.Uuid
+  content                String   @db.Text
+  sentAt                 DateTime @default(now())
+  read                   Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  patient                Patient  @relation(fields: [patientId], references: [id])
+  user                   User     @relation(fields: [userId], references: [id])
+
+  @@map("messages")
+  @@index([patientId])
+  @@index([userId])
+  @@index([read])
+  @@index([sentAt])
+  @@schema("hopeai_alpha")
+}

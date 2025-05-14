@@ -7,7 +7,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/useAuth';
 import { AssistantService } from '../core/assistant-service';
 import { getClientContext } from '../context/context-gatherer';
 import { tools, toolDeclarations } from '../tools';
@@ -57,8 +57,8 @@ export function AssistantProvider({
   const [error, setError] = useState<string | null>(null);
   const [pendingFunctionCall, setPendingFunctionCall] = useState<{ name: string; args: any; id: string } | null>(null);
 
-  // Get the user session
-  const { data: session } = useSession();
+  // Get the user session from Supabase
+  const { user } = useAuth();
 
   // Create the assistant service with tool declarations
   const assistantService = useMemo(() => {
@@ -111,7 +111,7 @@ export function AssistantProvider({
         undefined,
         undefined,
         undefined,
-        session?.user?.name || undefined
+        user?.user_metadata?.full_name || user?.email || undefined
       );
 
       // Send message to the assistant
@@ -185,7 +185,7 @@ export function AssistantProvider({
         contextParams?.currentPage,
         contextParams?.patientId,
         contextParams?.patientName,
-        session?.user?.name || undefined
+        user?.user_metadata?.full_name || user?.email || undefined
       );
 
       // Stream message to the assistant
@@ -321,7 +321,7 @@ export function AssistantProvider({
 
       // Execute the function
       console.log(`Executing ${functionName} with args:`, validatedArgs);
-      const result = await tool.implementation.execute(validatedArgs, session?.user?.id || '');
+      const result = await tool.implementation.execute(validatedArgs, user?.id || '');
       console.log(`Function ${functionName} executed successfully:`, result);
 
       return result;

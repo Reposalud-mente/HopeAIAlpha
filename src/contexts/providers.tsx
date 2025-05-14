@@ -1,45 +1,40 @@
 'use client';
 
-import { ReactNode, useEffect } from 'react';
-import { NavbarProvider } from '@/contexts/NavbarContext';
-import { PatientProvider } from '@/contexts/PatientContext';
-import { AuthProvider as Auth0ClientProvider } from '@/components/auth/AuthProvider';
-import { AuthProvider } from "@/contexts/auth-context";
-import { ExtendedAuthProvider } from "@/contexts/extended-auth-context";
-import { FeatureFlagProvider } from '@/contexts/FeatureFlagContext';
-import { initMonitoring } from '@/lib/monitoring';
-import { DrawerProvider } from '@/contexts/DrawerContext';
-import { SessionProvider } from 'next-auth/react';
+/**
+ * Providers Component
+ *
+ * This component combines all context providers into a single component
+ * for easier use in the application layout.
+ */
 
-export function Providers({ children }: { children: ReactNode }) {
-  // Initialize monitoring on client-side
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Initialize monitoring with user info when available
-      initMonitoring({
-        environment: process.env.NEXT_PUBLIC_APP_ENV || 'development',
-        enabled: process.env.NEXT_PUBLIC_ENABLE_MONITORING === 'true',
-      });
-    }
-  }, []);
+import React from 'react';
+import { ThemeProvider } from './theme-context';
+import { FeatureFlagProvider } from './FeatureFlagContext';
+import { AIAssistantProvider } from './ai-assistant-context';
+import { NavbarProvider } from './NavbarContext';
+import { DrawerProvider } from './DrawerContext';
 
+interface ProvidersProps {
+  children: React.ReactNode;
+}
+
+/**
+ * Providers component that wraps all context providers
+ * @param props The component props
+ * @returns The providers component
+ */
+export function Providers({ children }: ProvidersProps) {
   return (
-    <SessionProvider>
-      <Auth0ClientProvider>
-        <AuthProvider>
-          <ExtendedAuthProvider>
-            <FeatureFlagProvider>
-              <NavbarProvider>
-                <PatientProvider>
-                  <DrawerProvider>
-                    {children}
-                  </DrawerProvider>
-                </PatientProvider>
-              </NavbarProvider>
-            </FeatureFlagProvider>
-          </ExtendedAuthProvider>
-        </AuthProvider>
-      </Auth0ClientProvider>
-    </SessionProvider>
+    <ThemeProvider>
+      <FeatureFlagProvider>
+        <NavbarProvider>
+          <DrawerProvider>
+            <AIAssistantProvider>
+              {children}
+            </AIAssistantProvider>
+          </DrawerProvider>
+        </NavbarProvider>
+      </FeatureFlagProvider>
+    </ThemeProvider>
   );
 }

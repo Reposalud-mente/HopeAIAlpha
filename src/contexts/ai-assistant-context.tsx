@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/useAuth';
 import { Message, getAIAssistantService } from '@/lib/ai-assistant/ai-assistant-service';
 import { getConversationSessionManager } from '@/lib/ai-assistant/conversation-session-manager';
 import { generateUniqueId } from '@/lib/utils/id-generator';
@@ -52,11 +52,11 @@ export function AIAssistantProvider({
   // Get the enhanced AI Assistant service with a maximum response length of 500 characters
   const aiService = getAIAssistantService(500); // Limit responses to 500 characters
 
-  // Get the auth session to monitor for changes
-  const { data: authSession, status: authStatus } = useSession();
+  // Get the auth session to monitor for changes using Supabase
+  const { user, loading: authLoading, error: authError } = useAuth();
 
   // Get the user ID from the session
-  const userId = authSession?.user?.id;
+  const userId = user?.id;
 
   // Get the conversation session manager with the user ID
   const sessionManager = getConversationSessionManager(userId);
@@ -66,7 +66,7 @@ export function AIAssistantProvider({
 
   // Load messages from the active session on mount
   useEffect(() => {
-    if (!sessionLoaded && authStatus === 'authenticated') {
+    if (!sessionLoaded && user) {
       // Get the active session or create a new one if none exists
       let activeSession = sessionManager.getActiveSession();
       if (!activeSession) {
@@ -89,16 +89,16 @@ export function AIAssistantProvider({
       // Mark session as loaded
       setSessionLoaded(true);
     }
-  }, [sessionLoaded, authStatus]);
+  }, [sessionLoaded, user, sessionManager]);
 
   // Clear messages when user logs out
   useEffect(() => {
-    if (authStatus === 'unauthenticated') {
+    if (!user && !authLoading) {
       // Clear messages when user is not authenticated
       setMessages([]);
       setSessionLoaded(false);
     }
-  }, [authStatus]);
+  }, [user, authLoading]);
 
   // Update the session manager when messages change with enhanced persistence
   useEffect(() => {
@@ -178,7 +178,7 @@ export function AIAssistantProvider({
         {
           currentSection: window.location.pathname.split('/')[1] || undefined,
           currentPage: window.location.pathname.split('/')[2] || undefined,
-          userName: authSession?.user?.name || undefined, // Corrected: use authSession
+          userName: user?.user_metadata?.full_name || user?.email || undefined,
           // cacheId has been removed
         }
       );
@@ -230,7 +230,7 @@ export function AIAssistantProvider({
                 // The content here should ideally be the `parts` array from the AI's response that included the functionCall.
                 // Storing it simply as a string for history might be lossy.
                 // For robust history, the exact 'Content' object from the AI's function-calling turn should be preserved.
-                content: `[AI decided to call ${functionCall.name} with args: ${JSON.stringify(functionCall.args)}]` 
+                content: `[AI decided to call ${functionCall.name} with args: ${JSON.stringify(functionCall.args)}]`
               };
 
               const historyForFunctionResponseProcessing = [
@@ -238,23 +238,23 @@ export function AIAssistantProvider({
                 userMessage, // The current user's message that triggered the AI
                 aiFunctionCallInitiationMessage // The AI's "message" that was the function call
               ];
-              
+
               // TODO: Refactor aiService.sendMessage or add a new method (e.g., aiService.sendFunctionResult)
               // to properly send the `toolResult` back to the Gemini API as a FunctionResponsePart.
               // The current aiService.sendMessage(string, ...) is not suitable for this.
               // The call below is a placeholder and will likely NOT work as intended for sending function results.
-              
+
               // For now, we will add the raw tool result to the chat for the user to see,
               // but the AI will remain "stuck" as it doesn't get this result back.
               // This addresses the linter errors but not the core "AI waiting" issue.
-              
+
               const toolResultMessageForUI: Message = {
                 id: generateUniqueId('assistant'),
                 role: 'assistant',
                 content: `Resultado de ${functionCall.name}: ${toolResult.message || JSON.stringify(toolResult)}`
               };
               setMessages(prevMessages => [...prevMessages, toolResultMessageForUI]);
-              
+
               // The AI will still be waiting because this part is missing:
               /*
               const finalAiResponse = await aiService.sendFunctionResult(
@@ -405,7 +405,7 @@ export function AIAssistantProvider({
         {
           currentSection: window.location.pathname.split('/')[1] || undefined,
           currentPage: window.location.pathname.split('/')[2] || undefined,
-          userName: authSession?.user?.name || undefined, // Corrected: use authSession
+          userName: user?.user_metadata?.full_name || user?.email || undefined,
           ...inputContextParams
         },
         (functionCall: any) => {

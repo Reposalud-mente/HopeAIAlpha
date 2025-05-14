@@ -1,74 +1,61 @@
 /**
- * Auth Session Adapter
- *
- * This file provides compatibility between NextAuth and Auth0 sessions.
- * It allows existing code that uses getServerSession from NextAuth to work with Auth0.
+ * Session Adapter for Supabase Authentication
+ * 
+ * This file provides compatibility functions for code that was previously using
+ * NextAuth.js session management. It adapts Supabase authentication to provide
+ * a similar interface.
  */
 
+import { createClient } from '@/utils/supabase/server';
 import { NextRequest } from 'next/server';
-import { auth0 } from '@/app/api/auth/[...auth0]/auth0';
-import { getAuth0Session } from './auth0-wrapper';
-import { formatAuth0User } from './auth0-config';
+import { cookies } from 'next/headers';
 
 /**
- * Type definition for a session compatible with both NextAuth and Auth0
- */
-export interface CompatibleSession {
-  user: {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    image?: string | null;
-    role: string;
-  }
-}
-
-/**
- * Mock authOptions for compatibility with existing code
- * This is used to maintain compatibility with code that imports authOptions
+ * Auth options for compatibility with code that was using NextAuth.js
+ * This is a minimal implementation to provide compatibility
  */
 export const authOptions = {
-  // This is just a placeholder to prevent import errors
-  // The actual implementation uses Auth0
+  // These are placeholder values for compatibility
+  // The actual authentication is handled by Supabase
+  providers: [],
+  session: {
+    strategy: 'jwt',
+  },
+  callbacks: {
+    // Empty callbacks for compatibility
+  },
 };
 
 /**
- * Get a session compatible with both NextAuth and Auth0
- * This function replaces getServerSession from NextAuth
- *
- * @param _authOptions Optional auth options (ignored, for compatibility only)
- * @param req NextRequest object
- * @returns A session object compatible with both NextAuth and Auth0
+ * Get the server session using Supabase authentication
+ * This provides compatibility with code that was using NextAuth.js getServerSession
+ * 
+ * @param options Optional auth options (ignored, for compatibility only)
+ * @param req Optional request object
+ * @returns A session object with user information
  */
-export async function getServerSession(_authOptions?: any, req?: NextRequest): Promise<CompatibleSession | null> {
+export async function getServerSession(options?: any, req?: NextRequest) {
   try {
-    if (!req) {
-      // If no request is provided, we can't get the session
+    const supabase = await createClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
       return null;
     }
-
-    // Get the Auth0 session using the wrapper that properly awaits cookies
-    const auth0Session = await getAuth0Session(req);
-
-    if (!auth0Session?.user) {
-      return null;
-    }
-
-    // Format the Auth0 user to match the NextAuth session format
-    const formattedUser = formatAuth0User(auth0Session.user);
-
-    // Return a session object compatible with NextAuth
+    
+    // Return a session object that matches the structure expected by code
+    // that was previously using NextAuth.js
     return {
       user: {
-        id: formattedUser?.id || auth0Session.user.sub || 'unknown-id',
-        name: formattedUser?.name || auth0Session.user.name,
-        email: formattedUser?.email || auth0Session.user.email,
-        image: formattedUser?.picture || auth0Session.user.picture,
-        role: formattedUser?.role || 'PSYCHOLOGIST', // Default role
-      }
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.full_name || user.email,
+        // Add any other user properties that might be needed
+      },
+      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
     };
   } catch (error) {
-    console.error('Error getting session:', error);
+    console.error('Error getting server session:', error);
     return null;
   }
 }

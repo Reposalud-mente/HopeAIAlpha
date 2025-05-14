@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession, authOptions } from '@/lib/auth/session-adapter'
+import { getAuthenticatedUser } from '@/lib/auth/supabase-auth'
 import { prisma } from '@/lib/prisma'
 import { trackEvent, EventType } from '@/lib/monitoring'
 
 // GET: List all patients with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions)
+    // Get the authenticated user using Supabase
+    const user = await getAuthenticatedUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       )
     }
+
+    // Store user ID for later use
+    const currentUserId = user.id;
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
@@ -23,16 +26,18 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10')
     const offset = parseInt(searchParams.get('offset') || '0')
     const search = searchParams.get('search') || ''
-    const isActive = searchParams.get('isActive') !== 'false' // Default to active patients
+    const showInactive = searchParams.get('isActive') === 'false' // Check if we should include inactive patients
 
     // Build the query
     const query: any = {
-      isActive
+      // Use the status field instead of isActive
+      // By default, only show ACTIVE patients unless explicitly requested to show inactive
+      status: showInactive ? undefined : 'ACTIVE'
     }
 
     // Filter by userId if provided
     if (userId) {
-      query.createdById = userId;
+      query.primaryProviderId = userId; // Use primaryProviderId instead of createdById
     }
 
     // Add search filter if provided
@@ -55,7 +60,7 @@ export async function GET(request: NextRequest) {
       take: fetchAll ? undefined : limit,
       skip: fetchAll ? undefined : offset,
       include: {
-        createdBy: {
+        primaryProvider: {
           select: {
             id: true,
             firstName: true,
@@ -81,7 +86,7 @@ export async function GET(request: NextRequest) {
       type: EventType.USER_ACTION,
       name: 'patients_list_viewed',
       data: {
-        userId: session.user.id,
+        userId: currentUserId,
         count: patients.length,
         total,
       },
@@ -121,11 +126,11 @@ export async function GET(request: NextRequest) {
 // POST: Create a new patient
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions)
+    // Get the authenticated user using Supabase
+    const user = await getAuthenticatedUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -172,7 +177,7 @@ export async function POST(request: NextRequest) {
         insuranceProvider: body.insuranceProvider,
         insuranceNumber: body.insuranceNumber,
         educationLevel: body.educationLevel,
-        createdById: session.user.id,
+        primaryProviderId: user.id, // Use primaryProviderId instead of createdById
       },
     })
 
@@ -181,7 +186,7 @@ export async function POST(request: NextRequest) {
       type: EventType.USER_ACTION,
       name: 'patient_created',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         patientId: patient.id,
       },
     })

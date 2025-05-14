@@ -11,8 +11,9 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/contexts/auth-context';
+import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,7 +29,6 @@ import {
   RefreshCw,
   FileText
 } from 'lucide-react';
-import { DemoModeBanner } from '@/components/demo/demo-mode-banner';
 
 import AppLayout from '@/components/layout/app-layout';
 import { useDashboardStore } from '@/store/dashboard';
@@ -42,6 +42,7 @@ import { GuidedTour } from '@/components/dashboard/guided-tour';
 import { HelpSection } from '@/components/dashboard/help-section';
 import { EnhancedAISection } from '@/components/dashboard/enhanced-ai-section';
 import { ConditionalEnhancedAssistant } from '@/lib/testing-floating';
+import DemoModeBanner from '@/components/dashboard/DemoModeBanner';
 
 // Lazy load non-critical components
 const ClinicalDashboard = lazy(() => import('@/components/clinical/dashboard/clinical-dashboard'));
@@ -118,16 +119,18 @@ export default function DashboardPage() {
     // Use the user's actual ID instead of a hardcoded one
     if (user?.id) {
       setUserId(user.id);
+
+      // Fetch initial data only after setting the user ID
+      fetchDashboardSummary();
+      fetchPatients();
+      fetchAppointments();
+      fetchMessages();
+
+      // Connect socket for real-time updates
+      connectSocket();
+    } else {
+      console.warn('No user ID available for dashboard initialization');
     }
-
-    // Fetch initial data
-    fetchDashboardSummary();
-    fetchPatients();
-    fetchAppointments();
-    fetchMessages();
-
-    // Connect socket for real-time updates
-    connectSocket();
 
     // Cleanup on unmount
     return () => {
@@ -146,9 +149,17 @@ export default function DashboardPage() {
 
   // Manual refresh function
   const handleRefresh = async () => {
+    if (!user?.id) {
+      console.warn('Cannot refresh: No user ID available');
+      return;
+    }
+
     setIsRefreshing(true);
 
     try {
+      // Ensure user ID is set before refreshing data
+      setUserId(user.id);
+
       await Promise.all([
         fetchDashboardSummary(),
         fetchPatients(),
@@ -202,6 +213,19 @@ export default function DashboardPage() {
       href: "/messages"
     },
   ];
+
+  // Debug information
+  useEffect(() => {
+    console.log('Dashboard state:', {
+      user: user?.id ? `Authenticated (${user.id})` : 'Not authenticated',
+      dashboardSummary: dashboardSummary ? 'Loaded' : 'Not loaded',
+      metrics: {
+        activePatients: dashboardSummary?.activePatients,
+        sessionsToday: dashboardSummary?.sessionsToday,
+        unreadMessages: dashboardSummary?.unreadMessages
+      }
+    });
+  }, [user, dashboardSummary]);
 
   return (
     <AppLayout>
@@ -281,20 +305,51 @@ export default function DashboardPage() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-3xl font-bold">{metric.value}</div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2 p-0 h-auto text-sm text-blue-600 hover:text-blue-800"
-                          onClick={() => router.push(metric.href)}
-                        >
-                          Ver detalles
-                          <ArrowRight size={14} className="ml-1" />
-                        </Button>
+                        {user ? (
+                          <>
+                            <div className="text-3xl font-bold">{metric.value}</div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-2 p-0 h-auto text-sm text-blue-600 hover:text-blue-800"
+                              onClick={() => router.push(metric.href)}
+                            >
+                              Ver detalles
+                              <ArrowRight size={14} className="ml-1" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Skeleton className="h-8 w-16 mb-2" />
+                            <Skeleton className="h-4 w-24" />
+                          </>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
                 ))}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <>
+                      <span className="mr-2">Actualizando...</span>
+                      <span className="animate-spin">
+                        <Clock size={14} />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="mr-2">Actualizar</span>
+                      <ArrowRight size={14} />
+                    </>
+                  )}
+                </Button>
               </div>
             </CustomizableSection>
 

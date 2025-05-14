@@ -10,11 +10,11 @@ import {
 } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useAuth } from '@/contexts/auth-context';
-import { 
-  AppointmentNotification, 
-  getNotifications, 
-  markNotificationAsRead, 
+import { useAuth } from '@/hooks/useAuth';
+import {
+  AppointmentNotification,
+  getNotifications,
+  markNotificationAsRead,
   markAllNotificationsAsRead,
   checkUpcomingAppointments
 } from '@/lib/notification-service';
@@ -30,19 +30,19 @@ export function NotificationCenter() {
   // Get notifications on mount and when user changes
   useEffect(() => {
     if (!user?.id) return;
-    
+
     // Initial load
     setNotifications(getNotifications());
-    
+
     // Check for upcoming appointments
     checkUpcomingAppointments(user.id);
-    
+
     // Set up interval to check for upcoming appointments (every 15 minutes)
     const intervalId = setInterval(() => {
       checkUpcomingAppointments(user.id);
       setNotifications(getNotifications());
     }, 15 * 60 * 1000);
-    
+
     return () => clearInterval(intervalId);
   }, [user?.id]);
 
@@ -84,9 +84,9 @@ export function NotificationCenter() {
         <div className="flex items-center justify-between pb-2">
           <h4 className="font-medium">Notificaciones</h4>
           {notifications.length > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               className="text-xs text-muted-foreground"
               onClick={handleMarkAllAsRead}
             >
@@ -112,8 +112,8 @@ export function NotificationCenter() {
                 >
                   <div className="flex justify-between items-start mb-1">
                     <span className="font-medium text-sm">{notification.title}</span>
-                    <Badge 
-                      variant="outline" 
+                    <Badge
+                      variant="outline"
                       className={`text-[10px] ${
                         notification.type === 'upcoming' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                         notification.type === 'reminder' ? 'bg-green-50 text-green-700 border-green-200' :
@@ -128,7 +128,7 @@ export function NotificationCenter() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-1">{notification.message}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {formatDistanceToNow(new Date(notification.timestamp), { 
+                    {formatDistanceToNow(new Date(notification.timestamp), {
                       addSuffix: true,
                       locale: es
                     })}

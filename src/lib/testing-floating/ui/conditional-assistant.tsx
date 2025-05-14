@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { usePathname } from 'next/navigation'
 import { AssistantProvider } from '../state/assistant-context'
 import { FloatingAssistant } from './floating-assistant'
@@ -20,7 +20,7 @@ export function ConditionalEnhancedAssistant({
   patientName,
   initialQuestion
 }: ConditionalEnhancedAssistantProps) {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
@@ -30,8 +30,8 @@ export function ConditionalEnhancedAssistant({
 
     // Log authentication status for debugging
     console.log('Authentication status:', {
-      status,
-      userId: session?.user?.id,
+      authenticated: !!user,
+      userId: user?.id,
       pathname
     });
 
@@ -45,7 +45,7 @@ export function ConditionalEnhancedAssistant({
         console.warn('Please set the NEXT_PUBLIC_GEMINI_API_KEY environment variable or use the API Key button.');
       }
     }
-  }, [status, session, pathname])
+  }, [user, pathname])
 
   // Extract current section and page from pathname
   const pathParts = pathname.split('/').filter(Boolean)
@@ -53,12 +53,12 @@ export function ConditionalEnhancedAssistant({
   const currentPage = pathParts[1] || ''
 
   // Check if the current path is a public route (login, register, landing page)
-  const isPublicRoute = ['/', '/login', '/register'].includes(pathname)
+  const isPublicRoute = ['/', '/login', '/register', '/auth/login', '/auth/signup'].includes(pathname)
 
   // Determine if we should show the assistant
   const showAssistant = mounted &&
-                        status === 'authenticated' &&
-                        session?.user?.id &&
+                        !loading &&
+                        user?.id &&
                         !isPublicRoute
 
   // Don't render anything during initial loading, if not authenticated,

@@ -50,6 +50,14 @@ export class ConversationSessionManager {
    */
   private loadSessions(): void {
     try {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        // Server-side rendering, initialize with empty sessions
+        this.sessions = [];
+        this.activeSessionId = null;
+        return;
+      }
+
       // Get the storage key for the current user
       const storageKey = getStorageKey(this.userId);
 
@@ -93,6 +101,13 @@ export class ConversationSessionManager {
    */
   private saveSessions(): void {
     try {
+      // Check if we're in a browser environment
+      if (typeof window === 'undefined') {
+        // Server-side rendering, can't save to localStorage
+        console.warn('Cannot save sessions in server-side context');
+        return;
+      }
+
       // Get the storage key for the current user
       const storageKey = getStorageKey(this.userId);
 

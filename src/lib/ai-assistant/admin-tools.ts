@@ -5,9 +5,7 @@
  */
 
 import { FunctionDeclaration, Type } from '@google/genai';
-import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth/session-adapter';
-import { authOptions } from '@/lib/auth/session-adapter';
+import { prismaAlpha } from '@/lib/prisma-alpha';
 import { z } from 'zod'; // Import zod for runtime validation
 import { logger } from '@/lib/logger'; // Import logger for better error tracking
 
@@ -213,7 +211,7 @@ export async function scheduleSession(args: {
     const dateTime = new Date(`${validatedArgs.date}T${validatedArgs.time}:00`);
 
     // Verify patient exists and belongs to this therapist
-    const patient = await prisma.patient.findFirst({
+    const patient = await prismaAlphaAlpha.patient.findFirst({
       where: {
         id: validatedArgs.patientId,
         createdById: userId,
@@ -230,7 +228,7 @@ export async function scheduleSession(args: {
     }
 
     // Check for scheduling conflicts
-    const conflictingAppointment = await prisma.appointment.findFirst({
+    const conflictingAppointment = await prismaAlpha.appointment.findFirst({
       where: {
         userId: userId,
         date: {
@@ -259,7 +257,7 @@ export async function scheduleSession(args: {
     }
 
     // Create the session in the database
-    const session = await prisma.appointment.create({
+    const session = await prismaAlpha.appointment.create({
       data: {
         patientId: validatedArgs.patientId,
         userId: userId,
@@ -349,7 +347,7 @@ export async function createReminder(args: {
     let reminder;
     try {
       // Try to create the reminder using the actual schema
-      reminder = await prisma.reminder.create({
+      reminder = await prismaAlpha.reminder.create({
         data: {
           userId,
           title: validatedArgs.title,
@@ -436,7 +434,7 @@ export async function searchPatients(args: {
     const validatedArgs = searchPatientsSchema.parse(args);
 
     // Search for patients in the database
-    const patients = await prisma.patient.findMany({
+    const patients = await prismaAlpha.patient.findMany({
       where: {
         createdById: userId,
         OR: [
@@ -545,7 +543,7 @@ export async function generateReport(args: {
     const validatedArgs = generateReportSchema.parse(args);
 
     // Verify patient exists and belongs to this therapist
-    const patient = await prisma.patient.findFirst({
+    const patient = await prismaAlpha.patient.findFirst({
       where: {
         id: validatedArgs.patientId,
         createdById: userId,
@@ -572,7 +570,7 @@ export async function generateReport(args: {
     const reportId = `report-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
     // Get an assessment for this patient
-    const assessment = await prisma.assessment.findFirst({
+    const assessment = await prismaAlpha.assessment.findFirst({
       where: {
         patientId: validatedArgs.patientId,
         clinicianId: userId,
@@ -596,7 +594,7 @@ export async function generateReport(args: {
     }
 
     // Create a report record in the database
-    await prisma.report.create({
+    await prismaAlpha.report.create({
       data: {
         id: reportId,
         assessmentId: assessment.id,

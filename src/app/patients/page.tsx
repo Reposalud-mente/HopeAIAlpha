@@ -27,7 +27,7 @@ function PatientSessionSummary({ patientId }: { patientId: string }) {
   return <div className="text-xs text-blue-600">Sesiones: {count} (última: {latest})</div>;
 }
 
-import { usePatient, PatientListItem } from '@/contexts/PatientContext';
+import { usePatient, PatientListItem, PatientProvider } from '@/contexts/PatientContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -56,7 +56,8 @@ import {
   Trash2,
   Download,
   UserCheck,
-  UserX
+  UserX,
+  Loader2
 } from 'lucide-react';
 import { DemoModeBanner } from '@/components/demo/demo-mode-banner';
 import { DemoBadge, isDemo } from '@/components/demo/demo-badge';
@@ -67,7 +68,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatPatientName, calculateAge } from '@/lib/patient-utils';
 
-export default function PatientListPage() {
+function PatientListPage() {
   const router = useRouter();
   const { searchPatients, createPatient, bulkDeletePatients, bulkUpdatePatients, isLoading, error } = usePatient();
 
@@ -740,6 +741,13 @@ export default function PatientListPage() {
       </div>
     </AppLayout>
   );
+}
 
-
+// Wrap the PatientListPage with PatientProvider
+export default function PatientsPage() {
+  return (
+    <PatientProvider>
+      <PatientListPage />
+    </PatientProvider>
+  );
 }

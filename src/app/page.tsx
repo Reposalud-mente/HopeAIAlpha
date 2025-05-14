@@ -49,7 +49,7 @@ export default function LandingPage() {
                   Acceso Profesional
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 mb-[8%] font-montserrat-regular">Accede a tu cuenta para gestionar pacientes y generar informes clínicos</p>
-                <Link href="/login" className="block w-full mt-auto">
+                <Link href="/auth/login" className="block w-full mt-auto">
                   <Button
                     size="lg"
                     className="bg-primary text-white font-montserrat-medium w-full py-[3%] text-sm sm:text-base rounded-lg transition-all duration-300 flex items-center justify-center tracking-wide"
@@ -70,7 +70,7 @@ export default function LandingPage() {
                   Nuevo Profesional
                 </h3>
                 <p className="text-sm sm:text-base text-gray-600 mb-[8%] font-montserrat-regular">Regístrate para acceder a todas las herramientas clínicas de HopeAI</p>
-                <Link href="/register" className="block w-full mt-auto">
+                <Link href="/auth/signup" className="block w-full mt-auto">
                   <Button
                     variant="outline"
                     size="lg"

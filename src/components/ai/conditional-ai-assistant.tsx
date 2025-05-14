@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useSession } from 'next-auth/react'
+import { useAuth } from '@/hooks/useAuth'
 import { usePathname } from 'next/navigation'
 import { FloatingAIAssistantWithProvider } from './ai-assistance-card'
 
@@ -11,7 +11,7 @@ import { FloatingAIAssistantWithProvider } from './ai-assistance-card'
  * and other unauthenticated routes.
  */
 export function ConditionalAIAssistant() {
-  const { data: session, status } = useSession()
+  const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
   const pathname = usePathname()
 
@@ -21,12 +21,12 @@ export function ConditionalAIAssistant() {
   }, [])
 
   // Check if the current path is a public route (login, register, landing page)
-  const isPublicRoute = ['/', '/login', '/register'].includes(pathname)
+  const isPublicRoute = ['/', '/login', '/register', '/auth/login', '/auth/signup'].includes(pathname)
 
   // Determine if we should show the assistant
   const showAssistant = mounted &&
-                        status === 'authenticated' &&
-                        session?.user?.id &&
+                        !loading &&
+                        user?.id &&
                         !isPublicRoute
 
   // Don't render anything during initial loading, if not authenticated,

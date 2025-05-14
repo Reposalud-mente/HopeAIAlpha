@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
-// Determine the current environment
-const appEnv = process.env.NEXT_PUBLIC_APP_ENV || 'development';
+// Standardize on the Alpha environment
+const appEnv = 'alpha';
 
-// Base configuration shared across all environments
+// Base configuration for the Alpha environment
 const baseConfig: NextConfig = {
   distDir: 'build',  // Specify the build output directory
   reactStrictMode: true,
@@ -57,31 +57,23 @@ const baseConfig: NextConfig = {
   },
 };
 
-// Environment-specific configurations
-const envConfig: Record<string, NextConfig> = {
-  development: {
-    // Development-specific settings
-  },
-  alpha: {
-    // Alpha testing environment settings
-    env: {
-      FEATURE_FLAGS_ENABLED: 'true',
-      MONITORING_ENABLED: 'true',
-      FEEDBACK_WIDGET_ENABLED: 'true',
-    },
-  },
-  production: {
-    // Production-specific settings
+// Alpha environment configuration
+const alphaConfig: NextConfig = {
+  // Alpha testing environment settings
+  env: {
+    FEATURE_FLAGS_ENABLED: 'true',
+    MONITORING_ENABLED: 'true',
+    FEEDBACK_WIDGET_ENABLED: 'true',
   },
 };
 
-// Merge the base config with environment-specific config
+// Merge the base config with Alpha environment config
 const nextConfig: NextConfig = {
   ...baseConfig,
-  ...(envConfig[appEnv] || {}),
+  ...alphaConfig,
   env: {
     ...baseConfig.env,
-    ...(envConfig[appEnv]?.env || {}),
+    ...alphaConfig.env,
   },
 };
 

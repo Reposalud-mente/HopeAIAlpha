@@ -36,6 +36,7 @@ interface DashboardSummary {
   totalAppointments: number;
   sessionsToday?: number;
   totalMessages: number;
+  unreadMessages?: number;
   nextAppointment?: Appointment;
 }
 
@@ -181,58 +182,120 @@ export const useDashboardStore = create<DashboardStore>()(
 
       fetchDashboardSummary: async () => {
         const { userId } = get();
+        if (!userId) {
+          console.warn('No user ID available for fetching dashboard summary');
+          return;
+        }
+
         try {
-          const res = await fetch(`/api/dashboard/summary?userId=${userId}`, {
-            credentials: 'same-origin',
+          console.log('Fetching dashboard summary for user:', userId);
+
+          const res = await fetch(`/api/dashboard/summary`, {
+            credentials: 'include',
             cache: 'no-store', // Ensure fresh data
+            headers: {
+              'Content-Type': 'application/json',
+            },
           });
-          if (!res.ok) throw new Error('Failed to fetch dashboard summary');
+
+          if (!res.ok) {
+            // Don't throw, just log and continue
+            if (res.status !== 401) { // Don't log auth errors
+              console.warn(`Failed to fetch dashboard summary: ${res.status}`);
+            }
+            return;
+          }
+
           const data = await res.json();
+          console.log('Dashboard summary data received:', data);
           set({ dashboardSummary: data });
         } catch (error) {
-          console.error('Error fetching dashboard summary:', error);
+          console.warn('Error fetching dashboard summary:', error);
+          // Don't update state on error
         }
       },
 
       fetchPatients: async () => {
         const { userId } = get();
+        if (!userId) {
+          console.warn('No user ID available for fetching patients');
+          return;
+        }
+
         try {
           const res = await fetch(`/api/patients?userId=${userId}`, {
             credentials: 'same-origin'
           });
-          if (!res.ok) throw new Error('Failed to fetch patients');
+
+          if (!res.ok) {
+            // Don't throw, just log and continue
+            if (res.status !== 401) { // Don't log auth errors
+              console.warn(`Failed to fetch patients: ${res.status}`);
+            }
+            return;
+          }
+
           const data = await res.json();
-          set({ patients: Array.isArray(data) ? data : data.patients || [] });
+          set({ patients: Array.isArray(data) ? data : (data.items || data.patients || []) });
         } catch (error) {
-          console.error('Error fetching patients:', error);
+          console.warn('Error fetching patients:', error);
+          // Don't update state on error
         }
       },
 
       fetchAppointments: async () => {
         const { userId } = get();
+        if (!userId) {
+          console.warn('No user ID available for fetching appointments');
+          return;
+        }
+
         try {
           const res = await fetch(`/api/appointments?userId=${userId}`, {
             credentials: 'same-origin'
           });
-          if (!res.ok) throw new Error('Failed to fetch appointments');
+
+          if (!res.ok) {
+            // Don't throw, just log and continue
+            if (res.status !== 401) { // Don't log auth errors
+              console.warn(`Failed to fetch appointments: ${res.status}`);
+            }
+            return;
+          }
+
           const data = await res.json();
-          set({ appointments: data });
+          set({ appointments: Array.isArray(data) ? data : (data.items || []) });
         } catch (error) {
-          console.error('Error fetching appointments:', error);
+          console.warn('Error fetching appointments:', error);
+          // Don't update state on error
         }
       },
 
       fetchMessages: async () => {
         const { userId } = get();
+        if (!userId) {
+          console.warn('No user ID available for fetching messages');
+          return;
+        }
+
         try {
           const res = await fetch(`/api/messages?userId=${userId}`, {
             credentials: 'same-origin'
           });
-          if (!res.ok) throw new Error('Failed to fetch messages');
+
+          if (!res.ok) {
+            // Don't throw, just log and continue
+            if (res.status !== 401) { // Don't log auth errors
+              console.warn(`Failed to fetch messages: ${res.status}`);
+            }
+            return;
+          }
+
           const data = await res.json();
-          set({ messages: data });
+          set({ messages: Array.isArray(data) ? data : (data.items || []) });
         } catch (error) {
-          console.error('Error fetching messages:', error);
+          console.warn('Error fetching messages:', error);
+          // Don't update state on error
         }
       },
 
@@ -241,45 +304,61 @@ export const useDashboardStore = create<DashboardStore>()(
         // Only connect if not already connected
         if (get().socket) return;
 
-        const socket = io({
-          path: '/api/socket',
-        });
+        // Check if userId is available
+        const { userId } = get();
+        if (!userId) {
+          console.warn('Cannot connect socket: No user ID available');
+          return;
+        }
 
-        socket.on('connect', () => {
-          set({ isConnected: true });
-          console.log('Socket connected');
+        try {
+          const socket = io({
+            path: '/api/socket',
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000,
+            timeout: 10000,
+          });
 
-          // Subscribe to updates for the current user
-          const { userId } = get();
-          if (userId) {
+          socket.on('connect', () => {
+            set({ isConnected: true });
+            console.log('Socket connected');
+
+            // Subscribe to updates for the current user
             socket.emit('subscribe', { userId });
-          }
-        });
+          });
 
-        socket.on('disconnect', () => {
-          set({ isConnected: false });
-          console.log('Socket disconnected');
-        });
+          socket.on('connect_error', (error) => {
+            console.warn('Socket connection error:', error);
+            // Don't set isConnected to false here, let the disconnect event handle it
+          });
 
-        // Listen for data updates
-        socket.on('dashboard:update', () => {
-          // Refresh all data when dashboard update is received
-          get().fetchDashboardSummary();
-        });
+          socket.on('disconnect', () => {
+            set({ isConnected: false });
+            console.log('Socket disconnected');
+          });
 
-        socket.on('appointments:update', () => {
-          get().fetchAppointments();
-        });
+          // Listen for data updates
+          socket.on('dashboard:update', () => {
+            // Refresh all data when dashboard update is received
+            get().fetchDashboardSummary();
+          });
 
-        socket.on('patients:update', () => {
-          get().fetchPatients();
-        });
+          socket.on('appointments:update', () => {
+            get().fetchAppointments();
+          });
 
-        socket.on('messages:update', () => {
-          get().fetchMessages();
-        });
+          socket.on('patients:update', () => {
+            get().fetchPatients();
+          });
 
-        set({ socket });
+          socket.on('messages:update', () => {
+            get().fetchMessages();
+          });
+
+          set({ socket });
+        } catch (error) {
+          console.warn('Error initializing socket connection:', error);
+        }
       },
 
       disconnectSocket: () => {

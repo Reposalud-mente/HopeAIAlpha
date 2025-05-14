@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import db from '@/lib/db';
 
 // GET /api/appointments/:id
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const id = params.id;
-    
+
     const appointment = await prisma.appointment.findUnique({
       where: { id },
       include: {
@@ -112,7 +112,7 @@ export async function PUT(
             colorCode: appointmentData.colorCode,
           }
         });
-      } 
+      }
       // If this is a child appointment, update it and detach from parent
       else {
         await prisma.appointment.update({

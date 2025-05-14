@@ -21,10 +21,10 @@ export interface Patient {
   educationLevel?: string;
   createdAt: Date;
   updatedAt: Date;
-  createdById: string;
-  isActive: boolean;
+  primaryProviderId: string;
+  status: string; // PatientStatus enum value
   // Relations
-  createdBy?: {
+  primaryProvider?: {
     id: string;
     firstName: string;
     lastName: string;
@@ -40,7 +40,7 @@ export interface PatientListItem {
   dateOfBirth: Date;
   contactEmail: string;
   contactPhone?: string;
-  isActive: boolean;
+  status: string; // PatientStatus enum value
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,7 +111,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
             dateOfBirth: new Date(patient.dateOfBirth),
             contactEmail: patient.contactEmail,
             contactPhone: patient.contactPhone,
-            isActive: patient.isActive,
+            status: patient.status,
             createdAt: new Date(patient.createdAt),
             updatedAt: new Date(patient.updatedAt)
           })));
@@ -175,7 +175,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
           dateOfBirth: new Date(patient.dateOfBirth),
           contactEmail: patient.contactEmail,
           contactPhone: patient.contactPhone,
-          isActive: patient.isActive,
+          status: patient.status,
           createdAt: new Date(patient.createdAt),
           updatedAt: new Date(patient.updatedAt)
         }));
@@ -232,7 +232,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
           dateOfBirth: patient.dateOfBirth,
           contactEmail: patient.contactEmail,
           contactPhone: patient.contactPhone,
-          isActive: patient.isActive,
+          status: patient.status,
           createdAt: patient.createdAt,
           updatedAt: patient.updatedAt
         });
@@ -342,7 +342,7 @@ export function PatientProvider({ children }: { children: ReactNode }) {
               dateOfBirth: patient.dateOfBirth,
               contactEmail: patient.contactEmail,
               contactPhone: patient.contactPhone,
-              isActive: patient.isActive,
+              status: patient.status,
               createdAt: patient.createdAt,
               updatedAt: patient.updatedAt
             };

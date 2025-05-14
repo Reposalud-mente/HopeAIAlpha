@@ -1,23 +1,14 @@
-import { PrismaClient } from '@prisma/client'
+/**
+ * Prisma Client Export
+ * 
+ * This file provides a simple re-export of the database client from db.ts
+ * to maintain compatibility with existing code that imports from @/lib/prisma
+ */
 
-// Prevent multiple instances during development with hot reloading
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
+import db from './db';
 
-// Force a new instance of PrismaClient to ensure proper connection
-const prismaClientOptions = {
-  log: ['query', 'info', 'warn', 'error'],
-}
+// Export the database client as 'prisma' for compatibility
+export const prisma = db;
 
-// Clear any existing instance and create a new one
-if (globalForPrisma.prisma) {
-  // @ts-ignore - Access private property to disconnect
-  if (globalForPrisma.prisma._engine) {
-    globalForPrisma.prisma.$disconnect();
-  }
-  globalForPrisma.prisma = undefined;
-}
-
-export const prisma = new PrismaClient(prismaClientOptions)
-globalForPrisma.prisma = prisma
+// Also export as default
+export default db;

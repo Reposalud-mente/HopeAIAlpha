@@ -1,70 +1,62 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prismaAlpha from '@/lib/prisma-alpha'; // Use the Alpha Prisma client
-import { safelyGetUUID } from '@/lib/auth/user-utils';
+import { getUserUUID, withAuth } from '@/lib/auth/supabase-auth';
 
-// GET /api/appointments?userId=...&start=...&end=...&view=...
+// GET /api/appointments?start=...&end=...&view=...&patientId=...
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const auth0UserId = searchParams.get('userId');
-  const startDate = searchParams.get('start');
-  const endDate = searchParams.get('end');
-  const view = searchParams.get('view') || 'month'; // day, week, month
-  const patientId = searchParams.get('patientId');
+  return withAuth(req, async (user) => {
+    const { searchParams } = new URL(req.url);
+    const startDate = searchParams.get('start');
+    const endDate = searchParams.get('end');
+    const view = searchParams.get('view') || 'month'; // day, week, month
+    const patientId = searchParams.get('patientId');
 
-  if (!auth0UserId) {
-    return NextResponse.json({ error: 'Missing userId param' }, { status: 400 });
-  }
+    try {
+      // Get the user's UUID directly from the Supabase user object
+      const userId = getUserUUID(user.id);
 
-  try {
-    // Convert Auth0 user ID to database UUID
-    const userId = await safelyGetUUID(auth0UserId);
+      // Build the query for the Alpha schema
+      // In the Alpha schema, the field is clinicianId instead of userId
+      const query: any = { clinicianId: userId };
 
-    // If we couldn't get a valid UUID, return an error
-    if (!userId) {
-      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 });
-    }
+      // Add date range filter if provided
+      if (startDate && endDate) {
+        query.date = {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        };
+      }
 
-    // Build the query for the Alpha schema
-    // In the Alpha schema, the field is clinicianId instead of userId
-    const query: any = { clinicianId: userId };
+      // Add patient filter if provided
+      if (patientId) {
+        query.patientId = patientId;
+      }
 
-    // Add date range filter if provided
-    if (startDate && endDate) {
-      query.date = {
-        gte: new Date(startDate),
-        lte: new Date(endDate),
-      };
-    }
-
-    // Add patient filter if provided
-    if (patientId) {
-      query.patientId = patientId;
-    }
-
-    // Fetch appointments with patient details using the Alpha schema
-    const appointments = await prismaAlpha.appointment.findMany({
-      where: query,
-      orderBy: { date: 'asc' },
-      include: {
-        patient: {
-          select: {
-            firstName: true,
-            lastName: true,
-            contactPhone: true,
-            contactEmail: true,
+      // Fetch appointments with patient details using the Alpha schema
+      const appointments = await prismaAlpha.appointment.findMany({
+        where: query,
+        orderBy: { date: 'asc' },
+        include: {
+          patient: {
+            select: {
+              firstName: true,
+              lastName: true,
+              contactPhone: true,
+              contactEmail: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return NextResponse.json(appointments);
-  } catch (error) {
-    console.error('Error fetching appointments:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch appointments' },
-      { status: 500 }
-    );
-  }
+      return NextResponse.json(appointments);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      return NextResponse.json(
+        { error: 'Failed to fetch appointments' },
+        { status: 500 }
+      );
+    }
+  });
 }
 
 // POST /api/appointments

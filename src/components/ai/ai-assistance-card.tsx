@@ -11,11 +11,13 @@ import styles from "./FloatingAIAssistant.module.css";
 import { AIAssistantProvider, useAIAssistant } from "@/contexts/ai-assistant-context";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { Message } from "@/lib/ai-assistant/ai-assistant-service";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/hooks/useAuth";
 // Import the client-side context gatherer for platform context
 import { getClientAIContext } from "@/lib/ai-assistant/client-context-gatherer";
 // Import the tool calling visualizer component
 import { ToolCallingVisualizer } from "./tool-calling-visualizer";
+// Import the client storage provider
+import { ClientStorageProvider } from "@/components/ai-assistant/ClientStorageProvider";
 
 interface FloatingAIAssistantProps {
   patientName?: string;
@@ -81,17 +83,17 @@ export function FloatingAIAssistant({
   });
 
   // Get the user session to access user information
-  const { data: session } = useSession();
+  const { user: session } = useAuth();
 
   // Get platform context when the component mounts or context changes
   useEffect(() => {
     const fetchContext = async () => {
       try {
-        // Get the user's full name from the session
-        const fullName = session?.user?.name || '';
+        // Get the user's full name or email from the session
+        const fullName = session?.user_metadata?.full_name || session?.email || '';
 
         // Extract the first name (everything before the first space)
-        const firstName = fullName.split(' ')[0];
+        const firstName = fullName.split(' ')[0] || fullName;
 
         // Get context using the client-side context gatherer
         const context = getClientAIContext(
@@ -157,11 +159,11 @@ export function FloatingAIAssistant({
   // Add initial greeting when the assistant is first opened
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      // Get the user's full name from the session
-      const fullName = session?.user?.name || '';
+      // Get the user's full name or email from the session
+      const fullName = session?.user_metadata?.full_name || session?.email || '';
 
       // Extract the first name (everything before the first space)
-      const firstName = fullName.split(' ')[0];
+      const firstName = fullName.split(' ')[0] || fullName;
 
       // Create a personalized greeting if we have the user's name
       let greeting = initialQuestion;
@@ -200,11 +202,11 @@ export function FloatingAIAssistant({
     }
 
     try {
-      // Get the user's full name from the session
-      const fullName = session?.user?.name || '';
+      // Get the user's full name or email from the session
+      const fullName = session?.user_metadata?.full_name || session?.email || '';
 
       // Extract the first name (everything before the first space)
-      const firstName = fullName.split(' ')[0];
+      const firstName = fullName.split(' ')[0] || fullName;
 
       // Create context parameters
       const contextParams = {
@@ -250,11 +252,11 @@ export function FloatingAIAssistant({
     clearMessages();
     // Add an initial greeting from the assistant directly (not as a user message)
     setTimeout(() => {
-      // Get the user's full name from the session
-      const fullName = session?.user?.name || '';
+      // Get the user's full name or email from the session
+      const fullName = session?.user_metadata?.full_name || session?.email || '';
 
       // Extract the first name (everything before the first space)
-      const firstName = fullName.split(' ')[0];
+      const firstName = fullName.split(' ')[0] || fullName;
 
       // Create a personalized greeting if we have the user's name
       let greeting = initialQuestion;
@@ -574,17 +576,22 @@ export function FloatingAIAssistant({
  * Only renders when a user is authenticated
  */
 export function FloatingAIAssistantWithProvider(props: FloatingAIAssistantProps) {
-  const { data: session, status } = useSession();
+  const { user, loading } = useAuth();
 
   // Don't render if not authenticated
-  if (status !== 'authenticated' || !session?.user?.id) {
+  if (loading || !user) {
     return null;
   }
 
+  // Use email as a unique identifier if id is not available
+  const userId = user.id || user.email || 'anonymous';
+
   return (
-    <AIAssistantProvider>
-      <FloatingAIAssistant {...props} />
-    </AIAssistantProvider>
+    <ClientStorageProvider userId={userId}>
+      <AIAssistantProvider>
+        <FloatingAIAssistant {...props} />
+      </AIAssistantProvider>
+    </ClientStorageProvider>
   );
 }
 
@@ -599,10 +606,10 @@ export function AIAssistanceCard({
   currentPage
 }: AIAssistanceCardProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { data: session, status } = useSession();
+  const { user: session, loading } = useAuth();
 
   // Don't render if not authenticated
-  if (status !== 'authenticated' || !session?.user?.id) {
+  if (loading || !session) {
     return null;
   }
 
@@ -637,14 +644,16 @@ export function AIAssistanceCard({
         </CardContent>
       </Card>
       {isOpen && (
-        <AIAssistantProvider>
-          <FloatingAIAssistant
-            patientName={patientName}
-            initialQuestion={question}
-            currentSection={currentSection}
-            currentPage={currentPage}
-          />
-        </AIAssistantProvider>
+        <ClientStorageProvider userId={session.email || 'anonymous'}>
+          <AIAssistantProvider>
+            <FloatingAIAssistant
+              patientName={patientName}
+              initialQuestion={question}
+              currentSection={currentSection}
+              currentPage={currentPage}
+            />
+          </AIAssistantProvider>
+        </ClientStorageProvider>
       )}
     </div>
   );

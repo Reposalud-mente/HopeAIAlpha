@@ -16,7 +16,7 @@ import { useAssistant } from '../state/assistant-context';
 import { useVoiceInput, useFloatingAssistant } from '../state/hooks';
 import { ToolVisualizer } from './tool-visualizer';
 import { getClientContext } from '../context/context-gatherer';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/hooks/useAuth';
 import styles from './styles.module.css';
 
 interface FloatingAssistantProps {
@@ -47,8 +47,8 @@ export function FloatingAssistant({
   // Voice input
   const voiceInput = useVoiceInput();
 
-  // Get the user session
-  const { data: session } = useSession();
+  // Get the user session from Supabase
+  const { user } = useAuth();
 
   // Refs for DOM elements
   const inputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +97,7 @@ export function FloatingAssistant({
       currentPage,
       undefined, // patientId - would be populated in a real implementation
       patientName,
-      session?.user?.name || undefined
+      user?.user_metadata?.full_name || user?.email || undefined
     );
 
     // Log the context for debugging
@@ -105,7 +105,7 @@ export function FloatingAssistant({
       currentSection,
       currentPage,
       patientName,
-      userName: session?.user?.name
+      userName: user?.user_metadata?.full_name || user?.email
     });
 
     // Send message with context parameters

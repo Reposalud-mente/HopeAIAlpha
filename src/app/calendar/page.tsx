@@ -6,7 +6,7 @@ import { CalendarComponent } from '@/components/calendar/CalendarComponent';
 import { AppointmentModal } from '@/components/calendar/AppointmentModal';
 import { DeleteAppointmentModal } from '@/components/calendar/DeleteAppointmentModal';
 import { useCalendarStore } from '@/store/calendar';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -80,7 +80,7 @@ export default function CalendarPage() {
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Get today's appointments
-  const todayAppointments = appointments.filter(app => 
+  const todayAppointments = appointments.filter(app =>
     isSameDay(new Date(app.date), today)
   );
 
@@ -95,9 +95,9 @@ export default function CalendarPage() {
             </p>
           </div>
           <div className="flex items-center space-x-2 mt-4 md:mt-0">
-            <PatientSelector 
-              selectedPatientId={selectedPatientId} 
-              onPatientChange={setSelectedPatientId} 
+            <PatientSelector
+              selectedPatientId={selectedPatientId}
+              onPatientChange={setSelectedPatientId}
             />
             <Button onClick={() => openModal()} className="bg-primary hover:bg-primary/90">
               <Plus className="mr-2 h-4 w-4" /> Nueva Cita
@@ -112,8 +112,8 @@ export default function CalendarPage() {
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
                   <CardTitle>Calendario</CardTitle>
-                  <Tabs 
-                    defaultValue={currentView} 
+                  <Tabs
+                    defaultValue={currentView}
                     className="w-auto"
                     onValueChange={(value) => setCurrentView(value as any)}
                   >
@@ -136,9 +136,9 @@ export default function CalendarPage() {
                 {currentView === 'list' ? (
                   <AppointmentList appointments={filteredAppointments} />
                 ) : (
-                  <CalendarComponent 
-                    appointments={filteredAppointments} 
-                    isLoading={isLoading} 
+                  <CalendarComponent
+                    appointments={filteredAppointments}
+                    isLoading={isLoading}
                   />
                 )}
               </CardContent>
@@ -175,7 +175,7 @@ export default function CalendarPage() {
                           {appointment.status === 'SCHEDULED' ? 'Programada' :
                            appointment.status === 'COMPLETED' ? 'Completada' :
                            appointment.status === 'CANCELLED' ? 'Cancelada' :
-                           appointment.status === 'NO_SHOW' ? 'No asistió' : 
+                           appointment.status === 'NO_SHOW' ? 'No asistió' :
                            appointment.status}
                         </div>
                       </div>
