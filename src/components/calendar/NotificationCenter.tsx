@@ -34,16 +34,23 @@ export function NotificationCenter() {
     // Initial load
     setNotifications(getNotifications());
 
-    // Check for upcoming appointments
-    checkUpcomingAppointments(user.id);
+    // Use a timeout to delay the initial check to avoid blocking dashboard loading
+    const initialCheckTimeout = setTimeout(() => {
+      console.log('Running delayed initial notification check');
+      checkUpcomingAppointments(user.id);
+    }, 10000); // Delay by 10 seconds after component mount
 
-    // Set up interval to check for upcoming appointments (every 15 minutes)
+    // Set up interval to check for upcoming appointments (every 30 minutes)
     const intervalId = setInterval(() => {
+      console.log('Running scheduled notification check');
       checkUpcomingAppointments(user.id);
       setNotifications(getNotifications());
-    }, 15 * 60 * 1000);
+    }, 30 * 60 * 1000); // Check every 30 minutes instead of 15
 
-    return () => clearInterval(intervalId);
+    return () => {
+      clearTimeout(initialCheckTimeout);
+      clearInterval(intervalId);
+    };
   }, [user?.id]);
 
   // Update notifications when popover opens

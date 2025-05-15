@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth/session-adapter';
-import { authOptions } from '@/lib/auth/session-adapter';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { logAuditEvent } from '@/lib/audit-log';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user) {
+  // Get the current user session using Supabase
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  // Get the authenticated user
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  // Check if the user is authenticated
+  if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   try {
@@ -23,7 +40,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // TODO: Validate and merge importedData into the session
     // For now, just log the import event
     await logAuditEvent({
-      userId: session.user.id,
+      userId: user.id,
       action: 'IMPORT',
       entityId: id,
       entityType: 'Session',

@@ -13,19 +13,32 @@ interface ProtectedClientWrapperProps {
 
 /**
  * Client-side wrapper component that protects routes by checking authentication status
- * 
+ *
  * This component is useful for protecting client-rendered portions of a page or entire
  * client-rendered routes. It complements server-side protection by providing a more
  * immediate UX response.
- * 
+ *
  * @param children The content to render when authenticated
  * @param loadingFallback Optional fallback UI for loading state
  * @param unauthenticatedFallback Optional fallback UI if unauthenticated (before redirect)
  */
 export default function ProtectedClientWrapper({
   children,
-  loadingFallback = <p>Loading user session...</p>,
-  unauthenticatedFallback = <p>Access denied. Redirecting to login...</p>
+  loadingFallback = (
+    <div className="flex min-h-screen flex-col items-center justify-center py-2 bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-gray-600">Cargando sesión...</p>
+      </div>
+    </div>
+  ),
+  unauthenticatedFallback = (
+    <div className="flex min-h-screen flex-col items-center justify-center py-2 bg-gray-50">
+      <div className="text-center">
+        <p className="text-gray-600">Acceso denegado. Redirigiendo al inicio de sesión...</p>
+      </div>
+    </div>
+  )
 }: ProtectedClientWrapperProps) {
   const supabase = createClient();
   const router = useRouter();

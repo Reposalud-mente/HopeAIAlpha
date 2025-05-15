@@ -3,10 +3,10 @@
   "/api/patients/route": "app/api/patients/route.js",
   "/api/appointments/route": "app/api/appointments/route.js",
   "/api/messages/route": "app/api/messages/route.js",
-  "/api/socket/route": "app/api/socket/route.js",
   "/api/appointments/notifications/route": "app/api/appointments/notifications/route.js",
+  "/api/patients/[id]/sessions/route": "app/api/patients/[id]/sessions/route.js",
   "/page": "app/page.js",
-  "/auth/login/page": "app/auth/login/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/patients/page": "app/patients/page.js"
+  "/patients/page": "app/patients/page.js",
+  "/auth/login/page": "app/auth/login/page.js"
 }

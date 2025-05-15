@@ -302,7 +302,7 @@ export const useDashboardStore = create<DashboardStore>()(
       // Actions - Socket
       connectSocket: () => {
         // Only connect if not already connected
-        if (get().socket) return;
+        if (get().socket || get().isConnected) return;
 
         // Check if userId is available
         const { userId } = get();
@@ -312,50 +312,84 @@ export const useDashboardStore = create<DashboardStore>()(
         }
 
         try {
-          const socket = io({
-            path: '/api/socket',
-            reconnectionAttempts: 5,
-            reconnectionDelay: 1000,
-            timeout: 10000,
-          });
+          console.log('Initializing socket connection');
 
-          socket.on('connect', () => {
-            set({ isConnected: true });
-            console.log('Socket connected');
+          // Use a timeout to delay socket connection to avoid blocking dashboard loading
+          setTimeout(() => {
+            // Check again if socket is already connected (could have happened during the timeout)
+            if (get().socket || get().isConnected) return;
 
-            // Subscribe to updates for the current user
-            socket.emit('subscribe', { userId });
-          });
+            const socket = io({
+              path: '/api/socket',
+              reconnectionAttempts: 5,
+              reconnectionDelay: 1000,
+              timeout: 10000,
+              // Add transports configuration to prefer WebSocket
+              transports: ['websocket', 'polling'],
+              // Add additional options to improve performance
+              forceNew: false,
+              reconnection: true,
+              autoConnect: true,
+            });
 
-          socket.on('connect_error', (error) => {
-            console.warn('Socket connection error:', error);
-            // Don't set isConnected to false here, let the disconnect event handle it
-          });
+            socket.on('connect', () => {
+              set({ isConnected: true });
+              console.log('Socket connected');
 
-          socket.on('disconnect', () => {
-            set({ isConnected: false });
-            console.log('Socket disconnected');
-          });
+              // Subscribe to updates for the current user
+              socket.emit('subscribe', { userId });
+            });
 
-          // Listen for data updates
-          socket.on('dashboard:update', () => {
-            // Refresh all data when dashboard update is received
-            get().fetchDashboardSummary();
-          });
+            socket.on('connect_error', (error) => {
+              console.warn('Socket connection error:', error);
+              // Don't set isConnected to false here, let the disconnect event handle it
+            });
 
-          socket.on('appointments:update', () => {
-            get().fetchAppointments();
-          });
+            socket.on('disconnect', () => {
+              set({ isConnected: false });
+              console.log('Socket disconnected');
+            });
 
-          socket.on('patients:update', () => {
-            get().fetchPatients();
-          });
+            // Listen for data updates with debouncing to prevent excessive refreshes
+            let dashboardUpdateTimeout: NodeJS.Timeout | null = null;
+            socket.on('dashboard:update', () => {
+              // Debounce dashboard updates
+              if (dashboardUpdateTimeout) clearTimeout(dashboardUpdateTimeout);
+              dashboardUpdateTimeout = setTimeout(() => {
+                console.log('Received dashboard:update event, refreshing data');
+                get().fetchDashboardSummary();
+              }, 1000);
+            });
 
-          socket.on('messages:update', () => {
-            get().fetchMessages();
-          });
+            let appointmentsUpdateTimeout: NodeJS.Timeout | null = null;
+            socket.on('appointments:update', () => {
+              if (appointmentsUpdateTimeout) clearTimeout(appointmentsUpdateTimeout);
+              appointmentsUpdateTimeout = setTimeout(() => {
+                console.log('Received appointments:update event, refreshing data');
+                get().fetchAppointments();
+              }, 1000);
+            });
 
-          set({ socket });
+            let patientsUpdateTimeout: NodeJS.Timeout | null = null;
+            socket.on('patients:update', () => {
+              if (patientsUpdateTimeout) clearTimeout(patientsUpdateTimeout);
+              patientsUpdateTimeout = setTimeout(() => {
+                console.log('Received patients:update event, refreshing data');
+                get().fetchPatients();
+              }, 1000);
+            });
+
+            let messagesUpdateTimeout: NodeJS.Timeout | null = null;
+            socket.on('messages:update', () => {
+              if (messagesUpdateTimeout) clearTimeout(messagesUpdateTimeout);
+              messagesUpdateTimeout = setTimeout(() => {
+                console.log('Received messages:update event, refreshing data');
+                get().fetchMessages();
+              }, 1000);
+            });
+
+            set({ socket });
+          }, 5000); // Delay socket connection by 5 seconds
         } catch (error) {
           console.warn('Error initializing socket connection:', error);
         }

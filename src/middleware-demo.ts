@@ -1,17 +1,17 @@
 /**
  * Demo Mode Middleware
- * 
+ *
  * This middleware checks if a user needs demo data when they access protected routes.
  * If they do, it redirects them to the dashboard with a query parameter to trigger the demo data population.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth0Session } from './src/lib/auth/auth0-wrapper';
-import { prisma } from './src/lib/prisma';
+import { createServerClient } from '@supabase/ssr';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Check if a user needs demo data
- * 
+ *
  * @param userId The ID of the user to check
  * @returns True if the user needs demo data, false otherwise
  */
@@ -20,7 +20,7 @@ async function userNeedsDemoData(userId: string): Promise<boolean> {
     // Check if the user has any patients
     const patientCount = await prisma.patient.count({
       where: {
-        createdById: userId,
+        primaryProviderId: userId,
       },
     });
 
@@ -33,7 +33,7 @@ async function userNeedsDemoData(userId: string): Promise<boolean> {
 
 /**
  * Middleware function to handle demo data population
- * 
+ *
  * @param request The incoming request
  * @returns The response or undefined to continue
  */
@@ -51,10 +51,26 @@ export async function middleware(request: NextRequest) {
   }
 
   // For protected routes, check if the user is authenticated
-  const session = await getAuth0Session(request);
+  // Create a Supabase client using the request cookies
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return request.cookies.get(name)?.value;
+        },
+        set() {}, // No-op for read-only operations
+        remove() {}, // No-op for read-only operations
+      },
+    }
+  );
 
-  // If no session, let the auth middleware handle it
-  if (!session?.user) {
+  // Get the user from the session
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  // If no user, let the auth middleware handle it
+  if (error || !user) {
     return NextResponse.next();
   }
 
@@ -67,7 +83,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Get the user ID from the session
-    const userId = session.user.sub;
+    const userId = user.id;
 
     // Check if the user needs demo data
     const needsDemoData = await userNeedsDemoData(userId);

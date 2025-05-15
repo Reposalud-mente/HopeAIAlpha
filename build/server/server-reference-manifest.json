@@ -2,35 +2,80 @@
   "node": {
     "0005244e4847bb1ed082ed14c6b9404a3f2dc1d294": {
       "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
         "app/auth/login/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/dashboard/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/patients/page": {
           "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/auth/login/page": "action-browser"
+        "app/page": "action-browser",
+        "app/auth/login/page": "action-browser",
+        "app/dashboard/page": "action-browser",
+        "app/patients/page": "action-browser"
       }
     },
     "401578eb6ad7d3a9f06195b056b9624fe179124aea": {
       "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
         "app/auth/login/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/dashboard/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/patients/page": {
           "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/auth/login/page": "action-browser"
+        "app/page": "action-browser",
+        "app/auth/login/page": "action-browser",
+        "app/dashboard/page": "action-browser",
+        "app/patients/page": "action-browser"
       }
     },
     "407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49": {
       "workers": {
+        "app/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
         "app/auth/login/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/dashboard/page": {
+          "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
+          "async": false
+        },
+        "app/patients/page": {
           "moduleId": "(action-browser)/./node_modules/.pnpm/next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec/node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22C%3A%5C%5CUsers%5C%5Cdavid%5C%5Cclinical-dashboard-app%5C%5Cconsolidated-app%5C%5Csrc%5C%5Capp%5C%5Cauth%5C%5Cactions.ts%22%2C%5B%5B%220005244e4847bb1ed082ed14c6b9404a3f2dc1d294%22%2C%22signOut%22%5D%2C%5B%22401578eb6ad7d3a9f06195b056b9624fe179124aea%22%2C%22login%22%5D%2C%5B%22407d77cd08b017d6ef4c9ab6db5f6f4dbf9b78fb49%22%2C%22signUp%22%5D%5D%5D%5D&__client_imported__=true!",
           "async": false
         }
       },
       "layer": {
-        "app/auth/login/page": "action-browser"
+        "app/page": "action-browser",
+        "app/auth/login/page": "action-browser",
+        "app/dashboard/page": "action-browser",
+        "app/patients/page": "action-browser"
       }
     }
   },

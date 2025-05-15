@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { withAuth } from '@/lib/auth/supabase-auth';
 import { prisma } from '@/lib/prisma';
 import { trackEvent, EventType } from '@/lib/monitoring';
 import { generatePDF } from '@/lib/pdf-generator';
@@ -15,20 +14,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
-
-    // Check if the user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get the report ID from the URL
-    const { id: reportId } = await params;
+  return withAuth(request, async (user) => {
+    try {
+      // Get the report ID from the URL
+      const { id: reportId } = await params;
 
     // Get the report with related data
     const report = await prisma.report.findUnique({
@@ -67,7 +56,7 @@ export async function GET(
       type: EventType.USER_ACTION,
       name: 'report_pdf_generated',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         reportId: report.id,
         assessmentId: report.assessmentId,
       },
@@ -98,6 +87,7 @@ export async function GET(
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -107,20 +97,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
-
-    // Check if the user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get the report ID from the URL
-    const { id: reportId } = await params;
+  return withAuth(request, async (user) => {
+    try {
+      // Get the report ID from the URL
+      const { id: reportId } = await params;
 
     // Get the report with related data
     const report = await prisma.report.findUnique({
@@ -156,7 +136,7 @@ export async function POST(
 
     // Create the directory structure if it doesn't exist
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'reports');
-    const patientDir = path.join(uploadsDir, report.assessment.patientId);
+    const patientDir = path.join(uploadsDir, report.patientId);
 
     try {
       await mkdir(patientDir, { recursive: true });
@@ -167,7 +147,7 @@ export async function POST(
     // Generate a unique filename
     const filename = report.filename || `report_${reportId}_${new Date().toISOString().split('T')[0]}.pdf`;
     const filePath = path.join(patientDir, filename);
-    const publicPath = `/uploads/reports/${report.assessment.patientId}/${filename}`;
+    const publicPath = `/uploads/reports/${report.patientId}/${filename}`;
 
     // Write the PDF to disk
     fs.writeFileSync(filePath, pdfBuffer);
@@ -181,8 +161,8 @@ export async function POST(
         filePath: publicPath,
         fileType: 'application/pdf',
         fileSize: BigInt(pdfBuffer.length),
-        uploadedById: session.user.id,
-        patientId: report.assessment.patientId,
+        uploadedById: user.id,
+        patientId: report.patientId,
         description: `PDF report generated on ${new Date().toLocaleString()}`,
       },
     });
@@ -192,7 +172,7 @@ export async function POST(
       type: EventType.USER_ACTION,
       name: 'report_pdf_saved',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         reportId: report.id,
         assessmentId: report.assessmentId,
         attachmentId: attachment.id,
@@ -223,4 +203,5 @@ export async function POST(
       { status: 500 }
     );
   }
+  });
 }

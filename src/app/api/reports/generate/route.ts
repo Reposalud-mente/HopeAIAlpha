@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { ReportGeneratorService } from '@/lib/ai-report-generator/report-generator-service';
 import { trackEvent, EventType } from '@/lib/monitoring';
 
@@ -9,11 +9,25 @@ import { trackEvent, EventType } from '@/lib/monitoring';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
+    // Get the current user session using Supabase
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -50,7 +64,7 @@ export async function POST(request: NextRequest) {
       type: EventType.USER_ACTION,
       name: 'reportText' in result ? 'report_generated' : 'report_generation_failed',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         assessmentId: body.assessmentId,
         success: 'reportText' in result,
         error: 'error' in result ? result.error : undefined,

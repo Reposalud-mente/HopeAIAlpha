@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth/session-adapter';
-import { authOptions } from '@/lib/auth/session-adapter';
+import { withAuth } from '@/lib/auth/supabase-auth';
 import { prisma } from '@/lib/prisma';
 import { trackEvent, EventType } from '@/lib/monitoring';
 
@@ -11,20 +10,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
-
-    // Check if the user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get the report ID from the URL
-    const { id } = await params;
+  return withAuth(request, async (user) => {
+    try {
+      // Get the report ID from the URL
+      const { id } = await params;
 
     // Get the report with related data
     const report = await prisma.report.findUnique({
@@ -72,7 +61,7 @@ export async function GET(
       type: EventType.USER_ACTION,
       name: 'report_viewed',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         reportId: report.id,
       },
     });
@@ -97,6 +86,7 @@ export async function GET(
       { status: 500 }
     );
   }
+  });
 }
 
 /**
@@ -106,20 +96,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
-
-    // Check if the user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Get the report ID from the URL
-    const { id } = await params;
+  return withAuth(request, async (user) => {
+    try {
+      // Get the report ID from the URL
+      const { id } = await params;
 
     // Parse the request body
     const body = await request.json();
@@ -140,10 +120,10 @@ export async function PUT(
     }
 
     // Check if the user has permission to update this report
-    // (either they created it or they are a supervisor/admin)
+    // (either they are the clinician who created it or they are a supervisor/admin)
     if (
-      existingReport.createdById !== session.user.id &&
-      !['SUPERVISOR', 'ADMIN'].includes(session.user.role)
+      existingReport.clinicianId !== user.id &&
+      !['SUPERVISOR', 'ADMIN'].includes(user.app_metadata?.role || '')
     ) {
       return NextResponse.json(
         { error: 'Forbidden - You do not have permission to update this report' },
@@ -189,7 +169,7 @@ export async function PUT(
       type: EventType.USER_ACTION,
       name: 'report_updated',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         reportId: updatedReport.id,
         isFinal: updatedReport.isFinal,
       },
@@ -215,4 +195,5 @@ export async function PUT(
       { status: 500 }
     );
   }
+  });
 }

@@ -2,8 +2,8 @@
  * API route for the RAG-based Clinical Report Generator
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { ClinicalReportAgent } from '@/lib/RagAI';
 // Import monitoring if available
 let trackEvent: any;
@@ -23,11 +23,25 @@ try {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
+    // Get the current user session using Supabase
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -79,7 +93,7 @@ export async function POST(request: NextRequest) {
       type: EventType.USER_ACTION,
       name: 'rag_report_generated',
       data: {
-        userId: session.user.id,
+        userId: user.id,
         reportType: body.wizardData.reportType,
         success: true,
         metadata: result.metadata,

@@ -25,16 +25,16 @@ export const sendInAppNotification = (notification: Omit<AppointmentNotification
     timestamp: new Date(),
     read: false,
   };
-  
+
   notifications = [newNotification, ...notifications];
-  
+
   // Show toast notification
   toast({
     title: notification.title,
     description: notification.message,
     duration: 5000,
   });
-  
+
   return newNotification;
 };
 
@@ -48,7 +48,7 @@ export const sendEmailNotification = async (
 ) => {
   // In a real app, this would send an actual email
   console.log(`Sending email to ${email}:`, { subject, message });
-  
+
   // Mock API call
   return new Promise<void>((resolve) => {
     setTimeout(() => {
@@ -61,20 +61,39 @@ export const sendEmailNotification = async (
  * Check for upcoming appointments and send notifications
  */
 export const checkUpcomingAppointments = async (userId: string) => {
+  // Add a debounce mechanism to prevent frequent API calls
+  if ((checkUpcomingAppointments as any).isChecking) {
+    console.log('Already checking appointments, skipping duplicate call');
+    return;
+  }
+
   try {
+    (checkUpcomingAppointments as any).isChecking = true;
+
     // Fetch appointments that need notifications
-    const response = await fetch('/api/appointments/notifications');
+    const response = await fetch('/api/appointments/notifications', {
+      // Add cache control headers to prevent unnecessary recompilations
+      headers: {
+        'Cache-Control': 'max-age=300', // Cache for 5 minutes
+      }
+    });
+
+    if (!response.ok) {
+      console.warn(`Failed to fetch notifications: ${response.status}`);
+      return;
+    }
+
     const appointments: CalendarAppointment[] = await response.json();
-    
+
     if (!appointments.length) return;
-    
+
     // Process each appointment
     const notifiedAppointmentIds: string[] = [];
-    
+
     for (const appointment of appointments) {
       // Skip if not for this user
       if (appointment.userId !== userId) continue;
-      
+
       // Send in-app notification
       sendInAppNotification({
         appointmentId: appointment.id,
@@ -82,7 +101,7 @@ export const checkUpcomingAppointments = async (userId: string) => {
         message: `Tiene una cita con ${appointment.patient?.firstName} ${appointment.patient?.lastName} mañana a las ${new Date(appointment.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
         type: 'upcoming',
       });
-      
+
       // Send email notification if configured
       if (appointment.notificationPreference === 'email' || appointment.notificationPreference === 'both') {
         if (appointment.patient?.contactEmail) {
@@ -93,10 +112,10 @@ export const checkUpcomingAppointments = async (userId: string) => {
           );
         }
       }
-      
+
       notifiedAppointmentIds.push(appointment.id);
     }
-    
+
     // Mark appointments as notified
     if (notifiedAppointmentIds.length > 0) {
       await fetch('/api/appointments/notifications', {
@@ -109,8 +128,16 @@ export const checkUpcomingAppointments = async (userId: string) => {
     }
   } catch (error) {
     console.error('Error checking upcoming appointments:', error);
+  } finally {
+    // Reset the checking flag after a delay to prevent rapid successive calls
+    setTimeout(() => {
+      (checkUpcomingAppointments as any).isChecking = false;
+    }, 5000); // 5 second cooldown
   }
 };
+
+// Add a property to the function to track if it's currently checking
+(checkUpcomingAppointments as any).isChecking = false;
 
 /**
  * Get all notifications
@@ -123,12 +150,12 @@ export const getNotifications = () => {
  * Mark a notification as read
  */
 export const markNotificationAsRead = (notificationId: string) => {
-  notifications = notifications.map(notification => 
-    notification.id === notificationId 
-      ? { ...notification, read: true } 
+  notifications = notifications.map(notification =>
+    notification.id === notificationId
+      ? { ...notification, read: true }
       : notification
   );
-  
+
   return getNotifications();
 };
 

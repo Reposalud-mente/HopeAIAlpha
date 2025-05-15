@@ -3,8 +3,8 @@
  * This is a server-side only route
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth/session-adapter';
-import { authOptions } from '@/lib/auth/session-adapter';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { createRequire } from 'module';
@@ -79,11 +79,25 @@ const loadingApproaches = [
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
+    // Get the current user session using Supabase
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

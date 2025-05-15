@@ -1,18 +1,18 @@
 /**
  * API Route for Demo Data Population
- * 
+ *
  * This route handles the creation of demo data for alpha testing.
  * It creates demo patients, assessments, and appointments for the authenticated user.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth/session-adapter';
-import { authOptions } from '@/lib/auth/session-adapter';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { trackEvent, EventType } from '@/lib/monitoring';
-import { 
-  createDemoPatients, 
-  createDemoAssessments, 
+import {
+  createDemoPatients,
+  createDemoAssessments,
   createDemoAppointments,
   userNeedsDemoData
 } from '@/lib/demo/demo-service';
@@ -22,18 +22,32 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
+    // Get the current user session using Supabase
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
 
     // Check if the user already has patients
     const needsDemoData = await userNeedsDemoData(userId);
@@ -46,12 +60,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the user's clinic
-    const user = await prisma.user.findUnique({
+    const userWithClinic = await prisma.user.findUnique({
       where: { id: userId },
       include: { clinic: true },
     });
 
-    if (!user) {
+    if (!userWithClinic) {
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -59,12 +73,16 @@ export async function POST(request: NextRequest) {
     }
 
     // If the user doesn't have a clinic, create a default one
-    let clinicId = user.clinicId;
+    let clinicId = userWithClinic.clinic?.id;
     if (!clinicId) {
       const defaultClinic = await prisma.clinic.create({
         data: {
           name: 'Clínica Demo',
           address: 'Av. Principal 123, Ciudad',
+          city: 'Santiago',
+          state: 'RM',
+          zipCode: '7500000',
+          country: 'Chile',
           contactPhone: '+56912345678',
           contactEmail: 'contacto@clinicademo.com',
           website: 'https://clinicademo.com',
@@ -84,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     // Create demo assessments and appointments for each patient
     const demoData = await Promise.all(
-      demoPatients.map(async (patient) => {
+      demoPatients.map(async (patient: any) => {
         const assessments = await createDemoAssessments(patient.id, userId, clinicId!);
         const appointments = await createDemoAppointments(patient.id, userId);
 
@@ -136,18 +154,32 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
+    // Get the current user session using Supabase
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Get the authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     // Check if the user is authenticated
-    if (!session?.user) {
+    if (authError || !user) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
+    const userId = user.id;
 
     // Check if the user needs demo data
     const needsDemoData = await userNeedsDemoData(userId);
