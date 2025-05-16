@@ -55,6 +55,7 @@ model User {
   aiConsultations   AIConsultation[]
   auditLogs         AuditLog[]
   feedbackGiven     AIFeedback[]
+  messages          Message[]
 
   @@map("users")
   @@index([email])
@@ -139,6 +140,7 @@ model Patient {
   medications           Medication[]
   patientHistory        PatientHistory[]
   reports               Report[]
+  messages              Message[]
 
   @@map("patients")
   @@index([primaryProviderId])
@@ -732,13 +734,13 @@ model AuditLog {
 
 model Message {
   id                     String   @id @default(uuid()) @db.Uuid
-  patientId              String   @db.Uuid
-  userId                 String   @db.Uuid
+  patientId              String   @map("patient_id") @db.Uuid
+  userId                 String   @map("user_id") @db.Uuid
   content                String   @db.Text
-  sentAt                 DateTime @default(now())
+  sentAt                 DateTime @default(now()) @map("sent_at")
   read                   Boolean  @default(false)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
 
   // Relations
   patient                Patient  @relation(fields: [patientId], references: [id])

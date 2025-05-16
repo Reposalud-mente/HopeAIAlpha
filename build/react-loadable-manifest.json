@@ -1,1 +1,37 @@
-{}
+{
+  "..\\node_modules\\.pnpm\\@supabase+auth-js@2.69.1\\node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
+    "id": "..\\node_modules\\.pnpm\\@supabase+auth-js@2.69.1\\node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\@supabase+functions-js@2.4.4\\node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch": {
+    "id": "..\\node_modules\\.pnpm\\@supabase+functions-js@2.4.4\\node_modules\\@supabase\\functions-js\\dist\\module\\helper.js -> @supabase/node-fetch",
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\@supabase+realtime-js@2.11.2\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch": {
+    "id": "..\\node_modules\\.pnpm\\@supabase+realtime-js@2.11.2\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> @supabase/node-fetch",
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\@supabase+realtime-js@2.11.2\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws": {
+    "id": "..\\node_modules\\.pnpm\\@supabase+realtime-js@2.11.2\\node_modules\\@supabase\\realtime-js\\dist\\module\\RealtimeClient.js -> ws",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_pnpm_ws_8_18_1_node_modules_ws_browser_js.js"
+    ]
+  },
+  "..\\node_modules\\.pnpm\\@supabase+storage-js@2.7.1\\node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
+    "id": "..\\node_modules\\.pnpm\\@supabase+storage-js@2.7.1\\node_modules\\@supabase\\storage-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch",
+    "files": []
+  },
+  "..\\node_modules\\.pnpm\\next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec\\node_modules\\next\\dist\\client\\components\\react-dev-overlay\\internal\\helpers\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts": {
+    "id": "..\\node_modules\\.pnpm\\next@15.1.7_@opentelemetry+_bb0e88e8ebb9903bfdf03e11d2ccc4ec\\node_modules\\next\\dist\\client\\components\\react-dev-overlay\\internal\\helpers\\use-websocket.js -> @vercel/turbopack-ecmascript-runtime/browser/dev/hmr-client/hmr-client.ts",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_pnpm_next_15_1_7__opentelemetry__bb0e88e8ebb9903bfdf03e11d2cc-5ef04a.js"
+    ]
+  },
+  "app\\dashboard\\page.tsx -> @/components/clinical/dashboard/clinical-dashboard": {
+    "id": "app\\dashboard\\page.tsx -> @/components/clinical/dashboard/clinical-dashboard",
+    "files": [
+      "static/css/_app-pages-browser_src_components_clinical_dashboard_clinical-dashboard_tsx.css",
+      "static/chunks/_app-pages-browser_src_components_clinical_dashboard_clinical-dashboard_tsx.js"
+    ]
+  }
+}
