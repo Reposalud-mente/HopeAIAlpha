@@ -7,6 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import styles from "./PersistentAIPanel.module.css";
 import { AIAssistantProvider, useAIAssistant } from "@/contexts/ai-assistant-context";
+import { useAIPanel } from "@/contexts/ai-panel-context";
+import { AIPanelInputProvider } from "@/contexts/ai-panel-input-context";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { Message } from "@/lib/ai-assistant/ai-assistant-service";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,8 +28,8 @@ interface PersistentAIPanelProps {
 export function PersistentAIPanel({
   initialQuestion = "¡Hola! 😊 Soy HopeAI. Puedo ayudarte a buscar información de pacientes, sesiones, notas clínicas y mucho más. ¿Qué necesitas hoy?"
 }: PersistentAIPanelProps) {
-  // State for the panel UI
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Get panel state from context
+  const { isCollapsed, setIsCollapsed, toggleCollapsed } = useAIPanel();
   const [input, setInput] = useState("");
 
   // State for platform context
@@ -38,7 +40,7 @@ export function PersistentAIPanel({
   const pathSegments = pathname?.split('/').filter(Boolean) || [];
   const currentSection = pathSegments[0] || '';
   const currentPage = pathSegments[1] || '';
-  
+
   // Check if we're on a patient page
   const isPatientPage = currentSection === 'patients' && currentPage && currentPage !== 'new';
   const patientId = isPatientPage ? currentPage : undefined;
@@ -264,30 +266,40 @@ export function PersistentAIPanel({
     return groups;
   }, [messages]);
 
-  // Toggle panel collapse state
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  // Use the toggleCollapsed function from context
 
   return (
-    <div 
-      className={cn(
-        styles.panelContainer,
-        isCollapsed ? styles.panelCollapsed : styles.panelExpanded
-      )}
-      aria-expanded={!isCollapsed}
-    >
+    <AIPanelInputProvider setInputValue={setInput} handleSendMessage={handleSend}>
+      <div
+        className={cn(
+          styles.panelContainer,
+          isCollapsed ? styles.panelCollapsed : styles.panelExpanded
+        )}
+        aria-expanded={!isCollapsed}
+        data-state={isCollapsed ? "collapsed" : "expanded"}
+      >
       {/* Collapse/Expand Button */}
-      <button 
+      <button
         className={styles.collapseButton}
-        onClick={toggleCollapse}
+        onClick={toggleCollapsed}
         aria-label={isCollapsed ? "Expandir asistente AI" : "Colapsar asistente AI"}
         title={isCollapsed ? "Expandir asistente AI" : "Colapsar asistente AI"}
+        type="button"
       >
-        {isCollapsed ? 
-          (isMobile ? <ChevronRight className="h-4 w-4 rotate-90" /> : <ChevronLeft className="h-4 w-4" />) : 
-          (isMobile ? <ChevronRight className="h-4 w-4 -rotate-90" /> : <ChevronRight className="h-4 w-4" />)
-        }
+        {isMobile ? (
+          // Mobile icons - rotate for vertical panel
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 transition-transform duration-300",
+              isCollapsed ? "rotate-90" : "-rotate-90"
+            )}
+          />
+        ) : (
+          // Desktop icons - horizontal panel
+          isCollapsed ?
+            <ChevronLeft className="h-4 w-4 transition-transform duration-300" /> :
+            <ChevronRight className="h-4 w-4 transition-transform duration-300" />
+        )}
       </button>
 
       {/* Header */}
@@ -524,6 +536,7 @@ export function PersistentAIPanel({
         </form>
       </div>
     </div>
+    </AIPanelInputProvider>
   );
 }
 

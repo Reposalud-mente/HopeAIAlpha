@@ -6,6 +6,7 @@ import SimplifiedSidebar from '@/components/layout/simplified-sidebar';
 import MobileSidebar from '@/components/layout/mobile-sidebar';
 import { useNavbar } from '@/contexts/NavbarContext';
 import { useDrawer } from '@/contexts/DrawerContext';
+import { useAIPanel } from '@/contexts/ai-panel-context';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -16,6 +17,7 @@ interface AppLayoutProps {
 const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
   const { isExpanded } = useNavbar();
   const { isDrawerOpen } = useDrawer();
+  const { isCollapsed: isAIPanelCollapsed } = useAIPanel();
 
   // Prevent body scroll when drawer is open on mobile
   React.useEffect(() => {
@@ -58,7 +60,8 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
         <main
           className={cn(
             "overflow-auto transition-all duration-300 ease-in-out",
-            "lg:pr-[var(--ai-panel-width)]" // Right padding for AI panel on larger screens
+            // Only apply right padding when AI panel is expanded
+            !isAIPanelCollapsed ? "lg:pr-[var(--ai-panel-width)]" : ""
           )}
         >
           {children}

@@ -13,6 +13,7 @@ import { FeatureFlagProvider } from './FeatureFlagContext';
 import { AIAssistantProvider } from './ai-assistant-context';
 import { NavbarProvider } from './NavbarContext';
 import { DrawerProvider } from './DrawerContext';
+import { AIPanelProvider } from './ai-panel-context';
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -29,9 +30,11 @@ export function Providers({ children }: ProvidersProps) {
       <FeatureFlagProvider>
         <NavbarProvider>
           <DrawerProvider>
-            <AIAssistantProvider>
-              {children}
-            </AIAssistantProvider>
+            <AIPanelProvider>
+              <AIAssistantProvider>
+                {children}
+              </AIAssistantProvider>
+            </AIPanelProvider>
           </DrawerProvider>
         </NavbarProvider>
       </FeatureFlagProvider>

@@ -41,7 +41,6 @@ import { ExportData } from '@/components/dashboard/export-data';
 import { GuidedTour } from '@/components/dashboard/guided-tour';
 import { HelpSection } from '@/components/dashboard/help-section';
 import { EnhancedAISection } from '@/components/dashboard/enhanced-ai-section';
-import { ConditionalEnhancedAssistant } from '@/lib/testing-floating';
 import DemoModeBanner from '@/components/dashboard/DemoModeBanner';
 
 // Lazy load non-critical components
@@ -229,8 +228,6 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      {/* Add the enhanced AI assistant */}
-      <ConditionalEnhancedAssistant />
       <TooltipProvider>
         <div className="container mx-auto px-6 py-8">
           {/* Demo Mode Banner */}
