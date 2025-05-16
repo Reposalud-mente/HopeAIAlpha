@@ -255,25 +255,38 @@ export function AIAssistantProvider({
               };
               setMessages(prevMessages => [...prevMessages, toolResultMessageForUI]);
 
-              // The AI will still be waiting because this part is missing:
-              /*
-              const finalAiResponse = await aiService.sendFunctionResult(
-                functionCall.name,
-                toolResult,
-                historyForFunctionResponseProcessing,
-                { userName: authSession?.user?.name || undefined }
-              );
+              // Send the function result back to the AI for processing
+              try {
+                const finalAiResponse = await aiService.sendFunctionResult(
+                  functionCall.name,
+                  toolResult,
+                  historyForFunctionResponseProcessing,
+                  { userName: user?.user_metadata?.full_name || user?.email || undefined }
+                );
 
-              if (finalAiResponse.text) {
-                const assistantResponseMessage: Message = {
+                if (finalAiResponse.text) {
+                  const assistantResponseMessage: Message = {
+                    id: generateUniqueId('assistant'),
+                    role: 'assistant',
+                    content: finalAiResponse.text
+                  };
+                  setMessages(prevMessages => [...prevMessages, assistantResponseMessage]);
+                }
+              } catch (aiResponseError) {
+                logger.error('Error getting AI response for function result:', {
+                  error: aiResponseError instanceof Error ? aiResponseError.message : 'Unknown error',
+                  stack: aiResponseError instanceof Error ? aiResponseError.stack : undefined,
+                  functionName: functionCall.name
+                });
+
+                // Add an error message to the chat
+                const errorMessage: Message = {
                   id: generateUniqueId('assistant'),
                   role: 'assistant',
-                  content: finalAiResponse.text
+                  content: 'Lo siento, tuve un problema al procesar el resultado de la acción. ¿Puedo ayudarte con algo más?'
                 };
-                setMessages(prevMessages => [...prevMessages, assistantResponseMessage]);
+                setMessages(prevMessages => [...prevMessages, errorMessage]);
               }
-              */
-              // End of missing part
 
             } catch (toolError) {
               console.error('Error executing function call:', toolError);
@@ -474,6 +487,58 @@ export function AIAssistantProvider({
                 }
                 return newMessages;
               });
+
+              // Prepare history for function response processing
+              const userMessage: Message = {
+                id: generateUniqueId('user'),
+                role: 'user',
+                content: message
+              };
+
+              // Placeholder for the AI's message that contained the function call
+              const aiFunctionCallInitiationMessage: Message = {
+                id: generateUniqueId('assistant'),
+                role: 'assistant',
+                content: `[AI decided to call ${functionCall.name} with args: ${JSON.stringify(functionCall.args)}]`
+              };
+
+              const historyForFunctionResponseProcessing = [
+                ...conversationHistory, // History before the current user's message
+                userMessage, // The current user's message that triggered the AI
+                aiFunctionCallInitiationMessage // The AI's "message" that was the function call
+              ];
+
+              // Send the function result back to the AI for processing
+              try {
+                const finalAiResponse = await aiService.sendFunctionResult(
+                  functionCall.name,
+                  result,
+                  historyForFunctionResponseProcessing,
+                  { userName: user?.user_metadata?.full_name || user?.email || undefined }
+                );
+
+                if (finalAiResponse.text) {
+                  const assistantResponseMessage: Message = {
+                    id: generateUniqueId('assistant'),
+                    role: 'assistant',
+                    content: finalAiResponse.text
+                  };
+                  setMessages(prevMessages => {
+                    // Limit the number of messages
+                    const newMessages = [...prevMessages, assistantResponseMessage];
+                    if (newMessages.length > maxMessages) {
+                      return newMessages.slice(-maxMessages);
+                    }
+                    return newMessages;
+                  });
+                }
+              } catch (aiResponseError) {
+                logger.error('Error getting AI response for function result in streamMessage:', {
+                  error: aiResponseError instanceof Error ? aiResponseError.message : 'Unknown error',
+                  stack: aiResponseError instanceof Error ? aiResponseError.stack : undefined,
+                  functionName: functionCall.name
+                });
+              }
             } catch (error) {
               console.error('Error executing function call:', error);
 
@@ -736,24 +801,93 @@ export function AIAssistantProvider({
       // Clear the pending function call
       setPendingFunctionCall(null);
 
-      // Add a follow-up message to maintain context
-      setTimeout(() => {
-        // Create a contextual follow-up based on the function and result
-        let followUpMessage = '';
+      // Prepare history for function response processing
+      // Get the last user message that triggered this function call
+      const lastUserMessageIndex = messages.findIndex(msg =>
+        msg.role === 'user' && msg.content.toLowerCase().includes('confirma') ||
+        msg.content.toLowerCase().includes('procede') ||
+        msg.content.toLowerCase().includes('sí') ||
+        msg.content.toLowerCase().includes('si')
+      );
 
-        if (name === 'search_patients') {
-          if (result.patients && result.patients.length > 0) {
-            followUpMessage = `Estos son los pacientes que encontré con el nombre "${args.query}". ¿Necesitas más información sobre alguno de ellos?`;
-          } else {
-            followUpMessage = `No encontré pacientes con el nombre "${args.query}". ¿Quieres buscar con otro nombre?`;
+      if (lastUserMessageIndex !== -1) {
+        const relevantHistory = messages.slice(0, lastUserMessageIndex + 1);
+
+        // Placeholder for the AI's message that contained the function call
+        const aiFunctionCallInitiationMessage: Message = {
+          id: generateUniqueId('assistant'),
+          role: 'assistant',
+          content: `[AI decided to call ${name} with args: ${JSON.stringify(args)}]`
+        };
+
+        const historyForFunctionResponseProcessing = [
+          ...relevantHistory,
+          aiFunctionCallInitiationMessage
+        ];
+
+        // Send the function result back to the AI for processing
+        try {
+          const finalAiResponse = await aiService.sendFunctionResult(
+            name,
+            result,
+            historyForFunctionResponseProcessing,
+            { userName: user?.user_metadata?.full_name || user?.email || undefined }
+          );
+
+          if (finalAiResponse.text) {
+            const assistantResponseMessage: Message = {
+              id: generateUniqueId('assistant'),
+              role: 'assistant',
+              content: finalAiResponse.text
+            };
+            setMessages(prevMessages => [...prevMessages, assistantResponseMessage]);
           }
-        } else {
-          followUpMessage = `He completado la acción solicitada. ¿Hay algo más en lo que pueda ayudarte?`;
-        }
+        } catch (aiResponseError) {
+          logger.error('Error getting AI response for function result in confirmPendingFunctionCall:', {
+            error: aiResponseError instanceof Error ? aiResponseError.message : 'Unknown error',
+            stack: aiResponseError instanceof Error ? aiResponseError.stack : undefined,
+            functionName: name
+          });
 
-        // Add the follow-up message
-        addAssistantMessage(followUpMessage);
-      }, 500);
+          // Fallback to the old method if AI response fails
+          setTimeout(() => {
+            // Create a contextual follow-up based on the function and result
+            let followUpMessage = '';
+
+            if (name === 'search_patients') {
+              if (result.patients && result.patients.length > 0) {
+                followUpMessage = `Estos son los pacientes que encontré con el nombre "${args.query}". ¿Necesitas más información sobre alguno de ellos?`;
+              } else {
+                followUpMessage = `No encontré pacientes con el nombre "${args.query}". ¿Quieres buscar con otro nombre?`;
+              }
+            } else {
+              followUpMessage = `He completado la acción solicitada. ¿Hay algo más en lo que pueda ayudarte?`;
+            }
+
+            // Add the follow-up message
+            addAssistantMessage(followUpMessage);
+          }, 500);
+        }
+      } else {
+        // Fallback to the old method if we can't find the triggering user message
+        setTimeout(() => {
+          // Create a contextual follow-up based on the function and result
+          let followUpMessage = '';
+
+          if (name === 'search_patients') {
+            if (result.patients && result.patients.length > 0) {
+              followUpMessage = `Estos son los pacientes que encontré con el nombre "${args.query}". ¿Necesitas más información sobre alguno de ellos?`;
+            } else {
+              followUpMessage = `No encontré pacientes con el nombre "${args.query}". ¿Quieres buscar con otro nombre?`;
+            }
+          } else {
+            followUpMessage = `He completado la acción solicitada. ¿Hay algo más en lo que pueda ayudarte?`;
+          }
+
+          // Add the follow-up message
+          addAssistantMessage(followUpMessage);
+        }, 500);
+      }
     } catch (error) {
       console.error('Error confirming function call:', error);
 
