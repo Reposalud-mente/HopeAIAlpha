@@ -457,15 +457,23 @@ export function AIAssistantProvider({
           } else {
             // For functions that don't require confirmation (like search_patients), execute immediately
 
-            // Create a message for the function call
+            // Create a more detailed executing message
             const functionCallMessage: Message = {
               id: generateUniqueId('assistant'),
               role: 'assistant',
-              content: `Ejecutando: ${functionCall.name}...`
+              content: `Ejecutando: ${functionCall.name}${functionCall.name === 'search_patients' ?
+                ` con búsqueda "${functionCall.args.query || ''}"` :
+                ''}...`
             };
 
             // Add the function call message
             setMessages(prevMessages => [...prevMessages, functionCallMessage]);
+
+            // Log the function call for debugging
+            logger.info('Executing function call in streamMessage', {
+              functionName: functionCall.name,
+              args: functionCall.args
+            });
 
             try {
               // Execute the function call
@@ -671,12 +679,66 @@ export function AIAssistantProvider({
       });
 
       // Validate function name
-      const validFunctions = ['schedule_session', 'create_reminder', 'search_patients', 'generate_report'];
+      const validFunctions = ['schedule_session', 'create_reminder', 'search_patients', 'list_patients', 'generate_report'];
 
-      // Handle special case for 'print' function - map it to search_patients
-      if (functionName === 'print') {
-        logger.info('Mapping print function to search_patients', { args });
+      // Handle special cases - map aliases to their actual functions
+      if (functionName === 'print' || functionName === 'list_patients') {
+        logger.info(`Mapping ${functionName} function to search_patients`, { args });
         functionName = 'search_patients';
+
+        // For list_patients, if no query is provided, set it to empty string to list all patients
+        if (functionName === 'list_patients' && (!args.query || args.query.trim() === '')) {
+          args.query = '*';
+        }
+      }
+
+      // Fix for the "tool_code" placeholder issue
+      if (functionName === 'search_patients' && args.query === 'tool_code') {
+        // Get the last user message to extract the actual search query
+        const lastUserMessage = messages.findLast(msg => msg.role === 'user');
+        if (lastUserMessage) {
+          // Extract potential name from the user message
+          const userText = lastUserMessage.content.toLowerCase();
+
+          // Look for patterns like "buscar paciente [name]" or "pacientes llamados [name]"
+          let extractedName = '';
+
+          // Common patterns in Spanish
+          if (userText.includes('llamado') || userText.includes('llamada')) {
+            const match = userText.match(/llamad[oa][s]?\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+            if (match && match[1]) extractedName = match[1];
+          } else if (userText.includes('nombre')) {
+            const match = userText.match(/nombre\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+            if (match && match[1]) extractedName = match[1];
+          } else if (userText.includes('buscar') || userText.includes('busca')) {
+            const match = userText.match(/busc[ar]\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+            if (match && match[1]) extractedName = match[1];
+          } else {
+            // Try to find any name after common words
+            const words = userText.split(/\s+/);
+            for (let i = 0; i < words.length; i++) {
+              if (['paciente', 'pacientes', 'cliente', 'clientes', 'persona', 'personas'].includes(words[i])) {
+                if (i + 1 < words.length && words[i + 1].length > 2) {
+                  extractedName = words[i + 1];
+                  // If the next word starts with a capital letter, it's likely a name
+                  if (extractedName.charAt(0) === extractedName.charAt(0).toUpperCase()) {
+                    break;
+                  }
+                }
+              }
+            }
+          }
+
+          // If we found a name, use it instead of "tool_code"
+          if (extractedName) {
+            logger.info(`Replacing "tool_code" with extracted name "${extractedName}"`, { originalQuery: args.query });
+            args.query = extractedName;
+          } else {
+            // If we couldn't extract a specific name, use an empty query to list all patients
+            logger.info(`Replacing "tool_code" with empty query to list all patients`, { originalQuery: args.query });
+            args.query = '*';
+          }
+        }
       }
 
       if (!validFunctions.includes(functionName)) {
@@ -745,6 +807,59 @@ export function AIAssistantProvider({
       // Get the function call details
       const { name, args } = pendingFunctionCall;
 
+      // Fix for the "tool_code" placeholder issue
+      if (name === 'search_patients' && args.query === 'tool_code') {
+        // Find the user message that triggered this function call
+        const userMessages = messages.filter(msg => msg.role === 'user');
+        if (userMessages.length > 0) {
+          // Get the last user message before the confirmation
+          const lastUserMessage = userMessages[userMessages.length - 2]; // Skip the confirmation message
+          if (lastUserMessage) {
+            // Extract potential name from the user message
+            const userText = lastUserMessage.content.toLowerCase();
+
+            // Look for patterns like "buscar paciente [name]" or "pacientes llamados [name]"
+            let extractedName = '';
+
+            // Common patterns in Spanish
+            if (userText.includes('llamado') || userText.includes('llamada')) {
+              const match = userText.match(/llamad[oa][s]?\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+              if (match && match[1]) extractedName = match[1];
+            } else if (userText.includes('nombre')) {
+              const match = userText.match(/nombre\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+              if (match && match[1]) extractedName = match[1];
+            } else if (userText.includes('buscar') || userText.includes('busca')) {
+              const match = userText.match(/busc[ar]\s+([a-zñáéíóúü]+(\s+[a-zñáéíóúü]+)?)/i);
+              if (match && match[1]) extractedName = match[1];
+            } else {
+              // Try to find any name after common words
+              const words = userText.split(/\s+/);
+              for (let i = 0; i < words.length; i++) {
+                if (['paciente', 'pacientes', 'cliente', 'clientes', 'persona', 'personas'].includes(words[i])) {
+                  if (i + 1 < words.length && words[i + 1].length > 2) {
+                    extractedName = words[i + 1];
+                    // If the next word starts with a capital letter, it's likely a name
+                    if (extractedName.charAt(0) === extractedName.charAt(0).toUpperCase()) {
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+
+            // If we found a name, use it instead of "tool_code"
+            if (extractedName) {
+              logger.info(`Replacing "tool_code" with extracted name "${extractedName}" in confirmPendingFunctionCall`, { originalQuery: args.query });
+              args.query = extractedName;
+            } else {
+              // If we couldn't extract a specific name, use an empty query to list all patients
+              logger.info(`Replacing "tool_code" with empty query to list all patients in confirmPendingFunctionCall`, { originalQuery: args.query });
+              args.query = '*';
+            }
+          }
+        }
+      }
+
       // Create a message for the function call confirmation
       const confirmationMessage: Message = {
         id: generateUniqueId('assistant'),
@@ -763,22 +878,26 @@ export function AIAssistantProvider({
 
       // Handle search_patients result specifically to format it nicely
       if (name === 'search_patients' && result.success && result.patients) {
-        formattedResult = `Encontré ${result.patients.length} pacientes con el nombre "${args.query}":\n\n`;
+        // Add metadata to the result for better visualization
+        const enhancedResult = {
+          ...result,
+          _meta: {
+            functionName: name,
+            timestamp: new Date().toISOString(),
+            resultType: 'patient_search'
+          }
+        };
 
-        // Format each patient
-        result.patients.forEach((patient: any, index: number) => {
-          formattedResult += `${index + 1}. ${patient.name}`;
-          if (patient.email) formattedResult += ` (${patient.email})`;
-          if (patient.phone) formattedResult += ` - Tel: ${patient.phone}`;
-          formattedResult += '\n';
-        });
+        // Use the enhanced result as JSON for the visualizer to parse
+        formattedResult = JSON.stringify(enhancedResult, null, 2);
 
+        // If there are no patients, add a message
         if (result.patients.length === 0) {
           formattedResult = `No encontré pacientes que coincidan con "${args.query}". Por favor, intenta con otro nombre.`;
         }
       } else {
         // Default formatting for other function results
-        formattedResult = result.message || JSON.stringify(result);
+        formattedResult = result.message || JSON.stringify(result, null, 2);
       }
 
       // Create a message for the function result
@@ -856,9 +975,9 @@ export function AIAssistantProvider({
 
             if (name === 'search_patients') {
               if (result.patients && result.patients.length > 0) {
-                followUpMessage = `Estos son los pacientes que encontré con el nombre "${args.query}". ¿Necesitas más información sobre alguno de ellos?`;
+                followUpMessage = `Estos son los pacientes que encontré${args.query ? ` con el nombre "${args.query}"` : ''}. ¿Necesitas más información sobre alguno de ellos?`;
               } else {
-                followUpMessage = `No encontré pacientes con el nombre "${args.query}". ¿Quieres buscar con otro nombre?`;
+                followUpMessage = `No encontré pacientes${args.query ? ` con el nombre "${args.query}"` : ''}. ¿Quieres buscar con otro nombre?`;
               }
             } else {
               followUpMessage = `He completado la acción solicitada. ¿Hay algo más en lo que pueda ayudarte?`;
@@ -876,9 +995,9 @@ export function AIAssistantProvider({
 
           if (name === 'search_patients') {
             if (result.patients && result.patients.length > 0) {
-              followUpMessage = `Estos son los pacientes que encontré con el nombre "${args.query}". ¿Necesitas más información sobre alguno de ellos?`;
+              followUpMessage = `Estos son los pacientes que encontré${args.query ? ` con el nombre "${args.query}"` : ''}. ¿Necesitas más información sobre alguno de ellos?`;
             } else {
-              followUpMessage = `No encontré pacientes con el nombre "${args.query}". ¿Quieres buscar con otro nombre?`;
+              followUpMessage = `No encontré pacientes${args.query ? ` con el nombre "${args.query}"` : ''}. ¿Quieres buscar con otro nombre?`;
             }
           } else {
             followUpMessage = `He completado la acción solicitada. ¿Hay algo más en lo que pueda ayudarte?`;

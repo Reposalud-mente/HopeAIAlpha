@@ -1,10 +1,9 @@
 {
-  "/api/patients/route": "app/api/patients/route.js",
   "/api/dashboard/summary/route": "app/api/dashboard/summary/route.js",
+  "/api/patients/route": "app/api/patients/route.js",
   "/api/messages/route": "app/api/messages/route.js",
   "/api/appointments/route": "app/api/appointments/route.js",
-  "/_not-found/page": "app/_not-found/page.js",
-  "/page": "app/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/auth/login/page": "app/auth/login/page.js"
+  "/api/ai-tools/route": "app/api/ai-tools/route.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
 }

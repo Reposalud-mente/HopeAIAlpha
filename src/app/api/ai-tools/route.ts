@@ -3,9 +3,9 @@ import { withAuth } from '@/lib/auth/supabase-auth';
 import {
   scheduleSession,
   createReminder,
-  searchPatients,
   generateReport
 } from '@/lib/ai-assistant/admin-tools';
+import { searchPatients } from '@/lib/ai-assistant/supabase-admin-tools';
 
 /**
  * API route for executing AI assistant tools
@@ -41,6 +41,12 @@ export async function POST(req: NextRequest) {
           break;
 
         case 'search_patients':
+        case 'list_patients':
+          // Handle both search_patients and list_patients with the same function
+          // For list_patients with no query, set an empty query to list all patients
+          if (functionName === 'list_patients' && (!args.query || args.query.trim() === '')) {
+            args.query = '*';
+          }
           result = await searchPatients(args, userId);
           break;
 
@@ -53,6 +59,21 @@ export async function POST(req: NextRequest) {
             { error: `Unknown function: ${functionName}` },
             { status: 400 }
           );
+      }
+
+      // Format the result for better display in the tool calling visualizer
+      if ((functionName === 'search_patients' || functionName === 'list_patients') && result.success && result.patients) {
+        // Enhance the result with additional metadata for better visualization
+        const enhancedResult = {
+          ...result,
+          _meta: {
+            functionName,
+            timestamp: new Date().toISOString(),
+            resultType: 'patient_search',
+            query: args.query || ''
+          }
+        };
+        return NextResponse.json(enhancedResult);
       }
 
       // Return the result

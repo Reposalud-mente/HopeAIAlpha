@@ -13,7 +13,7 @@ import { useVoiceInput } from "@/hooks/use-voice-input";
 import { Message } from "@/lib/ai-assistant/ai-assistant-service";
 import { useAuth } from "@/hooks/useAuth";
 import { getClientAIContext } from "@/lib/ai-assistant/client-context-gatherer";
-import { ToolCallingVisualizer } from "./tool-calling-visualizer";
+import { NewToolCallingVisualizer } from "./new-tool-calling-visualizer";
 import { ClientStorageProvider } from "@/components/ai-assistant/ClientStorageProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname } from "next/navigation";
@@ -415,10 +415,11 @@ export function PersistentAIPanel({
                      msg.content.startsWith('Resultado:') ||
                      msg.content.startsWith('Error al ejecutar') ||
                      msg.content.includes('¿Confirmas esta acción?') ||
-                     (msg.content.includes('```tool_code') && msg.content.includes('```')) ||
+                     msg.content.includes('search_patients') ||
+                     msg.content.includes('list_patients') ||
                      msg.content.includes('function_call:') ||
                      msg.content.includes('functionCall:') ? (
-                      <ToolCallingVisualizer
+                      <NewToolCallingVisualizer
                         content={msg.content}
                         confirmPendingFunctionCall={confirmPendingFunctionCall}
                         pendingFunctionCall={pendingFunctionCall}

@@ -11,16 +11,33 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Path to the test file
-const testFilePath = path.join(__dirname, '../src/test/test-implementation.js');
+// Path to the test files
+const basicTestPath = path.join(__dirname, '../src/test/test-implementation.js');
+const detailedTestPath = path.join(__dirname, '../src/test/verify-implementation.js');
 
-// Run the test using node with dotenv
-const child = spawn('node', ['-r', 'dotenv/config', testFilePath], {
+// Run the basic implementation test first
+console.log('=== Running basic implementation test ===');
+const basicTest = spawn('node', ['-r', 'dotenv/config', basicTestPath], {
   env: { ...process.env, NODE_ENV: 'alpha' },
   stdio: 'inherit'
 });
 
-// Handle process exit
-child.on('exit', (code) => {
-  process.exit(code);
+// After the basic test completes, run the detailed verification
+basicTest.on('exit', (code) => {
+  if (code !== 0) {
+    console.error('Basic implementation test failed with code:', code);
+    process.exit(code);
+  }
+
+  console.log('\n=== Running detailed implementation verification ===');
+  const detailedTest = spawn('node', ['-r', 'dotenv/config', detailedTestPath], {
+    env: { ...process.env, NODE_ENV: 'alpha' },
+    stdio: 'inherit'
+  });
+
+  detailedTest.on('exit', (detailedCode) => {
+    process.exit(detailedCode);
+  });
 });
+
+
