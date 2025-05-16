@@ -3,9 +3,9 @@ import { withAuth } from '@/lib/auth/supabase-auth';
 import {
   scheduleSession,
   createReminder,
-  searchPatients,
   generateReport
 } from '@/lib/ai-assistant/admin-tools';
+import { searchPatients } from '@/lib/ai-assistant/supabase-admin-tools';
 
 /**
  * API route for executing AI assistant tools

@@ -18,8 +18,18 @@ import {
 import { ENV } from '../RagAI/config';
   import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
   import { getClientAIContext } from './client-context-gatherer';
-  import { adminToolDeclarations } from './admin-tools';
+  import { adminToolDeclarations as prismaToolDeclarations } from './admin-tools';
+  import { adminToolDeclarations as supabaseToolDeclarations } from './supabase-admin-tools';
   import { logger } from '@/lib/logger';
+
+  // Combine tool declarations from both Prisma and Supabase implementations
+  // Prioritize Supabase implementations when there are duplicates
+  const adminToolDeclarations = [
+    ...prismaToolDeclarations.filter(tool =>
+      !supabaseToolDeclarations.some(supaTool => supaTool.name === tool.name)
+    ),
+    ...supabaseToolDeclarations
+  ];
 
 // Define message types
 export interface Message {
