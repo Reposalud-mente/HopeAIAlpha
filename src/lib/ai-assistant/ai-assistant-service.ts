@@ -18,8 +18,18 @@ import {
 import { ENV } from '../RagAI/config';
   import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
   import { getClientAIContext } from './client-context-gatherer';
-  import { adminToolDeclarations } from './admin-tools';
+  import { adminToolDeclarations as prismaToolDeclarations } from './admin-tools';
+  import { adminToolDeclarations as supabaseToolDeclarations } from './supabase-admin-tools';
   import { logger } from '@/lib/logger';
+
+  // Combine tool declarations from both Prisma and Supabase implementations
+  // Prioritize Supabase implementations when there are duplicates
+  const adminToolDeclarations = [
+    ...prismaToolDeclarations.filter(tool =>
+      !supabaseToolDeclarations.some(supaTool => supaTool.name === tool.name)
+    ),
+    ...supabaseToolDeclarations
+  ];
 
 // Define message types
 export interface Message {
@@ -78,11 +88,11 @@ interface CacheItem {
     this.cache = new Map<string, CacheItem>();
     this.cacheExpiryTime = cacheExpiryTime;
     }
-  
+
     private functionCallingErrorCount: number = 0;
     private maxFunctionCallingErrors: number = 3;
     private disableFunctionCalling: boolean = false;
-  
+
     /**
      * Helper to convert Message[] to Gemini's Content[] format
      * @param messages Array of Message objects
@@ -94,7 +104,7 @@ interface CacheItem {
         parts: [{ text: msg.content }],
       }));
     }
-  
+
     /**
      * Creates a new chat session with the specified model and configuration
      * @param enableFunctionCalling Whether to enable function calling
@@ -116,45 +126,66 @@ interface CacheItem {
         maxOutputTokens: this.maxTokens,
         // Add thinking budget for more complex reasoning
         // @ts-ignore // thinkingBudget might not be in GenerationConfig yet
-        thinkingBudget: 8192, 
+        thinkingBudget: 8192,
       };
-  
+
       const safetySettings = [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
       ];
-      
+
       // Configuration for the model
-      const modelConfig: any = { 
+      const modelConfig: any = {
         model: this.modelName,
         generationConfig,
         safetySettings
       };
-  
+
       if (systemInstruction) {
-        modelConfig.systemInstruction = { 
-          role: "system", 
-          parts: [{ text: systemInstruction }] 
+        modelConfig.systemInstruction = {
+          role: "system",
+          parts: [{ text: systemInstruction }]
         };
       }
-  
+
       if (enableFunctionCalling && !this.disableFunctionCalling) {
         try {
+          // Check if we should force tool usage based on context hints
           const shouldForceToolUsage = contextHints ? this.shouldForceToolUsage(contextHints) : false;
-          const functionCallingMode = shouldForceToolUsage ? FunctionCallingConfigMode.ANY : FunctionCallingConfigMode.AUTO;
-  
+
+          // Default to ANY mode for more aggressive tool usage
+          // This makes the AI more likely to use tools when appropriate
+          const functionCallingMode = FunctionCallingConfigMode.ANY;
+
+          // Configure tools
           modelConfig.tools = [{ functionDeclarations: adminToolDeclarations }];
           modelConfig.toolConfig = { functionCallingConfig: { mode: functionCallingMode } };
-  
-          if (functionCallingMode === FunctionCallingConfigMode.ANY && specificFunctions && specificFunctions.length > 0) {
+
+          // If specific functions are provided, use only those
+          if (specificFunctions && specificFunctions.length > 0) {
             modelConfig.toolConfig.functionCallingConfig.allowedFunctionNames = specificFunctions;
             logger.info('Using specific functions in ANY mode:', { specificFunctions, contextHints });
+          } else if (shouldForceToolUsage && contextHints?.userMessage) {
+            // Try to determine which specific function to use based on the message
+            const userMessage = contextHints.userMessage.toLowerCase();
+
+            if (userMessage.includes('busca') || userMessage.includes('search') ||
+                userMessage.includes('paciente') || userMessage.includes('patient') ||
+                userMessage.includes('lista') || userMessage.includes('list') ||
+                userMessage.includes('mostrar') || userMessage.includes('show') ||
+                userMessage.includes('ver') || userMessage.includes('view')) {
+              // Force search_patients function
+              modelConfig.toolConfig.functionCallingConfig.allowedFunctionNames = ['search_patients'];
+              logger.info('Forcing search_patients function based on user message', { userMessage });
+            }
           }
+
+          // Increase thinking budget for better reasoning
           // @ts-ignore
-          if (shouldForceToolUsage) modelConfig.generationConfig.thinkingBudget = 16384;
-  
+          modelConfig.generationConfig.thinkingBudget = 16384;
+
           logger.info('Function calling enabled with configuration:', {
             tools: adminToolDeclarations.map(d => d.name),
             mode: modelConfig.toolConfig.functionCallingConfig.mode,
@@ -169,10 +200,10 @@ interface CacheItem {
           });
         }
       }
-      
+
       // Prepare history in the format the SDK expects
       const formattedHistory = this.mapMessagesToContent(initialHistory);
-  
+
       // Using the updated SDK pattern to get a model and start a chat
       const model = this.client.models.generateContent.bind(this.client.models);
       const chat = {
@@ -194,7 +225,7 @@ interface CacheItem {
 
               if (apiResponse && apiResponse.candidates && apiResponse.candidates.length > 0) {
                 if (apiResponse.promptFeedback && apiResponse.promptFeedback.blockReason) {
-                  logger.warn('Prompt was blocked by API', { 
+                  logger.warn('Prompt was blocked by API', {
                     reason: apiResponse.promptFeedback.blockReason,
                     safetyRatings: apiResponse.promptFeedback.safetyRatings,
                   });
@@ -212,7 +243,7 @@ interface CacheItem {
                   }
                 }
               } else if (apiResponse && apiResponse.promptFeedback && apiResponse.promptFeedback.blockReason) {
-                 logger.warn('Prompt was blocked by API (no candidates returned)', { 
+                 logger.warn('Prompt was blocked by API (no candidates returned)', {
                     reason: apiResponse.promptFeedback.blockReason,
                     safetyRatings: apiResponse.promptFeedback.safetyRatings,
                   });
@@ -234,7 +265,7 @@ interface CacheItem {
                 ],
                 ...modelConfig
               });
-              
+
               // Collect the full response as chunks arrive
               let fullText = '';
               const streamWithResponse = {
@@ -252,28 +283,56 @@ interface CacheItem {
                   });
                 })
               };
-              
+
               return streamWithResponse;
             }
           };
         }
       };
-      
+
       // Start and return the chat session
       return chat.startChat({
         history: formattedHistory,
       });
     }
-  
+
     private shouldForceToolUsage(contextHints: Record<string, any>): boolean {
-      const schedulingKeywords = ['agenda', 'agendar', 'calendario', 'cita', 'sesión', 'programar', 'schedule', 'appointment', 'session', 'fecha', 'hora', 'date', 'time'];
-      const searchKeywords = ['buscar', 'encontrar', 'paciente', 'search', 'find', 'patient', 'lookup', 'consultar', 'query'];
-      const reminderKeywords = ['recordatorio', 'reminder', 'recordar', 'remember', 'alarma', 'alert', 'notificar', 'notify'];
+      // More comprehensive list of keywords for each tool
+      const schedulingKeywords = ['agenda', 'agendar', 'calendario', 'cita', 'sesión', 'programar', 'schedule', 'appointment', 'session', 'fecha', 'hora', 'date', 'time', 'reservar', 'book'];
+      const searchKeywords = ['buscar', 'encontrar', 'paciente', 'search', 'find', 'patient', 'lookup', 'consultar', 'query', 'lista', 'list', 'mostrar', 'show', 'ver', 'view', 'mis pacientes', 'my patients', 'pacientes activos', 'active patients'];
+      const reminderKeywords = ['recordatorio', 'reminder', 'recordar', 'remember', 'alarma', 'alert', 'notificar', 'notify', 'aviso', 'notice'];
       const reportKeywords = ['informe', 'reporte', 'report', 'generate', 'generar', 'crear', 'create', 'documento', 'document'];
+      const toolKeywords = ['herramienta', 'tool', 'función', 'function', 'tool calling', 'usala', 'use it', 'utiliza', 'utilize'];
+
       const userMessage = contextHints.userMessage?.toLowerCase() || '';
-      return [...schedulingKeywords, ...searchKeywords, ...reminderKeywords, ...reportKeywords].some(keyword => userMessage.includes(keyword));
+
+      // Check for explicit tool usage requests
+      if (toolKeywords.some(keyword => userMessage.includes(keyword))) {
+        logger.info('Forcing tool usage due to explicit tool request', { userMessage });
+        return true;
+      }
+
+      // Check for specific tool-related keywords
+      const allKeywords = [...schedulingKeywords, ...searchKeywords, ...reminderKeywords, ...reportKeywords];
+      const hasToolKeyword = allKeywords.some(keyword => userMessage.includes(keyword));
+
+      // More aggressive tool usage detection
+      if (hasToolKeyword) {
+        logger.info('Forcing tool usage due to tool-related keyword', { userMessage });
+        return true;
+      }
+
+      // Check for questions about patients that might not have explicit keywords
+      if (userMessage.includes('paciente') || userMessage.includes('patient') ||
+          userMessage.includes('tengo') || userMessage.includes('mis') ||
+          userMessage.includes('my') || userMessage.includes('have')) {
+        logger.info('Forcing tool usage due to patient-related query', { userMessage });
+        return true;
+      }
+
+      return false;
     }
-  
+
     private handleFunctionCallingError(error: any): void {
       this.functionCallingErrorCount++;
       console.warn(`Function calling error ${this.functionCallingErrorCount}/${this.maxFunctionCallingErrors}:`, error);
@@ -293,7 +352,7 @@ interface CacheItem {
       logger.warn('API-side createContextCache is bypassed due to model/tier limitations. Context will be managed client-side.');
       return Promise.resolve(null); // Do not attempt to create an API cache
     }
-  
+
     private optimizeConversationHistory(conversationHistory: Message[], maxMessages: number = 20): Message[] {
       if (conversationHistory.length <= maxMessages) {
         return conversationHistory;
@@ -311,7 +370,7 @@ interface CacheItem {
       });
       return optimizedHistory;
     }
-  
+
     async sendMessage(
       message: string,
       conversationHistory: Message[] = [],
@@ -340,9 +399,9 @@ interface CacheItem {
           contextParams.patientName,
           contextParams.userName
         ) : {};
-  
+
         const cacheKey = this.generateCacheKey(message, context); // For response caching
-  
+
         if (!enableFunctionCalling) {
           const cachedResponse = this.getCachedResponse(cacheKey);
           if (cachedResponse) {
@@ -350,7 +409,7 @@ interface CacheItem {
             return { text: cachedResponse, status: "success" };
           }
         }
-  
+
         const contextHints = {
           userMessage: message,
           currentSection: contextParams?.currentSection,
@@ -359,24 +418,24 @@ interface CacheItem {
           patientName: contextParams?.patientName,
           userName: contextParams?.userName,
         };
-  
+
         const optimizedHistory = this.optimizeConversationHistory(conversationHistory);
         const systemPrompt = getEnhancedSystemPrompt(context);
-        
+
         // Create a chat session with initial history and system prompt
         const chat = this.createChatSession(
-          enableFunctionCalling, 
-          contextHints, 
+          enableFunctionCalling,
+          contextHints,
           undefined, // specificFunctions - let it default or be based on contextHints
-          optimizedHistory, 
+          optimizedHistory,
           systemPrompt
         );
-  
+
         logger.info('Using optimized conversation history', {
           originalLength: conversationHistory.length,
           optimizedLength: optimizedHistory.length,
         });
-        
+
         let userMessageContent = message;
         // Context is now primarily handled by systemPrompt and history.
         // Avoid prepending too much explicit context to the user's immediate message
@@ -386,8 +445,8 @@ interface CacheItem {
           const contextInfo = `\nRelevant context for this query: Current section: ${context.currentSection || 'N/A'}. Patient: ${context.patientInfo || 'N/A'}.`;
           userMessageContent = `${message}${contextInfo}`; // Append for clarity or if system prompt is generic
         }
-  
-  
+
+
         logger.info('AI Assistant context before sending message:', {
           userName: context.userName,
           userRole: context.userRole,
@@ -397,10 +456,10 @@ interface CacheItem {
           historyLength: optimizedHistory.length,
           systemPromptLength: systemPrompt.length
         });
-  
+
         // API cacheId is no longer used from contextParams or created
         // const apiCacheIdToUse = contextParams?.cacheId; // No longer relevant for API calls
-  
+
         try {
           const sendMessageWithRetry = async (retryCount = 0, maxRetries = 3): Promise<any> => {
             try {
@@ -417,18 +476,18 @@ interface CacheItem {
               return sendMessageWithRetry(retryCount + 1, maxRetries);
             }
           };
-  
+
           const response = await sendMessageWithRetry();
           const functionCalls = response.response.functionCalls(); // SDK change: response.functionCalls()
           const responseText = response.response.text(); // SDK change: response.text()
-  
+
           const limitedResponse = this.limitResponseLength(responseText);
-  
+
           if (!functionCalls || functionCalls.length === 0) {
             this.cacheResponse(cacheKey, limitedResponse, context); // Response caching
           }
           this.functionCallingErrorCount = 0;
-  
+
           return {
             text: limitedResponse,
             functionCalls: functionCalls,
@@ -444,9 +503,9 @@ interface CacheItem {
             try {
               const fallbackChat = this.createChatSession(
                 false, // disable function calling
-                undefined, 
-                undefined, 
-                optimizedHistory, 
+                undefined,
+                undefined,
+                optimizedHistory,
                 systemPrompt
               );
               const fallbackResponse = await fallbackChat.sendMessage(userMessageContent);
@@ -492,7 +551,7 @@ interface CacheItem {
         throw new Error(`Failed to get response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-  
+
   async streamMessage(
     message: string,
     conversationHistory: Message[] = [],
@@ -516,10 +575,10 @@ interface CacheItem {
           contextParams.patientName,
           contextParams.userName
         ) : {};
-        
+
         const systemPrompt = getEnhancedSystemPrompt(context);
         const optimizedHistory = this.optimizeConversationHistory(conversationHistory);
-  
+
         // If function calling is enabled, it might not be streamable and falls back to sendMessage.
         // The current logic for streamMessage that calls this.sendMessage will inherit the context management changes.
         if (enableFunctionCalling && !this.disableFunctionCalling && onFunctionCall) {
@@ -541,7 +600,7 @@ interface CacheItem {
                 contextParams,
                 true // Enable function calling
               );
-  
+
               if (response.functionCalls && response.functionCalls.length > 0 && onFunctionCall) {
                 logger.info('Function calls detected in streamMessage (via sendMessage)', {
                   functionCalls: response.functionCalls.map((fc: any) => fc.name),
@@ -565,7 +624,7 @@ interface CacheItem {
               logger.warn('sendMessage within streamMessage did not result in function call or usable text, proceeding to attempt direct streaming.', response);
             }
         }
-  
+
         // Fallback to direct streaming if function calling is disabled, not needed, or initial check failed
         logger.info('Proceeding with direct streaming for streamMessage.');
         const chat = this.createChatSession(
@@ -575,7 +634,7 @@ interface CacheItem {
           optimizedHistory,
           systemPrompt
         );
-        
+
         let userMessageContent = message;
          // Context is now primarily handled by systemPrompt and history.
          // Avoid prepending too much explicit context to the user's immediate message
@@ -583,7 +642,7 @@ interface CacheItem {
           const contextInfo = `\nRelevant context for this query: Current section: ${context.currentSection || 'N/A'}. Patient: ${context.patientInfo || 'N/A'}.`;
           userMessageContent = `${message}${contextInfo}`;
         }
-  
+
         logger.info('AI Assistant context before streaming message:', {
           userName: context.userName,
           userRole: context.userRole,
@@ -591,12 +650,12 @@ interface CacheItem {
           enableFunctionCalling: false, // for this streaming path
           historyLength: optimizedHistory.length
         });
-  
+
         const responseStream = await chat.sendMessageStream(userMessageContent);
-  
+
       let fullResponse = '';
         let isLengthLimited = false;
-  
+
         for await (const chunk of responseStream) {
           // const chunkText = chunk.text; // Original SDK might be chunk.text()
           const chunkText = chunk.text(); // Check SDK version for correct property/method
@@ -628,13 +687,13 @@ interface CacheItem {
         // throw new Error(`Failed to stream response from AI: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
-  
+
     private generateCacheKey(message: string, context: Record<string, any>): string {
       const normalizedMessage = this.normalizeMessage(message);
       const contextKey = context.currentSection || ''; // Simplified context key
       return `${normalizedMessage}|${contextKey}`;
     }
-  
+
     private getCachedResponse(cacheKey: string): string | null {
       const cachedItem = this.cache.get(cacheKey);
     if (cachedItem && Date.now() - cachedItem.timestamp < this.cacheExpiryTime) {
@@ -646,7 +705,7 @@ interface CacheItem {
     private cacheResponse(cacheKey: string, response: string, context?: Record<string, any>): void {
       this.cache.set(cacheKey, { question: cacheKey, response, timestamp: Date.now(), context });
     }
-  
+
   private normalizeMessage(message: string): string {
     return message.toLowerCase().trim().replace(/\s+/g, ' ');
   }
@@ -662,7 +721,7 @@ interface CacheItem {
       }
       return response.substring(0, this.maxResponseLength);
     }
-  
+
   clearExpiredCache(): void {
     const now = Date.now();
     for (const [key, item] of this.cache.entries()) {
@@ -689,21 +748,21 @@ interface CacheItem {
     }
   ): Promise<{
     text: string;
-    status?: 'success' | 'error'; 
+    status?: 'success' | 'error';
     error?: { message: string; code: string };
   }> {
     try {
       const systemInstructionText = getEnhancedSystemPrompt(getClientAIContext(undefined, undefined, undefined, undefined, contextParams?.userName));
-      
+
       const contentsForApi = [
-        ...this.mapMessagesToContent(conversationHistory), 
+        ...this.mapMessagesToContent(conversationHistory),
         {
-          role: "function", 
+          role: "function",
           parts: [
             {
               functionResponse: {
                 name: functionName,
-                response: toolOutput 
+                response: toolOutput
               }
             }
           ]
@@ -721,7 +780,7 @@ interface CacheItem {
         { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
       ];
-      
+
       // Construct a modelConfig similar to createChatSession
       const modelConfigForThisCall: any = {
         model: this.modelName,
@@ -740,13 +799,13 @@ interface CacheItem {
         contents: contentsForApi,
         ...modelConfigForThisCall // Spread the model config which includes systemInstruction
       });
-      
-      const apiResponse = result; 
+
+      const apiResponse = result;
       let combinedText = '';
 
       if (apiResponse && apiResponse.candidates && apiResponse.candidates.length > 0) {
         if (apiResponse.promptFeedback && apiResponse.promptFeedback.blockReason) {
-          logger.warn('Prompt was blocked by API in sendFunctionResult', { 
+          logger.warn('Prompt was blocked by API in sendFunctionResult', {
             reason: apiResponse.promptFeedback.blockReason,
             safetyRatings: apiResponse.promptFeedback.safetyRatings,
           });
@@ -765,7 +824,7 @@ interface CacheItem {
           }
         }
       } else if (apiResponse && apiResponse.promptFeedback && apiResponse.promptFeedback.blockReason) {
-         logger.warn('Prompt was blocked by API in sendFunctionResult (no candidates returned)', { 
+         logger.warn('Prompt was blocked by API in sendFunctionResult (no candidates returned)', {
             reason: apiResponse.promptFeedback.blockReason,
             safetyRatings: apiResponse.promptFeedback.safetyRatings,
           });
@@ -803,7 +862,7 @@ export function getAIAssistantService(maxResponseLength?: number): AIAssistantSe
     aiAssistantServiceInstance = new AIAssistantService(
       undefined, undefined, undefined, undefined, maxResponseLength
     );
-  } else if (maxResponseLength !== undefined && 
+  } else if (maxResponseLength !== undefined &&
              // @ts-ignore // Access private member for comparison if necessary, or add a getter
              aiAssistantServiceInstance.maxResponseLength !== maxResponseLength) {
     // If maxResponseLength changes, we might want a new instance or to update existing.

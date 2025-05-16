@@ -18,6 +18,8 @@
     "setup": "cross-env NODE_ENV=alpha dotenv -e .env.alpha prisma generate --schema=schema.prisma.alpha",
     "test:db": "cross-env NODE_ENV=alpha node --loader ts-node/esm scripts/test-alpha-db.ts",
     "test:auth0": "cross-env NODE_ENV=alpha node scripts/test-auth0-integration.js",
+    "test:ai": "cross-env NODE_ENV=alpha node scripts/test-ai-assistant.js",
+    "test:supabase-tools": "cross-env NODE_ENV=alpha node scripts/test-supabase-admin-tools.js",
     "ai:report": "node scripts/generate-report.js",
     "mcp:magic": "npx -y @21st-dev/magic@latest API_KEY=\"7cd127496282f9d6c3cddc13e2b3ce602d589cfde4f5d4d3eafaf1a9c31ff331\""
   },

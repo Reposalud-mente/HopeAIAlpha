@@ -88,13 +88,13 @@ export const createReminderDeclaration: FunctionDeclaration = {
 // Function declaration for searching patients
 export const searchPatientsDeclaration: FunctionDeclaration = {
   name: 'search_patients',
-  description: 'Search for patients by name, email, or phone number. Use this function to find patients in the database before performing actions that require a patient ID.',
+  description: 'Search for patients by name, email, or phone number. Use this function to find patients in the database. If query is empty, returns all patients.',
   parameters: {
     type: Type.OBJECT,
     properties: {
       query: {
         type: Type.STRING,
-        description: 'The search query (name, email, phone number, etc.). Should be at least 2 characters long. Maximum 50 characters.',
+        description: 'The search query (name, email, phone number, etc.). If empty or "*", returns all patients up to the limit. Maximum 50 characters.',
       },
       limit: {
         type: Type.NUMBER,
@@ -162,8 +162,8 @@ const createReminderSchema = z.object({
 });
 
 const searchPatientsSchema = z.object({
-  query: z.string().min(2, "Query must be at least 2 characters").max(50),
-  limit: z.number().min(1).max(20).optional().default(5),
+  query: z.string().max(50),  // Allow empty queries to return all patients
+  limit: z.number().min(1).max(20).optional().default(10),  // Increased default limit for empty queries
 });
 
 const generateReportSchema = z.object({
@@ -434,15 +434,20 @@ export async function searchPatients(args: {
     const validatedArgs = searchPatientsSchema.parse(args);
 
     // Search for patients in the database
+    // If query is empty or '*', return all patients
+    const isEmptyQuery = !validatedArgs.query || validatedArgs.query.trim() === '' || validatedArgs.query === '*';
+
     const patients = await prismaAlpha.patient.findMany({
       where: {
         createdById: userId,
-        OR: [
-          { firstName: { contains: validatedArgs.query, mode: 'insensitive' } },
-          { lastName: { contains: validatedArgs.query, mode: 'insensitive' } },
-          { contactEmail: { contains: validatedArgs.query, mode: 'insensitive' } },
-          { contactPhone: { contains: validatedArgs.query, mode: 'insensitive' } },
-        ],
+        ...(isEmptyQuery ? {} : {
+          OR: [
+            { firstName: { contains: validatedArgs.query, mode: 'insensitive' } },
+            { lastName: { contains: validatedArgs.query, mode: 'insensitive' } },
+            { contactEmail: { contains: validatedArgs.query, mode: 'insensitive' } },
+            { contactPhone: { contains: validatedArgs.query, mode: 'insensitive' } },
+          ],
+        }),
       },
       take: validatedArgs.limit,
       select: {
@@ -483,11 +488,19 @@ export async function searchPatients(args: {
       resultCount: formattedPatients.length
     });
 
+    // Create appropriate message based on query
+    let message = '';
+    if (isEmptyQuery) {
+      message = `Found ${formattedPatients.length} patients in total`;
+    } else {
+      message = `Found ${formattedPatients.length} patients matching "${validatedArgs.query}"`;
+    }
+
     return {
       success: true,
       patients: formattedPatients,
       count: formattedPatients.length,
-      message: `Found ${formattedPatients.length} patients matching "${validatedArgs.query}"`,
+      message,
       code: "PATIENTS_FOUND",
     };
   } catch (error) {
