@@ -44,7 +44,7 @@ const SidebarToggle = ({ isExpanded, toggleExpanded, isHoverExpanded }: {
         "shadow-sm hover:shadow-md",
         "focus:outline-0 focus:ring-0 focus:shadow-sm",
         "active:outline-0 active:ring-0 active:shadow-sm",
-        "right-[-10px] top-[16px] z-10",
+        "right-[-10px] top-[16px] z-40",
         isHoverExpanded
           ? "border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-300"
           : "border-[#e6e6e3] hover:bg-gray-50 hover:border-gray-300", // Enhanced hover effects
@@ -209,13 +209,13 @@ const SimplifiedSidebar = ({ isMobile = false }: { isMobile?: boolean }) => {
   const sidebarWidthClass = isMobile
     ? 'w-full' // Full width for mobile drawer
     : effectiveIsExpanded
-      ? 'w-[15vw] min-w-[180px] max-w-[260px]'
-      : 'w-[3.5vw] min-w-[44px] max-w-[70px]';
+      ? 'w-[var(--sidebar-expanded-width)]'
+      : 'w-[var(--sidebar-collapsed-width)]';
 
   return (
     <div
       className={cn(
-        "h-full transition-all duration-300 z-30 relative",
+        "h-full transition-all duration-300 relative",
         sidebarWidthClass
       )}
       // Only apply mouse events on desktop
