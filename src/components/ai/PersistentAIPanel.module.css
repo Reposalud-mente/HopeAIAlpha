@@ -1,0 +1,95 @@
+.panelContainer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: var(--ai-panel-width);
+  max-width: 100vw;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease-in-out;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  background-color: var(--background);
+  border-left: 1px solid var(--border);
+}
+
+.panelCollapsed {
+  transform: translateX(calc(100% - 40px));
+}
+
+.panelExpanded {
+  transform: translateX(0);
+}
+
+.collapseButton {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary-dark, #1e293b);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 41;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.messageContainer {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.inputContainer {
+  border-top: 1px solid var(--border);
+  padding: 1rem;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .panelContainer {
+    width: 100%;
+    height: 50vh;
+    top: auto;
+    bottom: 0;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .panelCollapsed {
+    transform: translateY(calc(100% - 40px));
+  }
+
+  .panelExpanded {
+    transform: translateY(0);
+  }
+
+  .collapseButton {
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(-50%) rotate(90deg);
+  }
+}

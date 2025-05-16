@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from 'react';
 import TopBar from '@/components/layout/topbar';
-// Importamos el nuevo sidebar simplificado
 import SimplifiedSidebar from '@/components/layout/simplified-sidebar';
 import MobileSidebar from '@/components/layout/mobile-sidebar';
 import { useNavbar } from '@/contexts/NavbarContext';
@@ -36,26 +35,30 @@ const AppLayout = ({ children, hideNavbar = false }: AppLayoutProps) => {
   }, [isDrawerOpen]);
 
   return (
-    <div className={cn("h-screen flex flex-col bg-gray-50", isDrawerOpen ? "overflow-hidden" : "")}>
+    <div className={cn(
+      "h-screen grid grid-rows-[var(--topbar-height)_1fr] bg-gray-50",
+      isDrawerOpen ? "overflow-hidden" : ""
+    )}>
       {/* TopBar - horizontal navigation */}
       {!hideNavbar && <TopBar />}
 
       {/* Mobile Sidebar */}
       {!hideNavbar && <div className="md:hidden"><MobileSidebar /></div>}
 
-      <div className="flex flex-1 overflow-hidden pt-[57px]">
-        {/* Desktop Sidebar - Fixed position */}
+      {/* Main content area with sidebar */}
+      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] overflow-hidden">
+        {/* Desktop Sidebar */}
         {!hideNavbar && (
-          <div className="fixed left-0 top-[57px] h-[calc(100vh-57px)] z-30 hidden md:block border-t-0">
+          <div className="hidden md:block sticky top-[var(--topbar-height)] h-[calc(100vh-var(--topbar-height))] z-30 border-t-0">
             <SimplifiedSidebar />
           </div>
         )}
 
-        {/* Main content area with appropriate margin based on sidebar width */}
+        {/* Main content area */}
         <main
           className={cn(
-            "flex-1 overflow-auto transition-all duration-300 ease-in-out",
-            !hideNavbar && (isExpanded ? "ml-[240px]" : "ml-[56px]") // Dimensiones consistentes con SimplifiedSidebar
+            "overflow-auto transition-all duration-300 ease-in-out",
+            "lg:pr-[var(--ai-panel-width)]" // Right padding for AI panel on larger screens
           )}
         >
           {children}

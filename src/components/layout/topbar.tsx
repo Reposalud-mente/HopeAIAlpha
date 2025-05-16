@@ -20,7 +20,7 @@ const TopBar = () => {
 
   return (
     <header
-      className="bg-white shadow-sm py-[0.6vw] border-b fixed top-0 right-0 left-0 z-40 h-[4vw] min-h-[48px]"
+      className="bg-white shadow-sm py-[0.6vw] border-b z-40 h-[var(--topbar-height)] min-h-[48px]"
       role="banner"
       aria-label="Top navigation bar"
     >

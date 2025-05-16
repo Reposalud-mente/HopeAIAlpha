@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { usePathname } from 'next/navigation'
-import { FloatingAIAssistantWithProvider } from './ai-assistance-card'
+import { PersistentAIPanelWithProvider } from './PersistentAIPanel'
 
 /**
  * Conditional AI Assistant that only renders when a user is authenticated
  * This component prevents the AI assistant from appearing on the login page
  * and other unauthenticated routes.
+ *
+ * Now uses the persistent vertical panel implementation instead of the floating assistant.
  */
 export function ConditionalAIAssistant() {
   const { user, loading } = useAuth()
@@ -36,5 +38,5 @@ export function ConditionalAIAssistant() {
   }
 
   // Only render the AI assistant if the user is authenticated and on a protected route
-  return <FloatingAIAssistantWithProvider />
+  return <PersistentAIPanelWithProvider />
 }
