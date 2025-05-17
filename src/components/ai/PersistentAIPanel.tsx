@@ -17,6 +17,10 @@ import { NewToolCallingVisualizer } from "./new-tool-calling-visualizer";
 import { ClientStorageProvider } from "@/components/ai-assistant/ClientStorageProvider";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePathname } from "next/navigation";
+import { MemoryUsageDialog } from "./MemoryUsageDialog";
+import { MemoryIndicator } from "./MemoryIndicator";
+import { toast } from "@/components/ui/use-toast";
+import { getMem0Service } from "@/lib/ai-assistant/mem0-service";
 
 interface PersistentAIPanelProps {
   initialQuestion?: string;
@@ -63,8 +67,16 @@ export function PersistentAIPanel({
     pendingFunctionCall,
     confirmPendingFunctionCall,
     setPendingFunctionCall,
-    memories
+    memories,
+    memoryEnabled,
+    isUsingMemory,
+    usedMemories,
+    refreshMemories
   } = useAIAssistant();
+
+  // State for memory usage dialog
+  const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
+  const [selectedMemories, setSelectedMemories] = useState<any[]>([]);
 
   // Initialize voice input
   const {
@@ -191,8 +203,10 @@ export function PersistentAIPanel({
         patientId,
         patientName,
         userName: firstName,
+        userId: session?.id || session?.email,
         session: null,
-        userMessage: text
+        userMessage: text,
+        useMemory: memoryEnabled
       };
 
       // Use the streamMessage function from the AI assistant context
@@ -271,6 +285,46 @@ export function PersistentAIPanel({
 
   return (
     <AIPanelInputProvider setInputValue={setInput} handleSendMessage={handleSend}>
+      {/* Memory Usage Dialog */}
+      <MemoryUsageDialog
+        open={memoryDialogOpen}
+        onOpenChange={setMemoryDialogOpen}
+        memories={selectedMemories}
+        onDeleteMemory={(memoryId) => {
+          // Find the user ID
+          const userId = session?.id || session?.email || '';
+          if (!userId) return;
+
+          // Get the mem0 service
+          const mem0Service = getMem0Service();
+
+          // Delete the memory
+          mem0Service.deleteMemory(memoryId, userId)
+            .then(() => {
+              // Remove the memory from the selected memories
+              setSelectedMemories(prev => prev.filter(m => m.id !== memoryId));
+
+              // Refresh memories
+              refreshMemories();
+
+              // Show a toast
+              toast({
+                title: "Memoria eliminada",
+                description: "La memoria ha sido eliminada correctamente.",
+                duration: 3000,
+              });
+            })
+            .catch(error => {
+              console.error('Error deleting memory:', error);
+              toast({
+                title: "Error",
+                description: "No se pudo eliminar la memoria. Inténtalo de nuevo.",
+                variant: "destructive",
+                duration: 3000,
+              });
+            });
+        }}
+      />
       <div
         className={cn(
           styles.panelContainer,
@@ -333,13 +387,13 @@ export function PersistentAIPanel({
           )}
 
           {/* Memory Indicator */}
-          {memories.length > 0 && (
+          {memoryEnabled && (
             <div
               className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full flex items-center gap-1"
               title="El asistente tiene memorias de conversaciones anteriores"
             >
               <Brain className="h-3 w-3" />
-              <span>Memoria</span>
+              <span>Memoria {memories.length > 0 ? `(${memories.length})` : ''}</span>
             </div>
           )}
 
@@ -446,15 +500,49 @@ export function PersistentAIPanel({
                 ))}
 
                 {/* Memory usage indicator */}
-                {group.role === 'assistant' && group.messages.some(msg =>
-                  msg.content.includes('Basado en nuestras conversaciones anteriores') ||
-                  msg.content.includes('Recuerdo que mencionaste') ||
-                  msg.content.includes('Como mencionaste antes') ||
-                  msg.content.includes('Según lo que hablamos')
+                {group.role === 'assistant' && (
+                  group.messages.some(msg => msg.isUsingMemory) ||
+                  group.messages.some(msg =>
+                    msg.content.includes('Basado en nuestras conversaciones anteriores') ||
+                    msg.content.includes('Recuerdo que mencionaste') ||
+                    msg.content.includes('Como mencionaste antes') ||
+                    msg.content.includes('Según lo que hablamos')
+                  )
                 ) && (
-                  <div className="text-xs text-muted-foreground flex items-center gap-1 ml-2 mt-1">
-                    <Brain className="h-3 w-3" />
-                    <span>Usando memoria</span>
+                  <div className="ml-2 mt-1">
+                    {/* Find the message with used memories */}
+                    {(() => {
+                      const msgWithMemories = group.messages.find(msg => msg.usedMemories && msg.usedMemories.length > 0);
+                      if (msgWithMemories && msgWithMemories.usedMemories) {
+                        return (
+                          <MemoryIndicator
+                            isUsingMemory={true}
+                            memoryCount={msgWithMemories.usedMemories.length}
+                            memories={msgWithMemories.usedMemories}
+                            onClick={() => {
+                              setSelectedMemories(msgWithMemories.usedMemories);
+                              setMemoryDialogOpen(true);
+                            }}
+                          />
+                        );
+                      } else {
+                        return (
+                          <div
+                            className="text-xs text-muted-foreground flex items-center gap-1 cursor-pointer hover:text-primary"
+                            onClick={() => {
+                              toast({
+                                title: "No se encontraron memorias",
+                                description: "No hay información detallada sobre las memorias utilizadas.",
+                                duration: 3000,
+                              });
+                            }}
+                          >
+                            <Brain className="h-3 w-3" />
+                            <span>Usando memoria</span>
+                          </div>
+                        );
+                      }
+                    })()}
                   </div>
                 )}
               </div>
