@@ -16,11 +16,13 @@ import {
     GenerationConfig, // Added for type hint
   } from '@google/genai';
 import { ENV } from '../RagAI/config';
-  import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
-  import { getClientAIContext } from './client-context-gatherer';
-  import { adminToolDeclarations as prismaToolDeclarations } from './admin-tools';
-  import { adminToolDeclarations as supabaseToolDeclarations } from './supabase-admin-tools';
-  import { logger } from '@/lib/logger';
+import { getEnhancedSystemPrompt } from '@/prompts/enhanced_clinical_assistant_prompt';
+import { getClientAIContext } from './client-context-gatherer';
+import { adminToolDeclarations as prismaToolDeclarations } from './admin-tools';
+import { adminToolDeclarations as supabaseToolDeclarations } from './supabase-admin-tools';
+import { logger } from '@/lib/logger';
+import { getMem0Service } from './mem0-service';
+import { generateUniqueId } from '@/lib/utils/id-generator';
 
   // Combine tool declarations from both Prisma and Supabase implementations
   // Prioritize Supabase implementations when there are duplicates
@@ -380,6 +382,7 @@ interface CacheItem {
         patientId?: string;
         patientName?: string;
         userName?: string;
+        userId?: string; // Add userId parameter for memory integration
         session?: any;
         // cacheId?: string; // API cacheId is no longer used
       },
@@ -392,6 +395,33 @@ interface CacheItem {
       // cacheId?: string; // API cacheId is no longer returned
     }> {
       try {
+        // Get relevant memories if userId is provided
+        let relevantMemories: any[] = [];
+        let memoryContext = '';
+
+        if (contextParams?.userId) {
+          try {
+            const mem0Service = getMem0Service();
+            relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
+
+            if (relevantMemories.length > 0) {
+              // Format memories for inclusion in the prompt
+              memoryContext = relevantMemories
+                .map(m => `- ${m.memory}`)
+                .join('\n');
+
+              logger.info('Retrieved memories for context', {
+                count: relevantMemories.length,
+                userId: contextParams.userId
+              });
+            }
+          } catch (error) {
+            logger.error('Error retrieving memories', { error });
+            // Continue without memories if there's an error
+          }
+        }
+
+        // Get the standard context
         const context = contextParams ? getClientAIContext(
           contextParams.currentSection,
           contextParams.currentPage,
@@ -399,6 +429,11 @@ interface CacheItem {
           contextParams.patientName,
           contextParams.userName
         ) : {};
+
+        // Add memories to context if available
+        if (memoryContext) {
+          context.memories = memoryContext;
+        }
 
         const cacheKey = this.generateCacheKey(message, context); // For response caching
 
@@ -488,6 +523,25 @@ interface CacheItem {
           }
           this.functionCallingErrorCount = 0;
 
+          // After getting the response, store the conversation in mem0
+          if (contextParams?.userId) {
+            try {
+              // Add the new message and response to the history
+              const updatedHistory = [
+                { id: generateUniqueId('user'), role: 'user', content: message },
+                { id: generateUniqueId('assistant'), role: 'assistant', content: limitedResponse }
+              ];
+
+              // Store in mem0 (don't await to avoid blocking)
+              const mem0Service = getMem0Service();
+              mem0Service.addConversation(updatedHistory, contextParams.userId)
+                .catch(error => logger.error('Failed to store conversation in mem0', { error }));
+            } catch (error) {
+              logger.error('Error storing conversation in mem0', { error });
+              // Continue even if storing fails
+            }
+          }
+
           return {
             text: limitedResponse,
             functionCalls: functionCalls,
@@ -562,12 +616,40 @@ interface CacheItem {
         patientId?: string;
         patientName?: string;
         userName?: string;
+        userId?: string; // Add userId parameter for memory integration
         session?: any;
       },
       onFunctionCall?: (functionCall: any) => void,
       enableFunctionCalling: boolean = true
   ): Promise<void> {
     try {
+        // Get relevant memories if userId is provided
+        let relevantMemories: any[] = [];
+        let memoryContext = '';
+
+        if (contextParams?.userId) {
+          try {
+            const mem0Service = getMem0Service();
+            relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
+
+            if (relevantMemories.length > 0) {
+              // Format memories for inclusion in the prompt
+              memoryContext = relevantMemories
+                .map(m => `- ${m.memory}`)
+                .join('\n');
+
+              logger.info('Retrieved memories for streaming context', {
+                count: relevantMemories.length,
+                userId: contextParams.userId
+              });
+            }
+          } catch (error) {
+            logger.error('Error retrieving memories for streaming', { error });
+            // Continue without memories if there's an error
+          }
+        }
+
+        // Get the standard context
         const context = contextParams ? getClientAIContext(
           contextParams.currentSection,
           contextParams.currentPage,
@@ -575,6 +657,11 @@ interface CacheItem {
           contextParams.patientName,
           contextParams.userName
         ) : {};
+
+        // Add memories to context if available
+        if (memoryContext) {
+          context.memories = memoryContext;
+        }
 
         const systemPrompt = getEnhancedSystemPrompt(context);
         const optimizedHistory = this.optimizeConversationHistory(conversationHistory);
@@ -677,6 +764,25 @@ interface CacheItem {
         }
         const cacheKey = this.generateCacheKey(message, context); // For response caching
         this.cacheResponse(cacheKey, fullResponse, context);
+
+        // After streaming completes, store the conversation in mem0
+        if (contextParams?.userId) {
+          try {
+            // Add the new message and response to the history
+            const updatedHistory = [
+              { id: generateUniqueId('user'), role: 'user', content: message },
+              { id: generateUniqueId('assistant'), role: 'assistant', content: fullResponse }
+            ];
+
+            // Store in mem0 (don't await to avoid blocking)
+            const mem0Service = getMem0Service();
+            mem0Service.addConversation(updatedHistory, contextParams.userId)
+              .catch(error => logger.error('Failed to store streamed conversation in mem0', { error }));
+          } catch (error) {
+            logger.error('Error storing streamed conversation in mem0', { error });
+            // Continue even if storing fails
+          }
+        }
       } catch (error) {
         logger.error('Error streaming message from Gemini API:', {
           error: error instanceof Error ? error.message : 'Unknown error',

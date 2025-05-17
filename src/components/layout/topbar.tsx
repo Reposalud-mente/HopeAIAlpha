@@ -13,6 +13,7 @@ import {
 
 import { useDrawer } from '@/contexts/DrawerContext';
 import { NotificationCenter } from '@/components/calendar/NotificationCenter';
+import { UserMenu } from '@/components/layout/user-menu';
 
 const TopBar = () => {
   // We're not using user or signOut in this component currently
@@ -82,6 +83,9 @@ const TopBar = () => {
 
           {/* Notification Center */}
           <NotificationCenter />
+
+          {/* User Menu */}
+          <UserMenu />
         </div>
       </div>
     </header>
