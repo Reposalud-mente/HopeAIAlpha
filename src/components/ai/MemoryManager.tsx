@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAIAssistant } from '@/contexts/ai-assistant-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,14 @@ export function MemoryManager() {
     try {
       setDeletingMemoryId(memoryId);
       const mem0Service = getMem0Service();
+
+      // Check if memory service is available
+      const isMemoryAvailable = await mem0Service.isAvailable();
+
+      if (!isMemoryAvailable) {
+        throw new Error('Memory service is not available');
+      }
+
       const result = await mem0Service.deleteMemory(memoryId, userId);
 
       if (result.success === false) {
@@ -59,6 +67,14 @@ export function MemoryManager() {
     try {
       setIsDeletingAll(true);
       const mem0Service = getMem0Service();
+
+      // Check if memory service is available
+      const isMemoryAvailable = await mem0Service.isAvailable();
+
+      if (!isMemoryAvailable) {
+        throw new Error('Memory service is not available');
+      }
+
       const result = await mem0Service.deleteAllMemories(userId);
 
       if (result.success === false) {
@@ -85,6 +101,36 @@ export function MemoryManager() {
       setIsDeletingAll(false);
     }
   };
+
+  // Load memories when the component mounts
+  useEffect(() => {
+    if (userId) {
+      const loadMemories = async () => {
+        try {
+          const mem0Service = getMem0Service();
+
+          // Check if memory service is available
+          const isMemoryAvailable = await mem0Service.isAvailable();
+
+          if (isMemoryAvailable) {
+            refreshMemories();
+          } else {
+            console.warn('Memory service is not available');
+            toast({
+              title: "Servicio de memoria no disponible",
+              description: "No se pudieron cargar las memorias. Inténtalo más tarde.",
+              variant: "destructive",
+              duration: 3000,
+            });
+          }
+        } catch (error) {
+          console.error('Error checking memory service availability:', error);
+        }
+      };
+
+      loadMemories();
+    }
+  }, [userId, refreshMemories]);
 
   const formatDate = (dateString: string) => {
     try {

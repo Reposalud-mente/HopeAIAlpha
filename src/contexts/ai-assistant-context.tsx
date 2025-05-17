@@ -27,6 +27,12 @@ interface AIAssistantContextType {
   memories: any[]; // Add memories from mem0.ai
   isLoadingMemories: boolean; // Loading state for memories
   refreshMemories: () => Promise<void>; // Function to refresh memories
+  memoryEnabled: boolean; // Whether memory is enabled
+  toggleMemory: () => void; // Toggle memory on/off
+  memoryLimit: number; // Maximum number of memories to retrieve
+  setMemoryLimitValue: (limit: number) => void; // Set memory limit
+  usedMemories: any[]; // Memories used in the current conversation
+  isUsingMemory: boolean; // Whether memory is being used in the current conversation
 }
 
 // Create the context
@@ -56,6 +62,10 @@ export function AIAssistantProvider({
   // State for memories from mem0.ai
   const [memories, setMemories] = useState<any[]>([]);
   const [isLoadingMemories, setIsLoadingMemories] = useState<boolean>(false);
+  const [memoryEnabled, setMemoryEnabled] = useState<boolean>(true);
+  const [memoryLimit, setMemoryLimit] = useState<number>(5);
+  const [usedMemories, setUsedMemories] = useState<any[]>([]);
+  const [isUsingMemory, setIsUsingMemory] = useState<boolean>(false);
 
   // Get the enhanced AI Assistant service with a maximum response length of 500 characters
   const aiService = getAIAssistantService(500); // Limit responses to 500 characters
@@ -79,15 +89,24 @@ export function AIAssistantProvider({
     setIsLoadingMemories(true);
     try {
       const mem0Service = getMem0Service();
-      const userMemories = await mem0Service.getAllMemories(userId);
 
-      // Ensure we have a valid array of memories
-      if (Array.isArray(userMemories)) {
-        setMemories(userMemories);
+      // Check if memory service is available
+      const isMemoryAvailable = await mem0Service.isAvailable();
+
+      if (isMemoryAvailable) {
+        const userMemories = await mem0Service.getAllMemories(userId);
+
+        // Ensure we have a valid array of memories
+        if (Array.isArray(userMemories)) {
+          setMemories(userMemories);
+        } else {
+          // If not an array, set to empty array
+          setMemories([]);
+          console.warn('Received invalid memories format:', userMemories);
+        }
       } else {
-        // If not an array, set to empty array
+        console.warn('Memory service is not available');
         setMemories([]);
-        console.warn('Received invalid memories format:', userMemories);
       }
     } catch (error) {
       console.error('Error fetching memories:', error);
@@ -95,6 +114,16 @@ export function AIAssistantProvider({
     } finally {
       setIsLoadingMemories(false);
     }
+  };
+
+  // Function to toggle memory
+  const toggleMemory = () => {
+    setMemoryEnabled(!memoryEnabled);
+  };
+
+  // Function to set memory limit
+  const setMemoryLimitValue = (limit: number) => {
+    setMemoryLimit(limit);
   };
 
   // Load memories when the user ID changes
@@ -212,6 +241,10 @@ export function AIAssistantProvider({
     try {
       const conversationHistory = messages.slice(-20);
 
+      // Reset memory usage state
+      setUsedMemories([]);
+      setIsUsingMemory(false);
+
       const response = await aiService.sendMessage(
         content,
         conversationHistory,
@@ -220,9 +253,17 @@ export function AIAssistantProvider({
           currentPage: window.location.pathname.split('/')[2] || undefined,
           userName: user?.user_metadata?.full_name || user?.email || undefined,
           userId: userId, // Add userId for memory integration
+          useMemory: memoryEnabled,
+          memoryLimit: memoryLimit
           // cacheId has been removed
         }
       );
+
+      // Check if memory was used in the response
+      if (response.usedMemories && Array.isArray(response.usedMemories) && response.usedMemories.length > 0) {
+        setUsedMemories(response.usedMemories);
+        setIsUsingMemory(true);
+      }
 
       // cacheId is no longer returned by the V2 service or stored.
 
@@ -435,6 +476,7 @@ export function AIAssistantProvider({
       let tempAssistantMessageId: string | null = null;
       let fullResponse = '';
       let functionCallData: any | null = null;
+      let usedMemoriesData: any[] = [];
 
       await aiService.streamMessage(
         content,
@@ -461,6 +503,8 @@ export function AIAssistantProvider({
           currentPage: window.location.pathname.split('/')[2] || undefined,
           userName: user?.user_metadata?.full_name || user?.email || undefined,
           userId: userId, // Add userId for memory integration
+          useMemory: memoryEnabled,
+          memoryLimit: memoryLimit,
           ...inputContextParams
         },
         (functionCall: any) => {
@@ -470,7 +514,28 @@ export function AIAssistantProvider({
             // Do not add function call message here; wait for stream to complete
           }
         },
-        true // enableFunctionCalling
+        true, // Enable function calling
+        (memories: any[]) => {
+          // Store the memories for later use
+          usedMemoriesData = memories;
+          setUsedMemories(memories);
+          setIsUsingMemory(memories.length > 0);
+
+          // Update the message with memory information
+          if (tempAssistantMessageId) {
+            setMessages((prevMessages) => {
+              return prevMessages.map((msg) =>
+                msg.id === tempAssistantMessageId
+                  ? {
+                      ...msg,
+                      usedMemories: memories,
+                      isUsingMemory: memories.length > 0
+                    }
+                  : msg
+              );
+            });
+          }
+        }
       );
 
       // Handle function calls after stream completes
@@ -1089,7 +1154,13 @@ export function AIAssistantProvider({
     setPendingFunctionCall,
     memories,
     isLoadingMemories,
-    refreshMemories
+    refreshMemories,
+    memoryEnabled,
+    toggleMemory,
+    memoryLimit,
+    setMemoryLimitValue,
+    usedMemories,
+    isUsingMemory
   };
 
   return (

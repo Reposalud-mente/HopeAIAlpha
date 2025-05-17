@@ -36,8 +36,25 @@ import { generateUniqueId } from '@/lib/utils/id-generator';
 // Define message types
 export interface Message {
   id: string;
-    role: 'user' | 'assistant'; // 'assistant' corresponds to 'model' in Gemini
+  role: 'user' | 'assistant'; // 'assistant' corresponds to 'model' in Gemini
   content: string;
+  functionCalls?: any[];
+  usedMemories?: any[];
+  isUsingMemory?: boolean;
+}
+
+// Define context parameters type
+export interface ContextParams {
+  currentSection?: string;
+  currentPage?: string;
+  patientId?: string;
+  patientName?: string;
+  userName?: string;
+  userId?: string;
+  session?: any;
+  userMessage?: string;
+  useMemory?: boolean;
+  memoryLimit?: number;
 }
 
 // Define cache item type
@@ -373,19 +390,24 @@ interface CacheItem {
       return optimizedHistory;
     }
 
+    // Define context parameters interface
+    export interface ContextParams {
+      currentSection?: string;
+      currentPage?: string;
+      patientId?: string;
+      patientName?: string;
+      userName?: string;
+      userId?: string; // User ID for memory integration
+      session?: any;
+      useMemory?: boolean; // Whether to use memory for this request
+      memoryLimit?: number; // Maximum number of memories to retrieve
+      // cacheId?: string; // API cacheId is no longer used (deprecated)
+    }
+
     async sendMessage(
       message: string,
       conversationHistory: Message[] = [],
-      contextParams?: {
-        currentSection?: string;
-        currentPage?: string;
-        patientId?: string;
-        patientName?: string;
-        userName?: string;
-        userId?: string; // Add userId parameter for memory integration
-        session?: any;
-        // cacheId?: string; // API cacheId is no longer used
-      },
+      contextParams?: ContextParams,
       enableFunctionCalling: boolean = true
     ): Promise<{
       text: string;
@@ -395,31 +417,51 @@ interface CacheItem {
       // cacheId?: string; // API cacheId is no longer returned
     }> {
       try {
-        // Get relevant memories if userId is provided
+        // Get relevant memories if userId is provided and memory is enabled
         let relevantMemories: any[] = [];
         let memoryContext = '';
+        let isUsingMemory = false;
 
-        if (contextParams?.userId) {
+        if (contextParams?.userId && contextParams?.useMemory !== false) {
           try {
             const mem0Service = getMem0Service();
-            // Only search for memories if the message is not too short
-            if (message.trim().length > 5) {
-              relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
 
-              if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
-                // Format memories for inclusion in the prompt
-                memoryContext = relevantMemories
-                  .filter(m => m && m.memory) // Ensure memory exists
-                  .map(m => `- ${m.memory}`)
-                  .join('\n');
+            // Check if memory service is available
+            const isMemoryAvailable = await mem0Service.isAvailable();
 
-                logger.info('Retrieved memories for context', {
-                  count: relevantMemories.length,
-                  userId: contextParams.userId
-                });
+            if (isMemoryAvailable) {
+              // Only search for memories if the message is not too short
+              if (message.trim().length > 5) {
+                // Get memory limit from context params or use default
+                const memoryLimit = contextParams?.memoryLimit || 5;
+
+                // Search for memories with filters and limit
+                relevantMemories = await mem0Service.searchMemories(
+                  message,
+                  contextParams.userId,
+                  memoryLimit,
+                  {} // No additional filters
+                );
+
+                if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
+                  // Format memories for inclusion in the prompt
+                  memoryContext = relevantMemories
+                    .filter(m => m && m.memory) // Ensure memory exists
+                    .map(m => `- ${m.memory}`)
+                    .join('\n');
+
+                  isUsingMemory = true;
+
+                  logger.info('Retrieved memories for context', {
+                    count: relevantMemories.length,
+                    userId: contextParams.userId
+                  });
+                }
+              } else {
+                logger.info('Message too short for memory search', { messageLength: message.trim().length });
               }
             } else {
-              logger.info('Message too short for memory search', { messageLength: message.trim().length });
+              logger.warn('Memory service is not available', { userId: contextParams.userId });
             }
           } catch (error) {
             logger.error('Error retrieving memories', { error });
@@ -530,7 +572,7 @@ interface CacheItem {
           this.functionCallingErrorCount = 0;
 
           // After getting the response, store the conversation in mem0
-          if (contextParams?.userId && message.trim().length > 5 && limitedResponse.trim().length > 5) {
+          if (contextParams?.userId && contextParams?.useMemory !== false && message.trim().length > 5 && limitedResponse.trim().length > 5) {
             try {
               // Add the new message and response to the history
               const updatedHistory = [
@@ -540,11 +582,27 @@ interface CacheItem {
 
               // Store in mem0 (don't await to avoid blocking)
               const mem0Service = getMem0Service();
-              // Use setTimeout to ensure this doesn't block the response
-              setTimeout(() => {
-                mem0Service.addConversation(updatedHistory, contextParams.userId)
-                  .catch(error => logger.error('Failed to store conversation in mem0', { error }));
-              }, 100);
+
+              // Check if memory service is available
+              const isMemoryAvailable = await mem0Service.isAvailable();
+
+              if (isMemoryAvailable) {
+                // Use setTimeout to ensure this doesn't block the response
+                setTimeout(() => {
+                  // Add metadata about the conversation
+                  const metadata = {
+                    source: 'conversation',
+                    timestamp: new Date().toISOString(),
+                    isUsingMemory: isUsingMemory,
+                    memoryCount: relevantMemories.length
+                  };
+
+                  mem0Service.addConversation(updatedHistory, contextParams.userId, metadata)
+                    .catch(error => logger.error('Failed to store conversation in mem0', { error }));
+                }, 100);
+              } else {
+                logger.warn('Memory service is not available for storing conversation', { userId: contextParams.userId });
+              }
             } catch (error) {
               logger.error('Error storing conversation in mem0', { error });
               // Continue even if storing fails
@@ -555,6 +613,8 @@ interface CacheItem {
             text: limitedResponse,
             functionCalls: functionCalls,
             status: "success",
+            usedMemories: relevantMemories,
+            isUsingMemory: isUsingMemory
           };
         } catch (error) {
           if (enableFunctionCalling) {
@@ -619,44 +679,62 @@ interface CacheItem {
     message: string,
     conversationHistory: Message[] = [],
       onChunk: (chunk: string) => void,
-      contextParams?: {
-        currentSection?: string;
-        currentPage?: string;
-        patientId?: string;
-        patientName?: string;
-        userName?: string;
-        userId?: string; // Add userId parameter for memory integration
-        session?: any;
-      },
+      contextParams?: ContextParams,
       onFunctionCall?: (functionCall: any) => void,
-      enableFunctionCalling: boolean = true
+      enableFunctionCalling: boolean = true,
+      onMemoryUsage?: (memories: any[]) => void
   ): Promise<void> {
     try {
-        // Get relevant memories if userId is provided
+        // Get relevant memories if userId is provided and memory is enabled
         let relevantMemories: any[] = [];
         let memoryContext = '';
+        let isUsingMemory = false;
 
-        if (contextParams?.userId) {
+        if (contextParams?.userId && contextParams?.useMemory !== false) {
           try {
             const mem0Service = getMem0Service();
-            // Only search for memories if the message is not too short
-            if (message.trim().length > 5) {
-              relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
 
-              if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
-                // Format memories for inclusion in the prompt
-                memoryContext = relevantMemories
-                  .filter(m => m && m.memory) // Ensure memory exists
-                  .map(m => `- ${m.memory}`)
-                  .join('\n');
+            // Check if memory service is available
+            const isMemoryAvailable = await mem0Service.isAvailable();
 
-                logger.info('Retrieved memories for streaming context', {
-                  count: relevantMemories.length,
-                  userId: contextParams.userId
-                });
+            if (isMemoryAvailable) {
+              // Only search for memories if the message is not too short
+              if (message.trim().length > 5) {
+                // Get memory limit from context params or use default
+                const memoryLimit = contextParams?.memoryLimit || 5;
+
+                // Search for memories with filters and limit
+                relevantMemories = await mem0Service.searchMemories(
+                  message,
+                  contextParams.userId,
+                  memoryLimit,
+                  {} // No additional filters
+                );
+
+                if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
+                  // Format memories for inclusion in the prompt
+                  memoryContext = relevantMemories
+                    .filter(m => m && m.memory) // Ensure memory exists
+                    .map(m => `- ${m.memory}`)
+                    .join('\n');
+
+                  isUsingMemory = true;
+
+                  // Call the memory usage callback if provided
+                  if (onMemoryUsage) {
+                    onMemoryUsage(relevantMemories);
+                  }
+
+                  logger.info('Retrieved memories for streaming context', {
+                    count: relevantMemories.length,
+                    userId: contextParams.userId
+                  });
+                }
+              } else {
+                logger.info('Message too short for memory search in streaming', { messageLength: message.trim().length });
               }
             } else {
-              logger.info('Message too short for memory search in streaming', { messageLength: message.trim().length });
+              logger.warn('Memory service is not available for streaming', { userId: contextParams.userId });
             }
           } catch (error) {
             logger.error('Error retrieving memories for streaming', { error });
@@ -781,7 +859,7 @@ interface CacheItem {
         this.cacheResponse(cacheKey, fullResponse, context);
 
         // After streaming completes, store the conversation in mem0
-        if (contextParams?.userId && message.trim().length > 5 && fullResponse.trim().length > 5) {
+        if (contextParams?.userId && contextParams?.useMemory !== false && message.trim().length > 5 && fullResponse.trim().length > 5) {
           try {
             // Add the new message and response to the history
             const updatedHistory = [
@@ -791,11 +869,27 @@ interface CacheItem {
 
             // Store in mem0 (don't await to avoid blocking)
             const mem0Service = getMem0Service();
-            // Use setTimeout to ensure this doesn't block the response
-            setTimeout(() => {
-              mem0Service.addConversation(updatedHistory, contextParams.userId)
-                .catch(error => logger.error('Failed to store streamed conversation in mem0', { error }));
-            }, 100);
+
+            // Check if memory service is available
+            const isMemoryAvailable = await mem0Service.isAvailable();
+
+            if (isMemoryAvailable) {
+              // Use setTimeout to ensure this doesn't block the response
+              setTimeout(() => {
+                // Add metadata about the conversation
+                const metadata = {
+                  source: 'streaming_conversation',
+                  timestamp: new Date().toISOString(),
+                  isUsingMemory: isUsingMemory,
+                  memoryCount: relevantMemories.length
+                };
+
+                mem0Service.addConversation(updatedHistory, contextParams.userId, metadata)
+                  .catch(error => logger.error('Failed to store streamed conversation in mem0', { error }));
+              }, 100);
+            } else {
+              logger.warn('Memory service is not available for storing streamed conversation', { userId: contextParams.userId });
+            }
           } catch (error) {
             logger.error('Error storing streamed conversation in mem0', { error });
             // Continue even if storing fails
