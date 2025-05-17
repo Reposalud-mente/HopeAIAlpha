@@ -162,6 +162,7 @@ export function getEnhancedSystemPrompt(context?: {
   recentActivity?: string[];
   patientInfo?: string;
   currentPage?: string;
+  memories?: string; // Add memories parameter
 }): string {
   let prompt = ENHANCED_CLINICAL_ASSISTANT_SYSTEM_PROMPT;
 
@@ -195,6 +196,12 @@ export function getEnhancedSystemPrompt(context?: {
       context.recentActivity.forEach((activity) => {
         prompt += `- ${activity}\n`;
       });
+    }
+
+    // Add memories if available
+    if (context.memories) {
+      prompt += '\n## Recuerdos relevantes sobre el usuario o conversaciones anteriores\n';
+      prompt += `${context.memories}\n\nUtiliza estos recuerdos para personalizar tus respuestas y proporcionar un servicio más contextualizado. Cuando sea relevante, puedes hacer referencia a información de conversaciones anteriores.`;
     }
   }
 

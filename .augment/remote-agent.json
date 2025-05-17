@@ -1,0 +1,92 @@
+{
+  "name": "HopeAIAlpha Remote Agent",
+  "version": "1.0.0",
+  "description": "Remote Agent configuration for HopeAIAlpha project",
+  "projectType": "next.js",
+  "environment": {
+    "runtime": "node",
+    "nodeVersion": "20.x",
+    "packageManager": "pnpm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Reposalud-mente/HopeAIAlpha.git",
+    "branch": "main"
+  },
+  "database": {
+    "type": "postgresql",
+    "provider": "supabase",
+    "orm": "prisma",
+    "schemaPath": "schema.prisma.alpha"
+  },
+  "scripts": {
+    "setup": "pnpm install && pnpm prisma:generate",
+    "build": "pnpm build",
+    "test": "pnpm lint",
+    "lint": "pnpm lint"
+  },
+  "capabilities": [
+    "code-editing",
+    "database-access",
+    "dependency-management",
+    "testing"
+  ],
+  "permissions": {
+    "fileSystem": {
+      "read": ["**/*"],
+      "write": ["**/*", "!.env*", "!**/node_modules/**"]
+    },
+    "network": {
+      "outbound": true,
+      "inbound": false
+    },
+    "execution": {
+      "allowedCommands": [
+        "pnpm",
+        "npm",
+        "node",
+        "npx",
+        "prisma",
+        "next"
+      ]
+    }
+  },
+  "contextProviders": {
+    "codebase": {
+      "enabled": true,
+      "excludePaths": [
+        "node_modules",
+        ".next",
+        "build",
+        ".git"
+      ]
+    },
+    "documentation": {
+      "enabled": true,
+      "paths": [
+        "src/docs",
+        "README.md",
+        "Alpha_Plan"
+      ]
+    }
+  },
+  "ai": {
+    "models": {
+      "primary": "claude-3-7-sonnet",
+      "fallback": "claude-3-5-sonnet"
+    },
+    "tools": {
+      "enabled": [
+        "codebase-search",
+        "dependency-analysis",
+        "code-generation",
+        "documentation-generation"
+      ]
+    }
+  },
+  "notifications": {
+    "onTaskStart": true,
+    "onTaskComplete": true,
+    "onTaskError": true
+  }
+}

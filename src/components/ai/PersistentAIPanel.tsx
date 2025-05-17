@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Bot, X, Loader, Mic, MicOff, RefreshCw, AlertCircle, PlusCircle, User, Zap, Terminal, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bot, X, Loader, Mic, MicOff, RefreshCw, AlertCircle, PlusCircle, User, Zap, Terminal, ChevronLeft, ChevronRight, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,8 @@ export function PersistentAIPanel({
     addAssistantMessage,
     pendingFunctionCall,
     confirmPendingFunctionCall,
-    setPendingFunctionCall
+    setPendingFunctionCall,
+    memories
   } = useAIAssistant();
 
   // Initialize voice input
@@ -331,6 +332,17 @@ export function PersistentAIPanel({
             </div>
           )}
 
+          {/* Memory Indicator */}
+          {memories.length > 0 && (
+            <div
+              className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full flex items-center gap-1"
+              title="El asistente tiene memorias de conversaciones anteriores"
+            >
+              <Brain className="h-3 w-3" />
+              <span>Memoria</span>
+            </div>
+          )}
+
           {/* Pending Function Call Indicator */}
           {pendingFunctionCall && (
             <div
@@ -432,6 +444,19 @@ export function PersistentAIPanel({
                     )}
                   </div>
                 ))}
+
+                {/* Memory usage indicator */}
+                {group.role === 'assistant' && group.messages.some(msg =>
+                  msg.content.includes('Basado en nuestras conversaciones anteriores') ||
+                  msg.content.includes('Recuerdo que mencionaste') ||
+                  msg.content.includes('Como mencionaste antes') ||
+                  msg.content.includes('Según lo que hablamos')
+                ) && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1 ml-2 mt-1">
+                    <Brain className="h-3 w-3" />
+                    <span>Usando memoria</span>
+                  </div>
+                )}
               </div>
             ))}
 

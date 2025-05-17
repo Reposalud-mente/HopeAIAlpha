@@ -7,6 +7,7 @@ import { getConversationSessionManager } from '@/lib/ai-assistant/conversation-s
 import { generateUniqueId } from '@/lib/utils/id-generator';
 import { toast } from '@/components/ui/use-toast';
 import { logger } from '@/lib/logger';
+import { getMem0Service } from '@/lib/ai-assistant/mem0-service';
 
 // Define the context type
 interface AIAssistantContextType {
@@ -23,6 +24,9 @@ interface AIAssistantContextType {
   pendingFunctionCall: { name: string; args: any } | null; // Track pending function calls
   confirmPendingFunctionCall: () => Promise<void>; // Confirm and execute pending function call
   setPendingFunctionCall: (call: { name: string; args: any } | null) => void; // Set or clear pending function call
+  memories: any[]; // Add memories from mem0.ai
+  isLoadingMemories: boolean; // Loading state for memories
+  refreshMemories: () => Promise<void>; // Function to refresh memories
 }
 
 // Create the context
@@ -49,6 +53,10 @@ export function AIAssistantProvider({
   // State for pending function calls
   const [pendingFunctionCall, setPendingFunctionCall] = useState<{ name: string; args: any } | null>(null);
 
+  // State for memories from mem0.ai
+  const [memories, setMemories] = useState<any[]>([]);
+  const [isLoadingMemories, setIsLoadingMemories] = useState<boolean>(false);
+
   // Get the enhanced AI Assistant service with a maximum response length of 500 characters
   const aiService = getAIAssistantService(500); // Limit responses to 500 characters
 
@@ -56,13 +64,36 @@ export function AIAssistantProvider({
   const { user, loading: authLoading, error: authError } = useAuth();
 
   // Get the user ID from the session
-  const userId = user?.id;
+  const userId = user?.id || user?.email || '';
 
   // Get the conversation session manager with the user ID
   const sessionManager = getConversationSessionManager(userId);
 
   // Track whether we've loaded the initial session
   const [sessionLoaded, setSessionLoaded] = useState(false);
+
+  // Function to refresh memories
+  const refreshMemories = async () => {
+    if (!userId) return;
+
+    setIsLoadingMemories(true);
+    try {
+      const mem0Service = getMem0Service();
+      const userMemories = await mem0Service.getAllMemories(userId);
+      setMemories(userMemories);
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+    } finally {
+      setIsLoadingMemories(false);
+    }
+  };
+
+  // Load memories when the user ID changes
+  useEffect(() => {
+    if (userId && !authLoading) {
+      refreshMemories();
+    }
+  }, [userId, authLoading]);
 
   // Load messages from the active session on mount
   useEffect(() => {
@@ -179,6 +210,7 @@ export function AIAssistantProvider({
           currentSection: window.location.pathname.split('/')[1] || undefined,
           currentPage: window.location.pathname.split('/')[2] || undefined,
           userName: user?.user_metadata?.full_name || user?.email || undefined,
+          userId: userId, // Add userId for memory integration
           // cacheId has been removed
         }
       );
@@ -419,6 +451,7 @@ export function AIAssistantProvider({
           currentSection: window.location.pathname.split('/')[1] || undefined,
           currentPage: window.location.pathname.split('/')[2] || undefined,
           userName: user?.user_metadata?.full_name || user?.email || undefined,
+          userId: userId, // Add userId for memory integration
           ...inputContextParams
         },
         (functionCall: any) => {
@@ -1044,7 +1077,10 @@ export function AIAssistantProvider({
     executeFunctionCall,
     pendingFunctionCall,
     confirmPendingFunctionCall,
-    setPendingFunctionCall
+    setPendingFunctionCall,
+    memories,
+    isLoadingMemories,
+    refreshMemories
   };
 
   return (
