@@ -81,6 +81,7 @@
     "genkit": "^1.8.0",
     "langbase": "^1.1.59",
     "lucide-react": "^0.476.0",
+    "mem0ai": "^2.1.25",
     "next": "15.1.7",
     "next-auth": "^4.24.11",
     "node-fetch": "^3.3.2",
