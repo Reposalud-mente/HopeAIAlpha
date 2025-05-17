@@ -26,7 +26,11 @@ export default function MemorySettingsPage() {
     try {
       setIsDeleting(true);
       const mem0Service = getMem0Service();
-      await mem0Service.deleteAllMemories(userId);
+      const result = await mem0Service.deleteAllMemories(userId);
+
+      if (result.success === false) {
+        throw new Error('Failed to delete all memories');
+      }
 
       toast({
         title: "Memorias eliminadas",

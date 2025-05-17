@@ -80,9 +80,18 @@ export function AIAssistantProvider({
     try {
       const mem0Service = getMem0Service();
       const userMemories = await mem0Service.getAllMemories(userId);
-      setMemories(userMemories);
+
+      // Ensure we have a valid array of memories
+      if (Array.isArray(userMemories)) {
+        setMemories(userMemories);
+      } else {
+        // If not an array, set to empty array
+        setMemories([]);
+        console.warn('Received invalid memories format:', userMemories);
+      }
     } catch (error) {
       console.error('Error fetching memories:', error);
+      setMemories([]);
     } finally {
       setIsLoadingMemories(false);
     }

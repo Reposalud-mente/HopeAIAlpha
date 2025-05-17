@@ -17,20 +17,24 @@ export function MemoryManager() {
   const { user } = useAuth();
   const [deletingMemoryId, setDeletingMemoryId] = useState<string | null>(null);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
-  
+
   const userId = user?.id || user?.email || '';
-  
+
   const handleDeleteMemory = async (memoryId: string) => {
     if (!userId) return;
-    
+
     try {
       setDeletingMemoryId(memoryId);
       const mem0Service = getMem0Service();
-      await mem0Service.deleteMemory(memoryId, userId);
-      
+      const result = await mem0Service.deleteMemory(memoryId, userId);
+
+      if (result.success === false) {
+        throw new Error('Failed to delete memory');
+      }
+
       // Refresh memories after deletion
       await refreshMemories();
-      
+
       toast({
         title: "Memoria eliminada",
         description: "La memoria ha sido eliminada correctamente.",
@@ -48,18 +52,22 @@ export function MemoryManager() {
       setDeletingMemoryId(null);
     }
   };
-  
+
   const handleDeleteAllMemories = async () => {
     if (!userId) return;
-    
+
     try {
       setIsDeletingAll(true);
       const mem0Service = getMem0Service();
-      await mem0Service.deleteAllMemories(userId);
-      
+      const result = await mem0Service.deleteAllMemories(userId);
+
+      if (result.success === false) {
+        throw new Error('Failed to delete all memories');
+      }
+
       // Refresh memories after deletion
       await refreshMemories();
-      
+
       toast({
         title: "Memorias eliminadas",
         description: "Todas las memorias han sido eliminadas correctamente.",
@@ -77,7 +85,7 @@ export function MemoryManager() {
       setIsDeletingAll(false);
     }
   };
-  
+
   const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -86,24 +94,24 @@ export function MemoryManager() {
       return dateString;
     }
   };
-  
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between px-4 py-2 border-b">
         <CardTitle className="text-lg">Memorias del Asistente</CardTitle>
         <div className="flex gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={refreshMemories}
             disabled={isLoadingMemories}
           >
             <RefreshCw className={`h-4 w-4 ${isLoadingMemories ? 'animate-spin' : ''}`} />
           </Button>
           {memories.length > 0 && (
-            <Button 
-              variant="destructive" 
-              size="sm" 
+            <Button
+              variant="destructive"
+              size="sm"
               onClick={handleDeleteAllMemories}
               disabled={isDeletingAll || isLoadingMemories}
             >
@@ -133,9 +141,9 @@ export function MemoryManager() {
                     <div className="text-xs text-muted-foreground">
                       {formatDate(memory.created_at)}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       className="h-6 w-6 p-0"
                       onClick={() => handleDeleteMemory(memory.id)}
                       disabled={deletingMemoryId === memory.id}

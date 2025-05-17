@@ -402,18 +402,24 @@ interface CacheItem {
         if (contextParams?.userId) {
           try {
             const mem0Service = getMem0Service();
-            relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
+            // Only search for memories if the message is not too short
+            if (message.trim().length > 5) {
+              relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
 
-            if (relevantMemories.length > 0) {
-              // Format memories for inclusion in the prompt
-              memoryContext = relevantMemories
-                .map(m => `- ${m.memory}`)
-                .join('\n');
+              if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
+                // Format memories for inclusion in the prompt
+                memoryContext = relevantMemories
+                  .filter(m => m && m.memory) // Ensure memory exists
+                  .map(m => `- ${m.memory}`)
+                  .join('\n');
 
-              logger.info('Retrieved memories for context', {
-                count: relevantMemories.length,
-                userId: contextParams.userId
-              });
+                logger.info('Retrieved memories for context', {
+                  count: relevantMemories.length,
+                  userId: contextParams.userId
+                });
+              }
+            } else {
+              logger.info('Message too short for memory search', { messageLength: message.trim().length });
             }
           } catch (error) {
             logger.error('Error retrieving memories', { error });
@@ -524,7 +530,7 @@ interface CacheItem {
           this.functionCallingErrorCount = 0;
 
           // After getting the response, store the conversation in mem0
-          if (contextParams?.userId) {
+          if (contextParams?.userId && message.trim().length > 5 && limitedResponse.trim().length > 5) {
             try {
               // Add the new message and response to the history
               const updatedHistory = [
@@ -534,8 +540,11 @@ interface CacheItem {
 
               // Store in mem0 (don't await to avoid blocking)
               const mem0Service = getMem0Service();
-              mem0Service.addConversation(updatedHistory, contextParams.userId)
-                .catch(error => logger.error('Failed to store conversation in mem0', { error }));
+              // Use setTimeout to ensure this doesn't block the response
+              setTimeout(() => {
+                mem0Service.addConversation(updatedHistory, contextParams.userId)
+                  .catch(error => logger.error('Failed to store conversation in mem0', { error }));
+              }, 100);
             } catch (error) {
               logger.error('Error storing conversation in mem0', { error });
               // Continue even if storing fails
@@ -630,18 +639,24 @@ interface CacheItem {
         if (contextParams?.userId) {
           try {
             const mem0Service = getMem0Service();
-            relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
+            // Only search for memories if the message is not too short
+            if (message.trim().length > 5) {
+              relevantMemories = await mem0Service.searchMemories(message, contextParams.userId);
 
-            if (relevantMemories.length > 0) {
-              // Format memories for inclusion in the prompt
-              memoryContext = relevantMemories
-                .map(m => `- ${m.memory}`)
-                .join('\n');
+              if (relevantMemories && Array.isArray(relevantMemories) && relevantMemories.length > 0) {
+                // Format memories for inclusion in the prompt
+                memoryContext = relevantMemories
+                  .filter(m => m && m.memory) // Ensure memory exists
+                  .map(m => `- ${m.memory}`)
+                  .join('\n');
 
-              logger.info('Retrieved memories for streaming context', {
-                count: relevantMemories.length,
-                userId: contextParams.userId
-              });
+                logger.info('Retrieved memories for streaming context', {
+                  count: relevantMemories.length,
+                  userId: contextParams.userId
+                });
+              }
+            } else {
+              logger.info('Message too short for memory search in streaming', { messageLength: message.trim().length });
             }
           } catch (error) {
             logger.error('Error retrieving memories for streaming', { error });
@@ -766,7 +781,7 @@ interface CacheItem {
         this.cacheResponse(cacheKey, fullResponse, context);
 
         // After streaming completes, store the conversation in mem0
-        if (contextParams?.userId) {
+        if (contextParams?.userId && message.trim().length > 5 && fullResponse.trim().length > 5) {
           try {
             // Add the new message and response to the history
             const updatedHistory = [
@@ -776,8 +791,11 @@ interface CacheItem {
 
             // Store in mem0 (don't await to avoid blocking)
             const mem0Service = getMem0Service();
-            mem0Service.addConversation(updatedHistory, contextParams.userId)
-              .catch(error => logger.error('Failed to store streamed conversation in mem0', { error }));
+            // Use setTimeout to ensure this doesn't block the response
+            setTimeout(() => {
+              mem0Service.addConversation(updatedHistory, contextParams.userId)
+                .catch(error => logger.error('Failed to store streamed conversation in mem0', { error }));
+            }, 100);
           } catch (error) {
             logger.error('Error storing streamed conversation in mem0', { error });
             // Continue even if storing fails
