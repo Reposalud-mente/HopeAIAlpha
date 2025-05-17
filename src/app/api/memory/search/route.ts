@@ -14,42 +14,53 @@ export async function GET(req: NextRequest) {
     // Get the user session from Supabase
     const supabase = createRouteHandlerClient({ cookies });
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     // Get the user ID from the session
     const userId = session.user.id || session.user.email;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID not found' },
         { status: 400 }
       );
     }
-    
+
     // Get the query from the request
     const { searchParams } = new URL(req.url);
     const query = searchParams.get('q');
-    
+
     if (!query) {
       return NextResponse.json(
         { error: 'Query parameter "q" is required' },
         { status: 400 }
       );
     }
-    
+
     // Get the mem0 service
     const mem0Service = getMem0Service();
-    
-    // Search for memories
-    const memories = await mem0Service.searchMemories(query, userId);
-    
-    return NextResponse.json({ memories });
+
+    try {
+      // Search for memories
+      const memories = await mem0Service.searchMemories(query, userId);
+
+      // Ensure we have a valid array of memories
+      if (!Array.isArray(memories)) {
+        logger.warn('Received invalid memories format from search', { userId, query });
+        return NextResponse.json({ memories: [] });
+      }
+
+      return NextResponse.json({ memories });
+    } catch (error) {
+      logger.error('Error searching memories from service', { error, userId, query });
+      return NextResponse.json({ memories: [] });
+    }
   } catch (error) {
     logger.error('Error searching memories', { error });
     return NextResponse.json(

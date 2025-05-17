@@ -14,31 +14,42 @@ export async function GET(req: NextRequest) {
     // Get the user session from Supabase
     const supabase = createRouteHandlerClient({ cookies });
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     // Get the user ID from the session
     const userId = session.user.id || session.user.email;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID not found' },
         { status: 400 }
       );
     }
-    
+
     // Get the mem0 service
     const mem0Service = getMem0Service();
-    
-    // Get all memories for the user
-    const memories = await mem0Service.getAllMemories(userId);
-    
-    return NextResponse.json({ memories });
+
+    try {
+      // Get all memories for the user
+      const memories = await mem0Service.getAllMemories(userId);
+
+      // Ensure we have a valid array of memories
+      if (!Array.isArray(memories)) {
+        logger.warn('Received invalid memories format', { userId });
+        return NextResponse.json({ memories: [] });
+      }
+
+      return NextResponse.json({ memories });
+    } catch (error) {
+      logger.error('Error retrieving memories from service', { error, userId });
+      return NextResponse.json({ memories: [] });
+    }
   } catch (error) {
     logger.error('Error retrieving memories', { error });
     return NextResponse.json(
@@ -58,39 +69,56 @@ export async function DELETE(req: NextRequest) {
     // Get the user session from Supabase
     const supabase = createRouteHandlerClient({ cookies });
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
       );
     }
-    
+
     // Get the user ID from the session
     const userId = session.user.id || session.user.email;
-    
+
     if (!userId) {
       return NextResponse.json(
         { error: 'User ID not found' },
         { status: 400 }
       );
     }
-    
+
     // Get the memory ID from the request
     const { searchParams } = new URL(req.url);
     const memoryId = searchParams.get('id');
-    
+
     // Get the mem0 service
     const mem0Service = getMem0Service();
-    
-    if (memoryId) {
-      // Delete a specific memory
-      await mem0Service.deleteMemory(memoryId, userId);
-      return NextResponse.json({ success: true, message: 'Memory deleted successfully' });
-    } else {
-      // Delete all memories for the user
-      await mem0Service.deleteAllMemories(userId);
-      return NextResponse.json({ success: true, message: 'All memories deleted successfully' });
+
+    try {
+      if (memoryId) {
+        // Delete a specific memory
+        const result = await mem0Service.deleteMemory(memoryId, userId);
+
+        if (result.success === false) {
+          logger.warn('Failed to delete memory', { memoryId, userId, result });
+          return NextResponse.json({ success: false, message: 'Failed to delete memory' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: 'Memory deleted successfully' });
+      } else {
+        // Delete all memories for the user
+        const result = await mem0Service.deleteAllMemories(userId);
+
+        if (result.success === false) {
+          logger.warn('Failed to delete all memories', { userId, result });
+          return NextResponse.json({ success: false, message: 'Failed to delete all memories' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: 'All memories deleted successfully' });
+      }
+    } catch (error) {
+      logger.error('Error deleting memories from service', { error, userId, memoryId });
+      return NextResponse.json({ success: false, message: 'Error deleting memories' }, { status: 500 });
     }
   } catch (error) {
     logger.error('Error deleting memories', { error });
